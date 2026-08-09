@@ -1,19 +1,19 @@
 # cmchen-blog-starter
 
-> 🚀 **cmchen-blog 的初始化版本（Starter）**——功能齐全、内容为空，克隆即可开始你的博客之旅。
+**cmchen-blog 的初始化版本（Starter）** —— 功能齐全、内容为空，克隆即可开始搭建你的博客。
 
-本项目基于 [cmchen-blog](https://github.com/shi-tou1234/cmchen-blog) 的源码初始化而来，**删除了全部个人内容**（文章、关于、工具栏链接、旅行地图城市标记、音乐等），只保留了完整的功能框架与工程配置。你可以把它当作一个开箱即用的博客模板，填入自己的内容后即可发布。
+本项目基于 [cmchen-blog](https://github.com/shi-tou1234/cmchen-blog) 的源码初始化而来，删除了全部个人内容（文章、关于、工具栏链接、旅行地图城市标记、音乐等），只保留完整的功能框架与工程配置。你可以把它当作一个开箱即用的博客模板，填入自己的内容后即可发布。
 
 ## 目录
 
-- [✨ 功能特性](#功能特性)
-- [📦 技术栈](#技术栈)
-- [🚀 快速开始](#快速开始)
-- [✍️ 填充你的内容](#填充你的内容)
-- [⚙️ 站点配置](#站点配置)
-- [🖥️ 管理后台](#管理后台)
-- [📤 部署](#部署)
-- [📜 与 cmchen-blog 的关系](#与-cmchen-blog-的关系)
+- [功能特性](#功能特性)
+- [技术栈](#技术栈)
+- [快速开始](#快速开始)
+- [填充你的内容](#填充你的内容)
+- [站点配置](#站点配置)
+- [管理后台](#管理后台)
+- [部署](#部署)
+- [与 cmchen-blog 的关系](#与-cmchen-blog-的关系)
 
 ## 功能特性
 
@@ -74,7 +74,7 @@ pnpm preview
 
 ## 填充你的内容
 
-> 本版本已删除所有个人内容，以下路径即为你需要填充内容的地方。
+本版本已删除所有个人内容，以下路径即为你需要填充内容的地方。
 
 | 内容 | 位置 | 说明 |
 | --- | --- | --- |
@@ -104,31 +104,43 @@ export const profileConfig: ProfileConfig = {
     avatar: "assets/Motues.jpg", // 头像（相对 src 目录）
     name: "你的名字",
     description: "写一句介绍自己的话",
-    indexPage: "", // 你的主页地址（可选）
+    indexPage: "https://shi-tou1234.github.io/cmchen-blog-starter/", // 你的主页地址
     startYear: 2026,
 }
 
 export const externalUrlsConfig: ExternalUrlsConfig = {
     githubApi: "https://api.github.com",
-    githubRepo: "",      // 你的 GitHub 仓库（owner/repo），用于后台管理与提交热力图
-    giscusRepoId: "",    // Giscus 评论的 repo-id（启用评论时填写）
+    githubRepo: "shi-tou1234/cmchen-blog-starter", // 你的 GitHub 仓库（owner/repo），用于后台管理与提交热力图
+    giscusRepoId: "", // Giscus 评论的 repo-id（启用评论时填写）
     geoDataVBase: "https://geo.datav.aliyun.com/areas_v3/bound", // 地图边界数据源
     geoDataVBaseLegacy: "https://geo.datav.aliyun.com/areas/bound",
 }
 ```
 
+部署地址在 [`astro.config.mjs`](astro.config.mjs) 中配置：
+
+```ts
+export default defineConfig({
+  site: 'https://shi-tou1234.github.io',
+  base: '/cmchen-blog-starter/',
+  // ...
+})
+```
+
+克隆后请把 `site`、`base`、`indexPage`、`githubRepo` 改成你自己的部署地址与仓库。
+
 ## 管理后台
 
-后台入口为 `/admin`。**初始化版本默认关闭登录**（`public/admin-security.json` 的 `salt` / `hash` 为空）。
+后台入口为 `/admin`。初始化版本默认关闭登录（`public/admin-security.json` 的 `salt` / `hash` 为空）。
 
 设置后台密码的两种方式：
 
 1. **手动生成**：用任意 PBKDF2-SHA256 工具，对你的密码生成 `180000` 次迭代、16 字节随机 salt 的哈希，分别以 Base64 填入 `public/admin-security.json` 的 `salt` 与 `hash`。
 2. **后台修改**：按上述方式首次配置后，登录后台即可在「安全设置」中在线修改密码（需配置 GitHub Token）。
 
-> ⚠️ 请勿将个人密码提交到公开仓库。
+> 请勿将个人密码提交到公开仓库。
 
-后台的 GitHub 集成（在线发文章）需要你提供 **GitHub Token** 与仓库地址，这些信息只会保存在浏览器本地（localStorage / sessionStorage）。
+后台的 GitHub 集成（在线发文章）需要你提供 GitHub Token 与仓库地址，这些信息只会保存在浏览器本地（localStorage / sessionStorage）。
 
 ## 部署
 
@@ -136,18 +148,14 @@ export const externalUrlsConfig: ExternalUrlsConfig = {
 
 1. 修改 [`astro.config.mjs`](astro.config.mjs) 中的 `site` 与 `base`，改为你的实际部署地址（例如 `site: 'https://<你的用户名>.github.io'`、`base: '/<仓库名>/'`）。
 2. 将代码推送到你的 GitHub 仓库。
-3. 在仓库 **Settings → Pages** 中，将 Source 设置为 **GitHub Actions**。
+3. 在仓库 Settings → Pages 中，将 Source 设置为 **GitHub Actions**（构建方式选择 GitHub Actions，而不是 Deploy from a branch）。
 4. 推送 `main` 分支后，工作流会自动构建并部署。
 
 ## 与 cmchen-blog 的关系
 
 - **[cmchen-blog](https://github.com/shi-tou1234/cmchen-blog)**：包含完整文章与个人内容的完整博客，是作者的日常博客。
-- **cmchen-blog-starter（本仓库）**：由 cmchen-blog 初始化而来，**内容为空、功能齐全**，作为通用博客模板供新用户快速开始。
+- **cmchen-blog-starter（本仓库）**：由 cmchen-blog 初始化而来，内容为空、功能齐全，作为通用博客模板供新用户快速开始。
 
 ## 致谢
 
 - 本项目深受 [motues/Momo](https://github.com/motues/Momo) 启发，并在此基础上进行了深度功能进化。
-
----
-
-<p align="center">Made with ❤️ by cmchen</p>

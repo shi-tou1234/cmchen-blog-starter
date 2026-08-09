@@ -24,7 +24,7 @@ import { remarkNormalizeLinks } from './src/plugins/remark-normalize-links.mjs';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://shi-tou1234.github.io',
-  base: '/-/',
+  base: '/cmchen-blog-starter/',
   image: {
     service: {
       entrypoint: 'astro/assets/services/sharp'

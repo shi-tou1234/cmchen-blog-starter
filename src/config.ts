@@ -21,7 +21,7 @@ export const profileConfig: ProfileConfig = {
     avatar: "assets/Motues.jpg", // Relative to the /src directory. Relative to the /public directory if it starts with '/'
     name: "你的名字",
     description: "写一句介绍自己的话",
-    indexPage: "",
+    indexPage: "https://shi-tou1234.github.io/cmchen-blog-starter/",
     startYear: 2026,
 }
 
@@ -33,7 +33,7 @@ export const licenseConfig: LicenseConfig = {
 
 export const externalUrlsConfig: ExternalUrlsConfig = {
 	githubApi: "https://api.github.com",
-	githubRepo: "",
+	githubRepo: "shi-tou1234/cmchen-blog-starter",
 	giscusRepoId: "",
 	geoDataVBase: "https://geo.datav.aliyun.com/areas_v3/bound",
 	geoDataVBaseLegacy: "https://geo.datav.aliyun.com/areas/bound",
