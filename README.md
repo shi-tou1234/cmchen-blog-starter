@@ -168,7 +168,7 @@ export default defineConfig({
 ### 常见问题
 - **保存失败 / 提示请填写 Token**：先在「GitHub」页配置 Token。
 - **修改后前台没变化**：保存只是写入仓库源码，需要触发部署（推送到 main 触发 GitHub Actions）重新构建后才生效。
-
+- **后台加载不出来内容或者无法保存**：如果你是使用watt tookit加速打开github的话，关闭加速就可以了。
 
 ## 部署
 
