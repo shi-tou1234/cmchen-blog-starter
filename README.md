@@ -85,8 +85,7 @@ pnpm preview
 | **工具栏链接** | `src/data/tools-links.ts` | 工具栏页展示的常用工具 / 网站卡片 |
 | **页头联系方式** | `src/data/header-contact.ts` | GitHub 主页与邮箱（用于页头复制邮箱等交互） |
 | **音乐文件** | `public/music/` | 音乐播放器的音频文件，配合 `about-personal.ts` 的 `musicTracks` 使用 |
-| **首页打字机签名** | `src/data/home-cover.ts` | 首页 Cover 上滚动的签名语（留空则显示副标题） |
-| **站点信息** | `src/data/site-info.ts` | 左上角站点标题、标语、创建时间（已运行天数起点） |
+| **站点信息** | `src/data/site-info.ts`、`src/data/home-cover.ts` | 站点标题、标语、创建时间（已运行天数起点）、首页打字机签名（留空则显示副标题） |
 
 ## 站点配置
 
@@ -131,16 +130,56 @@ export default defineConfig({
 
 ## 管理后台
 
-后台入口为 `/admin`。初始化版本默认关闭登录（`public/admin-security.json` 的 `salt` / `hash` 为空）。
+后台入口为 `/admin`。**初始化版本默认不设密码，打开即可直接进入后台**；进入后可在「安全」页设置密码，之后登录需要密码。
 
-设置后台密码的两种方式：
+### 前置：配置 GitHub 连接
 
-1. **手动生成**：用任意 PBKDF2-SHA256 工具，对你的密码生成 `180000` 次迭代、16 字节随机 salt 的哈希，分别以 Base64 填入 `public/admin-security.json` 的 `salt` 与 `hash`。
-2. **后台修改**：按上述方式首次配置后，登录后台即可在「安全设置」中在线修改密码（需配置 GitHub Token）。
+后台的在线编辑（文章、站点设置、安全密码）都通过 GitHub API 写入仓库源码，需要先在 **GitHub** 页配置：
 
-> 请勿将个人密码提交到公开仓库。
+1. 到 GitHub 的 `Settings → Developer settings → Personal access tokens` 生成一个具有仓库读写权限的 Token（`Contents: Read and write`）。
+2. 在后台 **GitHub** 页填入 Token、分支名（默认 `main`），点击保存。
+3. Token 只保存在浏览器本地（localStorage / sessionStorage），不会写入仓库。
 
-后台的 GitHub 集成（在线发文章）需要你提供 GitHub Token 与仓库地址，这些信息只会保存在浏览器本地（localStorage / sessionStorage）。
+> 未配置 Token 时只能「加载」，无法「保存」。
+
+### 模块说明
+
+#### 文章
+- 在线创建、编辑、删除文章，内容存放在 `src/content/blog/<slug>/zh-cn.md`。
+- 支持 Markdown、公式推导浮层、图片上传、PDF 转图片、文章实时预览与回填。
+- 点「保存」即通过 GitHub 提交；保存后需重新部署才会在前台生效。
+
+#### 设置（站点信息与内容）
+
+设置页包含多个子标签，每个模块都是「先点加载读取当前配置，修改后点保存写入仓库」：
+
+| 子标签 | 作用 | 对应文件 |
+| --- | --- | --- |
+| 站点信息 | 左上角站点标题、标语、创建时间（已运行天数起点）、首页打字机签名 | `src/data/site-info.ts`、`src/data/home-cover.ts` |
+| 关于页文本 | 关于页正文 Markdown | `src/content/spec/about/zh-cn.md` |
+| 时间线 | 关于页「网站记录」时间轴 | `src/data/about-personal.ts` |
+| 个人介绍 | 关于页个人简介、音乐列表、旅行地图城市标记 | `src/data/about-personal.ts` |
+| 特质 | MBTI、专业、最近在做、最近读书 | `src/data/about-profile.ts` |
+| 工具链接 | 工具栏页的常用工具 / 网站卡片 | `src/data/tools-links.ts` |
+| 联系方式 | 页头 GitHub 链接与邮箱 | `src/data/header-contact.ts` |
+| 博客介绍 | 首次访问弹窗（新手指南）内容 | `src/data/blog-guide-content.ts` |
+
+#### 安全
+- 未设置密码时后台为开放访问，进入后页面会提示直接进入。
+- 首次设置：先在「GitHub」页填好 Token，再到「安全」页直接输入新密码（至少 6 位），点「修改密码」即可（无需填写当前密码）。
+- 已设置密码后：再次进入后台需要输入密码；修改密码需先填写当前密码。
+- 密码以 PBKDF2-SHA256 哈希保存在 `public/admin-security.json`，请勿提交明文密码。
+
+#### 导出
+- 一键导出站点全部数据（文章、配置等），用于备份或迁移。
+
+#### GitHub
+- 配置后台使用的 GitHub Token、API 地址与分支；Token 仅保存在浏览器本地。
+
+### 常见问题
+- **保存失败 / 提示请填写 Token**：先在「GitHub」页配置 Token。
+- **修改后前台没变化**：保存只是写入仓库源码，需要触发部署（推送到 main 触发 GitHub Actions）重新构建后才生效。
+
 
 ## 部署
 

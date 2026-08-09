@@ -2,6 +2,7 @@
 ---
 <div class="rounded-lg border border-[var(--border-color)] p-5">
   <h2 class="text-xl font-semibold mb-4">安全设置</h2>
+  <p id="security-hint" class="text-sm mb-3 text-[var(--text-color)]/70"></p>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <div>
       <label class="block text-sm mb-2">当前密码</label>
@@ -9,7 +10,7 @@
     </div>
     <div>
       <label class="block text-sm mb-2">新密码</label>
-      <input id="new-password" type="password" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder="输入新密码" />
+      <input id="new-password" type="password" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder="输入新密码（至少 6 位）" />
     </div>
     <div class="flex items-end">
       <button id="change-password-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">修改密码</button>
@@ -17,3 +18,22 @@
   </div>
   <p id="pwd-msg" class="text-sm mt-3 text-[var(--text-color)]/70"></p>
 </div>
+
+<script>
+  (function () {
+    const hint = document.getElementById('security-hint');
+    function update(detail) {
+      if (!hint) return;
+      const hasPassword = detail && detail.hasPassword === true;
+      const oldPwd = document.getElementById('old-password');
+      if (hasPassword) {
+        hint.textContent = '已设置后台密码。修改密码需先在「GitHub」页填入 Token，并填写当前密码。';
+        if (oldPwd) oldPwd.disabled = false;
+      } else {
+        hint.textContent = '当前未设置密码，后台为开放访问。先在「GitHub」页填入 Token，再输入新密码（至少 6 位）点击「修改密码」即可完成首次设置。';
+        if (oldPwd) oldPwd.disabled = true;
+      }
+    }
+    document.addEventListener('admin:security-ready', (e) => update(e.detail));
+  })();
+</script>

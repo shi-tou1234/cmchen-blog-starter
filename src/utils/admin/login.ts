@@ -5,6 +5,7 @@ import {
   saveGitHubDraft,
   verifyPassword,
   loadSecurityConfig,
+  hasPasswordConfigured,
 } from "./core";
 
 export function initLoginHandlers(loadPostList: () => Promise<void>) {
@@ -19,6 +20,20 @@ export function initLoginHandlers(loadPostList: () => Promise<void>) {
   if (loginBtn) loginBtn.disabled = true;
   loadSecurityConfig().finally(() => {
     if (loginBtn) loginBtn.disabled = false;
+    document.dispatchEvent(
+      new CustomEvent("admin:security-ready", {
+        detail: { hasPassword: hasPasswordConfigured() },
+      }),
+    );
+    // 未设置密码时无需登录，直接进入后台，进入后可在「安全」页设置密码
+    if (!hasPasswordConfigured()) {
+      setMsg(loginMsg, "当前未设置后台密码，已直接进入后台，可在「安全」页设置密码。");
+      unlockPanel();
+      document.dispatchEvent(new CustomEvent("admin:login-success"));
+      loadPostList().catch((error) => {
+        setMsg(document.getElementById("post-msg"), String(error), true);
+      });
+    }
   });
 
   document.getElementById("login-btn")?.addEventListener("click", async () => {

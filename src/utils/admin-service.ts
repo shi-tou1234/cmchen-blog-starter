@@ -225,6 +225,32 @@ export function buildSiteInfoTs(info: {
   return `export type SiteInfo = {\n  title: string;\n  slogan: string;\n  startDate: string;\n}\n\nconst siteInfo: SiteInfo = ${JSON.stringify(info, null, 2)}\n\nexport default siteInfo\n`;
 }
 
+export function parseHomeCoverSignaturesFromTs(content: string) {
+  const matched = content.match(
+    /const\s+homeCoverSignatures:\s*string\[\]\s*=\s*(\[[\s\S]*?\])\s*;?\s*\n\s*export\s+default\s+homeCoverSignatures/,
+  );
+  if (!matched?.[1]) throw new Error("无法解析首页签名文件");
+  const raw = matched[1]
+    .replace(/([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
+    .replace(/,\s*([}\]])/g, '$1');
+  try {
+    return JSON.parse(raw);
+  } catch {
+    // 兼容单引号字符串数组
+    return JSON.parse(raw.replace(/'/g, '"'));
+  }
+}
+
+export function buildHomeCoverSignaturesTs(signatures: string[]) {
+  const list = Array.isArray(signatures)
+    ? signatures.map((s) => String(s ?? "").trim()).filter(Boolean)
+    : [];
+  const body = list.length > 0
+    ? `[\n  ${list.map((s) => JSON.stringify(s)).join(",\n  ")}\n]`
+    : "[]";
+  return `// 首页 Cover 打字机签名列表（留空则不显示打字机，改为显示副标题）\nconst homeCoverSignatures: string[] = ${body}\n\nexport default homeCoverSignatures;\n`;
+}
+
 export function parseAboutProfileFromTs(content: string) {
   const matched = content.match(
     /const\s+aboutProfile:\s*AboutProfile\s*=\s*(\{[\s\S]*?\})\s*\n\s*export\s+default\s+aboutProfile/,
@@ -503,11 +529,16 @@ export class AdminService {
     }
   }
 
+  /** 是否已设置后台密码（admin-security.json 中存在 salt/hash） */
+  hasPassword(): boolean {
+    return !!(this.security.salt && this.security.hash);
+  }
+
   async verifyPassword(password: string): Promise<boolean> {
-    // 安全配置未加载（salt/hash 为空）时直接拒绝登录，不回退到默认密码
-    if (!this.security.salt || !this.security.hash) {
-      console.warn("[admin] 安全配置未加载，登录已禁用");
-      return false;
+    // 未设置密码时直接放行（默认无密码，进入后台后可再设置）
+    if (!this.hasPassword()) {
+      console.warn("[admin] 未设置后台密码，登录直接放行");
+      return true;
     }
     const hashed = await hashPassword(
       password,
@@ -518,8 +549,11 @@ export class AdminService {
   }
 
   async changePassword(input: ChangePasswordInput): Promise<SecurityConfig> {
-    const oldPassed = await this.verifyPassword(input.oldPassword);
-    if (!oldPassed) throw new Error("当前密码不正确");
+    // 尚未设置过密码时无需校验当前密码，直接设置首个密码
+    if (this.hasPassword()) {
+      const oldPassed = await this.verifyPassword(input.oldPassword);
+      if (!oldPassed) throw new Error("当前密码不正确");
+    }
     if (input.newPassword.trim().length < 6)
       throw new Error("新密码至少 6 位");
 

@@ -222,6 +222,10 @@ export async function loadSecurityConfig() {
   await adminService.loadSecurityConfig();
 }
 
+export function hasPasswordConfigured() {
+  return adminService.hasPassword();
+}
+
 export async function getFileMeta(repoPath: string, token: string, branch: string, allowReadonlyFallback = true) {
   return adminService.getFileMeta(repoPath, token, branch, allowReadonlyFallback);
 }
@@ -330,6 +334,7 @@ export {
   buildHeaderContactTs,
   buildPostMarkdown,
   buildSiteInfoTs,
+  buildHomeCoverSignaturesTs,
   decodeFileContent,
   getNowDateTimeLocal,
   normalizeSlug,
@@ -340,6 +345,7 @@ export {
   parseBlogGuideContentFromTs,
   parseHeaderContactFromTs,
   parseSiteInfoFromTs,
+  parseHomeCoverSignaturesFromTs,
   toIsoDateTime,
 } from "@/utils/admin-service";
 

@@ -19,6 +19,8 @@ import {
   buildHeaderContactTs,
   parseSiteInfoFromTs,
   buildSiteInfoTs,
+  parseHomeCoverSignaturesFromTs,
+  buildHomeCoverSignaturesTs,
 } from "./core";
 import {
   ABOUT_PERSONAL_PATH,
@@ -27,6 +29,7 @@ import {
   BLOG_GUIDE_CONTENT_PATH,
   HEADER_CONTACT_PATH,
   SITE_INFO_PATH,
+  HOME_COVER_PATH,
 } from "./constants";
 
 // ===== Data conversion helpers =====
@@ -625,6 +628,12 @@ export function initSiteSettingsHandlers() {
       (document.getElementById("site-info-title") as HTMLInputElement).value = info.title || "";
       (document.getElementById("site-info-slogan") as HTMLInputElement).value = info.slogan || "";
       (document.getElementById("site-info-start-date") as HTMLInputElement).value = info.startDate || "";
+
+      const coverMeta = await getFileMeta(HOME_COVER_PATH, token, branch);
+      const coverContent = decodeFileContent(coverMeta?.content || "");
+      const signatures = parseHomeCoverSignaturesFromTs(coverContent);
+      (document.getElementById("site-info-signatures") as HTMLTextAreaElement).value = (signatures || []).join("\n");
+
       setMsg(msgEl, "站点信息加载成功");
     } catch (error) {
       setMsg(msgEl, String(error), true);
@@ -639,14 +648,20 @@ export function initSiteSettingsHandlers() {
       const title = (document.getElementById("site-info-title")?.value || "").trim();
       const slogan = (document.getElementById("site-info-slogan")?.value || "").trim();
       const startDate = (document.getElementById("site-info-start-date")?.value || "").trim();
+      const signatures = (document.getElementById("site-info-signatures")?.value || "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
 
       if (!token) throw new Error("请先填写 GitHub Token");
       if (!title) throw new Error("请填写站点标题");
       if (!startDate) throw new Error("请填写创建时间");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error("创建时间格式应为 YYYY-MM-DD");
 
-      const content = buildSiteInfoTs({ title, slogan, startDate });
-      await upsertFile(SITE_INFO_PATH, content, "site: update site info", token, branch);
+      const infoContent = buildSiteInfoTs({ title, slogan, startDate });
+      const coverContent = buildHomeCoverSignaturesTs(signatures);
+      await upsertFile(SITE_INFO_PATH, infoContent, "site: update site info", token, branch);
+      await upsertFile(HOME_COVER_PATH, coverContent, "site: update home cover signatures", token, branch);
       setMsg(msgEl, "站点信息保存成功");
     } catch (error) {
       setMsg(msgEl, String(error), true);

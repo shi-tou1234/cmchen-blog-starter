@@ -19,6 +19,7 @@ export const ABOUT_PERSONAL_PATH = "src/data/about-personal.ts";
 export const ABOUT_SPEC_PATH_PREFIX = "src/content/spec/about";
 export const BLOG_GUIDE_CONTENT_PATH = "src/data/blog-guide-content.ts";
 export const SITE_INFO_PATH = "src/data/site-info.ts";
+export const HOME_COVER_PATH = "src/data/home-cover.ts";
 
 export const CATEGORY_OPTIONS_LIMIT = 50;
 export const CATEGORY_CACHE_KEY = "cmchen_admin_category_cache";
