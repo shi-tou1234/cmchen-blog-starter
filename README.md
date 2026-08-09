@@ -4,17 +4,6 @@
 
 本项目基于 [cmchen-blog](https://github.com/shi-tou1234/cmchen-blog) 的源码初始化而来，删除了全部个人内容（文章、关于、工具栏链接、旅行地图城市标记、音乐等），只保留完整的功能框架与工程配置。你可以把它当作一个开箱即用的博客模板，填入自己的内容后即可发布。
 
-## 目录
-
-- [功能特性](#功能特性)
-- [技术栈](#技术栈)
-- [快速开始](#快速开始)
-- [填充你的内容](#填充你的内容)
-- [站点配置](#站点配置)
-- [管理后台](#管理后台)
-- [部署](#部署)
-- [与 cmchen-blog 的关系](#与-cmchen-blog-的关系)
-
 ## 功能特性
 
 ### 核心博客功能
@@ -136,7 +125,7 @@ export default defineConfig({
 
 后台的在线编辑（文章、站点设置、安全密码）都通过 GitHub API 写入仓库源码，需要先在 **GitHub** 页配置：
 
-1. 到 GitHub 的 `Settings → Developer settings → Personal access tokens` 生成一个具有仓库读写权限的 Token（`Contents: Read and write`）。
+1. 到 GitHub 的 `Settings → Developer settings → Personal access tokens` 生成一个具有仓库读写权限的 Token（`Contents: Read and write`）。现在后台使用的是我这个仓库的token,克隆本仓库的时候需要自己申请。
 2. 在后台 **GitHub** 页填入 Token、分支名（默认 `main`），点击保存。
 3. Token 只保存在浏览器本地（localStorage / sessionStorage），不会写入仓库。
 
