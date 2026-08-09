@@ -1,0 +1,25 @@
+---
+---
+<div class="rounded-lg border border-[var(--border-color)] p-5">
+  <h2 class="text-xl font-semibold mb-4">站点信息</h2>
+  <p class="text-sm text-[var(--text-color)]/70 mb-3">左上角站点标题、下方标语与创建时间（用于计算「已运行」天数）。</p>
+  <div class="flex gap-3 mb-3">
+    <button id="load-site-info-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">加载</button>
+    <button id="save-site-info-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">保存</button>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div>
+      <label class="block text-sm mb-1">站点标题</label>
+      <input id="site-info-title" type="text" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder="如：我的博客" />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">标语</label>
+      <input id="site-info-slogan" type="text" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder="显示在标题下方" />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">创建时间（已运行天数起点）</label>
+      <input id="site-info-start-date" type="date" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" />
+    </div>
+  </div>
+  <p id="site-info-msg" class="text-sm mt-3 text-[var(--text-color)]/70"></p>
+</div>

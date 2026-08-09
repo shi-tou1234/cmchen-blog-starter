@@ -17,8 +17,8 @@ import {
   buildBlogGuideContentTs,
   parseHeaderContactFromTs,
   buildHeaderContactTs,
-  parseSiteSloganFromTs,
-  buildSiteSloganTs,
+  parseSiteInfoFromTs,
+  buildSiteInfoTs,
 } from "./core";
 import {
   ABOUT_PERSONAL_PATH,
@@ -26,7 +26,7 @@ import {
   ABOUT_SPEC_PATH_PREFIX,
   BLOG_GUIDE_CONTENT_PATH,
   HEADER_CONTACT_PATH,
-  SITE_SLOGAN_PATH,
+  SITE_INFO_PATH,
 } from "./constants";
 
 // ===== Data conversion helpers =====
@@ -610,41 +610,44 @@ export function initSiteSettingsHandlers() {
     }
   });
 
-  // Site slogan
-  document.getElementById("load-site-slogan-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("site-slogan-msg");
+  // Site info
+  document.getElementById("load-site-info-btn")?.addEventListener("click", async () => {
+    const msgEl = document.getElementById("site-info-msg");
     try {
       const token = getToken();
       const branch = getBranch();
       if (!token) throw new Error("请先填写 GitHub Token");
 
-      const meta = await getFileMeta(SITE_SLOGAN_PATH, token, branch);
+      const meta = await getFileMeta(SITE_INFO_PATH, token, branch);
       const content = decodeFileContent(meta?.content || "");
-      const slogan = parseSiteSloganFromTs(content);
+      const info = parseSiteInfoFromTs(content);
 
-      (document.getElementById("site-slogan-zh") as HTMLInputElement).value = slogan["zh-cn"] || "";
-      (document.getElementById("site-slogan-en") as HTMLInputElement).value = slogan.en || "";
-      setMsg(msgEl, "标语加载成功");
+      (document.getElementById("site-info-title") as HTMLInputElement).value = info.title || "";
+      (document.getElementById("site-info-slogan") as HTMLInputElement).value = info.slogan || "";
+      (document.getElementById("site-info-start-date") as HTMLInputElement).value = info.startDate || "";
+      setMsg(msgEl, "站点信息加载成功");
     } catch (error) {
       setMsg(msgEl, String(error), true);
     }
   });
 
-  document.getElementById("save-site-slogan-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("site-slogan-msg");
+  document.getElementById("save-site-info-btn")?.addEventListener("click", async () => {
+    const msgEl = document.getElementById("site-info-msg");
     try {
       const token = getToken();
       const branch = getBranch();
-      const zhSlogan = (document.getElementById("site-slogan-zh")?.value || "").trim();
-      const enSlogan = (document.getElementById("site-slogan-en")?.value || "").trim();
+      const title = (document.getElementById("site-info-title")?.value || "").trim();
+      const slogan = (document.getElementById("site-info-slogan")?.value || "").trim();
+      const startDate = (document.getElementById("site-info-start-date")?.value || "").trim();
 
       if (!token) throw new Error("请先填写 GitHub Token");
-      if (!zhSlogan) throw new Error("请填写中文标语");
-      if (!enSlogan) throw new Error("请填写英文标语");
+      if (!title) throw new Error("请填写站点标题");
+      if (!startDate) throw new Error("请填写创建时间");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error("创建时间格式应为 YYYY-MM-DD");
 
-      const content = buildSiteSloganTs({ "zh-cn": zhSlogan, en: enSlogan });
-      await upsertFile(SITE_SLOGAN_PATH, content, "slogan: update site slogan", token, branch);
-      setMsg(msgEl, "标语保存成功");
+      const content = buildSiteInfoTs({ title, slogan, startDate });
+      await upsertFile(SITE_INFO_PATH, content, "site: update site info", token, branch);
+      setMsg(msgEl, "站点信息保存成功");
     } catch (error) {
       setMsg(msgEl, String(error), true);
     }
@@ -663,7 +666,7 @@ export function loadAllSiteSettings() {
     "load-tools-links-btn",
     "load-header-contact-btn",
     "load-blog-guide-btn",
-    "load-site-slogan-btn",
+    "load-site-info-btn",
   ];
   loadButtonIds.forEach((id) => {
     document.getElementById(id)?.click();

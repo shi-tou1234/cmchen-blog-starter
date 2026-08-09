@@ -4,9 +4,10 @@ import type {
     LicenseConfig,
     ExternalUrlsConfig
 } from "./types/config"
+import siteInfo from "./data/site-info"
 
 export const siteConfig: SiteConfig = {
-    title: "我的博客",
+    title: siteInfo.title,
     subTitle: "记录生活与学习",
 
     favicon: "/favicon/favicon.ico", // Path of the favicon, relative to the /public directory

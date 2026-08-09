@@ -5,7 +5,7 @@ import { profileConfig } from "@/config"
 import ThemeIcon from "./control/ThemeIcon.astro"
 import FontSizeControl from "./control/FontSizeControl.astro"
 import headerContact from "@/data/header-contact"
-import siteSlogan from "@/data/site-slogan"
+import siteInfo from "@/data/site-info"
 import HeaderLogoFracture from "./header/HeaderLogoFracture.astro"
 import MobileMenu from "./header/MobileMenu.astro"
 import CopyEmail from "./header/CopyEmail.astro"
@@ -31,14 +31,14 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
     <!-- logo -->
     <div class="pr-3 md:pr-5 py-2 z-30 shrink-0 header-logo -ml-2 md:-ml-32 hidden md:block">
         <a href={ indexPage } >
-            <span class="header-slice-text text-3xl font-bold" data-text={t("site.title")} data-header-logo="true">
-              <span class="header-slice-text__base">{ t("site.title") }</span>
+            <span class="header-slice-text text-3xl font-bold" data-text={siteInfo.title} data-header-logo="true">
+              <span class="header-slice-text__base">{ siteInfo.title }</span>
               <span class="header-slice-text__shards" aria-hidden="true"></span>
             </span>
         </a>
       <RunningDays />
       <p class="header-slogan mt-1.5 text-sm italic text-[var(--link-color)]/75 leading-relaxed">
-        {siteSlogan['zh-cn']}
+        {siteInfo.slogan}
       </p>
     </div>
 

@@ -1,10 +1,23 @@
 ---
+import siteInfo from "@/data/site-info";
+
 const runtimeLabel = '已运行';
 const runtimeSuffix = '天';
+
+const start = new Date(`${siteInfo.startDate}T00:00:00`);
+const validStart = !Number.isNaN(start.getTime());
+const startUtc = validStart
+  ? Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
+  : NaN;
+const now = new Date();
+const nowUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+const days = validStart
+  ? Math.max(1, Math.floor((nowUtc - startUtc) / (24 * 60 * 60 * 1000)) + 1)
+  : 1;
 ---
 
-<p id="header-running-days" class="text-sm text-[var(--text-color)]/65 mt-1" data-running-since="2026-02-12" data-runtime-label={runtimeLabel} data-runtime-suffix={runtimeSuffix}>
-  {runtimeLabel} 1 {runtimeSuffix}
+<p id="header-running-days" class="text-sm text-[var(--text-color)]/65 mt-1" data-running-since={siteInfo.startDate} data-runtime-label={runtimeLabel} data-runtime-suffix={runtimeSuffix}>
+  {runtimeLabel} {days} {runtimeSuffix}
 </p>
 
 <script>

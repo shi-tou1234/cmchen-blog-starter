@@ -206,22 +206,23 @@ export function buildBlogGuideContentTs(content: {
   return `export type BlogGuideLocaleContent = {\n  title: string;\n  subtitle: string;\n  items: string[];\n};\n\nexport type BlogGuideContent = {\n  "zh-cn": BlogGuideLocaleContent;\n  en: BlogGuideLocaleContent;\n};\n\nconst blogGuideContent: BlogGuideContent = ${JSON.stringify(content, null, 2)};\n\nexport default blogGuideContent;\n`;
 }
 
-export function parseSiteSloganFromTs(content: string) {
+export function parseSiteInfoFromTs(content: string) {
   const matched = content.match(
-    /const\s+siteSlogan:\s*SiteSlogan\s*=\s*(\{[\s\S]*?\})\s*\n\s*export\s+default\s+siteSlogan/,
+    /const\s+siteInfo:\s*SiteInfo\s*=\s*(\{[\s\S]*?\})\s*\n\s*export\s+default\s+siteInfo/,
   );
-  if (!matched?.[1]) throw new Error("无法解析标语文件");
+  if (!matched?.[1]) throw new Error("无法解析站点信息文件");
   const raw = matched[1]
     .replace(/([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
     .replace(/,\s*([}\]])/g, '$1');
   return JSON.parse(raw);
 }
 
-export function buildSiteSloganTs(slogan: {
-  "zh-cn": string;
-  en: string;
+export function buildSiteInfoTs(info: {
+  title: string;
+  slogan: string;
+  startDate: string;
 }): string {
-  return `export type SiteSlogan = {\n  "zh-cn": string\n  en: string\n}\n\nconst siteSlogan: SiteSlogan = ${JSON.stringify(slogan, null, 2)}\n\nexport default siteSlogan\n`;
+  return `export type SiteInfo = {\n  title: string;\n  slogan: string;\n  startDate: string;\n}\n\nconst siteInfo: SiteInfo = ${JSON.stringify(info, null, 2)}\n\nexport default siteInfo\n`;
 }
 
 export function parseAboutProfileFromTs(content: string) {

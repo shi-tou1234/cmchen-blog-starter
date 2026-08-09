@@ -329,7 +329,7 @@ export {
   buildBlogGuideContentTs,
   buildHeaderContactTs,
   buildPostMarkdown,
-  buildSiteSloganTs,
+  buildSiteInfoTs,
   decodeFileContent,
   getNowDateTimeLocal,
   normalizeSlug,
@@ -339,7 +339,7 @@ export {
   parseToolsLinksFromTs,
   parseBlogGuideContentFromTs,
   parseHeaderContactFromTs,
-  parseSiteSloganFromTs,
+  parseSiteInfoFromTs,
   toIsoDateTime,
 } from "@/utils/admin-service";
 

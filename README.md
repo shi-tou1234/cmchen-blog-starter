@@ -86,7 +86,7 @@ pnpm preview
 | **页头联系方式** | `src/data/header-contact.ts` | GitHub 主页与邮箱（用于页头复制邮箱等交互） |
 | **音乐文件** | `public/music/` | 音乐播放器的音频文件，配合 `about-personal.ts` 的 `musicTracks` 使用 |
 | **首页打字机签名** | `src/data/home-cover.ts` | 首页 Cover 上滚动的签名语（留空则显示副标题） |
-| **站点标语** | `src/data/site-slogan.ts` | 站点 slogan |
+| **站点信息** | `src/data/site-info.ts` | 左上角站点标题、标语、创建时间（已运行天数起点） |
 
 ## 站点配置
 
