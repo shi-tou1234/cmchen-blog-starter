@@ -1,0 +1,210 @@
+---
+// 公式推导浮层：扫描 .derivation-block，自动绑定到前一个公式节点。
+// 桌面 hover/focus 弹出，移动端 click 展开。无可见 DOM 输出，仅注入脚本。
+---
+
+<script>
+  function initDerivationPopup() {
+    // 换页/重复初始化时先摘掉上一次挂的全局监听，避免越积越多
+    if (window.__derivationPopupCleanup) {
+      window.__derivationPopupCleanup();
+      window.__derivationPopupCleanup = null;
+    }
+
+    const blocks = document.querySelectorAll<HTMLElement>('.markdown-content .derivation-block');
+    if (blocks.length === 0) return;
+
+    // 检测是否为触屏设备（hover 不可靠）
+    const isTouch = window.matchMedia('(hover: none)').matches;
+
+    // 单一浮层实例（同时只显示一个）
+    let popup: HTMLElement | null = null;
+    let currentFormula: HTMLElement | null = null;
+
+    function ensurePopup() {
+      if (popup) return popup;
+      popup = document.createElement('div');
+      popup.className = 'derivation-popup';
+      popup.setAttribute('role', 'dialog');
+      popup.setAttribute('aria-label', '公式推导');
+      const title = document.createElement('div');
+      title.className = 'derivation-popup-title';
+      title.textContent = '推导 / 图解';
+      const body = document.createElement('div');
+      popup.appendChild(title);
+      popup.appendChild(body);
+      popup.addEventListener('click', (e) => e.stopPropagation());
+      // 鼠标移出浮层时关闭（必须在浮层创建后绑定，之前绑定在空元素上从未生效）
+      popup.addEventListener('mouseleave', () => {
+        hidePopup();
+      });
+      document.body.appendChild(popup);
+      return popup;
+    }
+
+    function positionPopup(formula: HTMLElement) {
+      const el = ensurePopup();
+      const rect = formula.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      // 浮层宽度：与公式等宽，最小 320px，最大 90vw
+      const width = Math.max(Math.min(rect.width, viewportWidth * 0.9), 320);
+      el.style.width = `${width}px`;
+      // 定位到公式下方
+      let top = rect.bottom + 6;
+      let left = rect.left;
+      // 右侧溢出则左移
+      if (left + width > viewportWidth - 8) {
+        left = viewportWidth - width - 8;
+      }
+      left = Math.max(8, left);
+      // 下方溢出则显示在上方
+      const popupHeight = el.offsetHeight || 200;
+      if (top + popupHeight > window.innerHeight - 8) {
+        top = Math.max(8, rect.top - popupHeight - 6);
+      }
+      el.style.top = `${top}px`;
+      el.style.left = `${left}px`;
+    }
+
+    function showPopup(formula: HTMLElement, derivationBlock: HTMLElement) {
+      const el = ensurePopup();
+      const body = el.children[1];
+      if (body instanceof HTMLElement) {
+        body.innerHTML = '';
+        // 移动 derivation 的子节点到浮层（克隆，保留原节点）
+        Array.from(derivationBlock.childNodes).forEach((node) => {
+          body.appendChild(node.cloneNode(true));
+        });
+      }
+      currentFormula = formula;
+      positionPopup(formula);
+      el.classList.add('is-visible');
+      el.setAttribute('aria-hidden', 'false');
+      formula.setAttribute('aria-expanded', 'true');
+    }
+
+    function hidePopup() {
+      if (!popup) return;
+      popup.classList.remove('is-visible');
+      popup.setAttribute('aria-hidden', 'true');
+      if (currentFormula) {
+        currentFormula.setAttribute('aria-expanded', 'false');
+        currentFormula = null;
+      }
+    }
+
+    function findPrecedingFormula(block: HTMLElement): HTMLElement | null {
+      // 向前遍历兄弟节点，找最近的 .katex-display 或 .katex
+      let sibling: Node | null = block.previousSibling;
+      while (sibling) {
+        if (sibling instanceof HTMLElement) {
+          const display = sibling.querySelector?.('.katex-display');
+          if (display instanceof HTMLElement) return display;
+          const inline = sibling.querySelector?.('.katex');
+          if (inline instanceof HTMLElement) return inline;
+          // 兄弟节点本身也可能是公式
+          if (sibling.classList?.contains('katex-display') || sibling.classList?.contains('katex')) {
+            return sibling;
+          }
+        }
+        sibling = sibling.previousSibling;
+      }
+      return null;
+    }
+
+    blocks.forEach((block) => {
+      const formula = findPrecedingFormula(block);
+      if (!formula) return;
+
+      // 同一页面重复初始化时跳过已绑定的公式，避免叠加监听
+      if (formula.dataset.derivationBound === 'true') return;
+      formula.dataset.derivationBound = 'true';
+
+      // 标记公式为可推导
+      formula.classList.add('derivable');
+      formula.setAttribute('tabindex', '0');
+      formula.setAttribute('role', 'button');
+      formula.setAttribute('aria-expanded', 'false');
+      formula.setAttribute('aria-label', '悬停或点击查看推导');
+
+      let hoverTimer: number | undefined;
+
+      if (!isTouch) {
+        // 桌面：hover 显示（加 debounce 避免快速划过闪烁）
+        formula.addEventListener('mouseenter', () => {
+          window.clearTimeout(hoverTimer);
+          hoverTimer = window.setTimeout(() => {
+            showPopup(formula, block);
+          }, 120);
+        });
+        formula.addEventListener('mouseleave', () => {
+          window.clearTimeout(hoverTimer);
+          // 延迟隐藏，给用户移到浮层的时间
+          window.setTimeout(() => {
+            if (!popup?.matches(':hover')) hidePopup();
+          }, 200);
+        });
+      }
+
+      // 桌面 + 触屏：focus 显示
+      formula.addEventListener('focus', () => {
+        showPopup(formula, block);
+      });
+      formula.addEventListener('blur', () => {
+        window.setTimeout(() => {
+          if (!popup?.matches(':focus-within')) hidePopup();
+        }, 150);
+      });
+
+      // 触屏 + 鼠标：click 切换
+      formula.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentFormula === formula && popup?.classList.contains('is-visible')) {
+          hidePopup();
+        } else {
+          showPopup(formula, block);
+        }
+      });
+    });
+
+    // 点击外部 / ESC 关闭（具名函数，换页时能摘掉）
+    const handleDocClick = (e) => {
+      if (!popup?.classList.contains('is-visible')) return;
+      if (!(e.target instanceof Node)) return;
+      if (popup.contains(e.target) || currentFormula?.contains(e.target)) return;
+      hidePopup();
+    };
+    const handleKeydown = (e) => {
+      if (e.key === 'Escape') hidePopup();
+    };
+    // 滚动时隐藏（避免浮层位置错乱）
+    const handleScroll = () => {
+      if (popup?.classList.contains('is-visible')) hidePopup();
+    };
+
+    document.addEventListener('click', handleDocClick);
+    document.addEventListener('keydown', handleKeydown);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    // 下次换页/重新初始化时调用：摘掉本页挂的全局监听并移除浮层
+    window.__derivationPopupCleanup = () => {
+      document.removeEventListener('click', handleDocClick);
+      document.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('scroll', handleScroll);
+      if (popup) {
+        popup.remove();
+        popup = null;
+      }
+    };
+  }
+
+  // View Transitions 兼容
+  document.addEventListener('astro:page-load', initDerivationPopup);
+  document.addEventListener('astro:after-swap', initDerivationPopup);
+  // 首次加载（无 View Transitions 时）
+  if (document.readyState !== 'loading') {
+    initDerivationPopup();
+  } else {
+    document.addEventListener('DOMContentLoaded', initDerivationPopup);
+  }
+</script>

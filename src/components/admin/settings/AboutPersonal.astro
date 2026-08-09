@@ -1,0 +1,35 @@
+---
+import TravelMap from '@/components/misc/TravelMap.astro';
+---
+<div class="rounded-lg border border-[var(--border-color)] p-5">
+  <h2 class="text-xl font-semibold mb-4">关于我的一些事情</h2>
+  <div class="flex gap-3 mb-3">
+    <button id="load-about-personal-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">加载</button>
+    <button id="save-about-personal-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">保存</button>
+  </div>
+
+  <div class="space-y-3">
+    <div>
+      <label class="block text-sm mb-1">自我介绍</label>
+      <textarea id="about-personal-intro" class="w-full min-h-[80px] rounded border border-[var(--border-color)] bg-transparent px-3 py-2"></textarea>
+    </div>
+    <div>
+      <label class="block text-sm mb-1">音乐列表（每行一条，格式：标题|艺术家|URL）</label>
+      <textarea id="about-personal-music" class="w-full min-h-[100px] rounded border border-[var(--border-color)] bg-transparent px-3 py-2"></textarea>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="about-music-files" type="file" multiple accept="audio/mpeg,.mp3" class="hidden" />
+      <label for="about-music-files" class="cursor-pointer rounded border border-[var(--border-color)] px-3 py-1.5 text-sm hover:bg-[var(--hover-bg-color)]">选择 MP3</label>
+      <span id="about-music-files-count" class="text-sm text-[var(--text-color)]/70">未选择文件</span>
+      <button id="upload-about-music-btn" class="rounded border border-[var(--border-color)] px-3 py-1.5 text-sm hover:bg-[var(--hover-bg-color)]">上传 MP3</button>
+    </div>
+    <div>
+      <label class="block text-sm mb-1">旅行城市（JSON 数组）</label>
+      <textarea id="about-personal-travel-cities" class="w-full min-h-[80px] rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder='[{"province":"北京","city":"北京","visited":true}]'></textarea>
+    </div>
+    <div class="rounded border border-[var(--border-color)] p-3">
+      <TravelMap editable={true} storageInputId="about-personal-travel-cities" />
+    </div>
+  </div>
+  <p id="about-personal-msg" class="text-sm mt-3 text-[var(--text-color)]/70"></p>
+</div>

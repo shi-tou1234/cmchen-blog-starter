@@ -1,0 +1,611 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<div id="post-toc-root" data-toc-title={title} class="post-toc-root">
+  <button id="post-toc-fab" type="button" class="post-toc-fab" aria-expanded="false" aria-controls="post-toc-panel">
+    {title}
+  </button>
+
+  <div id="post-toc-backdrop" class="post-toc-backdrop" aria-hidden="true"></div>
+
+  <aside id="post-toc-panel" class="post-toc-panel" aria-label={title}>
+    <div class="post-toc-panel__head">
+      <h2 class="post-toc-panel__title">{title}</h2>
+      <div class="post-toc-progress" id="post-toc-progress">
+        <div class="post-toc-progress__track">
+          <div class="post-toc-progress__bar" id="post-toc-progress-bar"></div>
+        </div>
+        <span class="post-toc-progress__text" id="post-toc-progress-text">0%</span>
+      </div>
+      <button id="post-toc-close" type="button" class="post-toc-panel__close" aria-label="关闭目录">x</button>
+    </div>
+    <ol id="post-toc-list" class="post-toc-list"></ol>
+  </aside>
+</div>
+
+<script>
+  import { onPageLifecycle } from "../../utils/page-lifecycle";
+  import { getScrollProgressPercent } from "../../utils/scroll";
+
+function initPostToc() {
+  const root = document.getElementById('post-toc-root');
+  if (!(root instanceof HTMLElement)) return;
+
+  // 同一页面重复初始化时跳过，避免初始化两遍、监听叠加
+  if (root.dataset.tocBound === 'true') return;
+  root.dataset.tocBound = 'true';
+
+  const markdown = document.querySelector('.markdown-content');
+  if (!(markdown instanceof HTMLElement)) return;
+
+  const panel = document.getElementById('post-toc-panel');
+  const list = document.getElementById('post-toc-list');
+  const fab = document.getElementById('post-toc-fab');
+  const closeBtn = document.getElementById('post-toc-close');
+  const backdrop = document.getElementById('post-toc-backdrop');
+  if (!(panel instanceof HTMLElement) || !(list instanceof HTMLOListElement) || !(fab instanceof HTMLButtonElement) || !(closeBtn instanceof HTMLButtonElement) || !(backdrop instanceof HTMLElement)) {
+    return;
+  }
+
+  const slugify = (text) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[\s\u3000]+/g, '-')
+      .replace(/[^\w\-\u4e00-\u9fa5]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  };
+
+  const seenIds = new Set();
+  const headings = Array.from(markdown.querySelectorAll('h2, h3')).filter((heading) => {
+    const text = heading.textContent?.trim();
+    if (!text) return false;
+
+    if (!heading.id) {
+      const baseId = slugify(text) || `heading-${seenIds.size + 1}`;
+      let nextId = baseId;
+      let index = 2;
+      while (document.getElementById(nextId) || seenIds.has(nextId)) {
+        nextId = `${baseId}-${index}`;
+        index += 1;
+      }
+      heading.id = nextId;
+    }
+
+    seenIds.add(heading.id);
+    return true;
+  });
+
+  if (!headings.length) {
+    root.classList.add('post-toc-root--hidden');
+    return;
+  }
+
+  root.classList.remove('post-toc-root--hidden');
+
+  list.innerHTML = headings
+    .map((heading) => {
+      const depth = heading.tagName === 'H3' ? 'sub' : 'main';
+      const text = heading.textContent?.trim() || '';
+      return `<li class="post-toc-item post-toc-item--${depth}"><a href="#${heading.id}" data-toc-target="${heading.id}">${text}</a></li>`;
+    })
+    .join('');
+
+  const links = Array.from(list.querySelectorAll('a[data-toc-target]'));
+  let activeId = '';
+  let tickingProgress = false;
+  let navigatingTimeout = null;
+  let isNavigating = false;
+  let suspendAutoKeepVisibleUntil = 0;
+
+  const SCROLL_OFFSET = 24;
+
+  const getScrollTarget = (heading) => {
+    if (!heading) return 0;
+    const rect = heading.getBoundingClientRect();
+    const header = document.getElementById('main-header');
+    let offset = SCROLL_OFFSET;
+    if (header) {
+      offset = header.getBoundingClientRect().height + 8;
+    }
+    return window.scrollY + rect.top - offset;
+  };
+
+  const updateProgress = () => {
+    const progressBar = document.getElementById('post-toc-progress-bar');
+    const progressText = document.getElementById('post-toc-progress-text');
+    if (!progressBar || !progressText) return;
+
+    const percent = getScrollProgressPercent();
+    progressBar.style.width = `${percent}%`;
+    progressText.textContent = `${percent}%`;
+  };
+
+  const getActiveHeadingId = () => {
+    const header = document.getElementById('main-header');
+    let offset = SCROLL_OFFSET;
+    if (header) {
+      offset = header.getBoundingClientRect().height + 8;
+    }
+    const scrollTop = window.scrollY + offset;
+
+    let activeId = headings[0]?.id;
+    for (let i = 0; i < headings.length; i++) {
+      const heading = headings[i];
+      const headingTop = heading.getBoundingClientRect().top + window.scrollY;
+      if (headingTop <= scrollTop) {
+        activeId = heading.id;
+      }
+    }
+    return activeId;
+  };
+
+  const onScrollProgress = () => {
+    if (!tickingProgress) {
+      tickingProgress = true;
+      window.requestAnimationFrame(() => {
+        try {
+          updateProgress();
+          const activeId = getActiveHeadingId();
+          if (activeId) {
+            updateActive(activeId);
+          }
+        } catch (e) {
+          console.warn('TOC scroll update error:', e);
+        }
+        tickingProgress = false;
+      });
+    }
+  };
+
+  const setPanelOpen = (open) => {
+    panel.classList.toggle('is-open', open);
+    backdrop.classList.toggle('is-open', open);
+    fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+
+  const keepActiveLinkVisible = (link, force = false) => {
+    if (!link) return;
+    if (list.scrollHeight <= list.clientHeight) return;
+    if (!force && Date.now() < suspendAutoKeepVisibleUntil) return;
+
+    const listRect = list.getBoundingClientRect();
+    const linkRect = link.getBoundingClientRect();
+    const edgeOffset = 8;
+
+    if (linkRect.top < listRect.top + edgeOffset) {
+      list.scrollTop -= (listRect.top + edgeOffset) - linkRect.top;
+      return;
+    }
+
+    if (linkRect.bottom > listRect.bottom - edgeOffset) {
+      list.scrollTop += linkRect.bottom - (listRect.bottom - edgeOffset);
+    }
+  };
+
+  const updateActive = (id) => {
+    if (!id || activeId === id) return;
+    activeId = id;
+    links.forEach((link) => {
+      const isActive = link.getAttribute('data-toc-target') === id;
+      link.classList.toggle('is-active', isActive);
+      if (isActive) {
+        keepActiveLinkVisible(link, false);
+      }
+    });
+  };
+
+  const forceActive = (id) => {
+    if (!id) return;
+    if (navigatingTimeout) {
+      clearTimeout(navigatingTimeout);
+      navigatingTimeout = null;
+    }
+    if (window.__postTocScrollEndHandler) {
+      window.removeEventListener('scrollend', window.__postTocScrollEndHandler);
+    }
+    isNavigating = true;
+    activeId = id;
+    links.forEach((link) => {
+      const isActive = link.getAttribute('data-toc-target') === id;
+      link.classList.toggle('is-active', isActive);
+      if (isActive) {
+        keepActiveLinkVisible(link, true);
+      }
+    });
+
+    const endNavigation = () => {
+      isNavigating = false;
+      navigatingTimeout = null;
+      if (window.__postTocScrollEndHandler) {
+        window.removeEventListener('scrollend', window.__postTocScrollEndHandler);
+        window.__postTocScrollEndHandler = null;
+      }
+      const currentId = getActiveHeadingId();
+      if (currentId) {
+        updateActive(currentId);
+      }
+    };
+
+    window.__postTocScrollEndHandler = endNavigation;
+    window.addEventListener('scrollend', endNavigation, { once: true });
+
+    navigatingTimeout = setTimeout(() => {
+      endNavigation();
+    }, 1200);
+  };
+
+  const scrollToHeading = (targetId) => {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    const targetPosition = getScrollTarget(target);
+    window.scrollTo({ top: Math.max(0, targetPosition), behavior: 'smooth' });
+
+    if (window.location.hash !== `#${targetId}`) {
+      history.replaceState(null, '', `#${targetId}`);
+    }
+  };
+
+  links.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      const targetId = link.getAttribute('data-toc-target');
+      if (!targetId) return;
+
+      if (window.innerWidth < 1024) {
+        setPanelOpen(false);
+      }
+
+      forceActive(targetId);
+      scrollToHeading(targetId);
+    });
+  });
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (isNavigating) return;
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (visible.length > 0) {
+        updateActive(visible[0].target.id);
+      }
+    },
+    {
+      root: null,
+      rootMargin: '-80px 0px -55% 0px',
+      threshold: 0,
+    },
+  );
+
+  headings.forEach((heading) => observer.observe(heading));
+  forceActive(headings[0].id);
+  updateProgress();
+
+  fab.onclick = () => {
+    const isOpen = panel.classList.contains('is-open');
+    setPanelOpen(!isOpen);
+  };
+  closeBtn.onclick = () => setPanelOpen(false);
+
+  // 点击目录外关闭（换页时先摘掉上一次的，避免累积）
+  const oldClickHandler = window.__postTocClickHandler;
+  if (oldClickHandler) {
+    document.removeEventListener('click', oldClickHandler);
+  }
+  const handleDocClick = (event) => {
+    if (!panel.classList.contains('is-open')) return;
+    const target = event.target;
+    if (target instanceof Node && !panel.contains(target) && target !== fab && !fab.contains(target)) {
+      setPanelOpen(false);
+    }
+  };
+  document.addEventListener('click', handleDocClick);
+  window.__postTocClickHandler = handleDocClick;
+
+  let touchStartY = 0;
+  let touchCurrentY = 0;
+  let touchActive = false;
+
+  panel.addEventListener('touchstart', (event) => {
+    if (!panel.classList.contains('is-open')) return;
+    touchStartY = event.touches[0].clientY;
+    touchCurrentY = touchStartY;
+    touchActive = true;
+    panel.style.transition = 'none';
+  }, { passive: true });
+
+  const suspendAutoKeepVisible = () => {
+    suspendAutoKeepVisibleUntil = Date.now() + 1200;
+  };
+
+  list.addEventListener('wheel', suspendAutoKeepVisible, { passive: true });
+  list.addEventListener('touchstart', suspendAutoKeepVisible, { passive: true });
+  list.addEventListener('pointerdown', suspendAutoKeepVisible, { passive: true });
+
+  panel.addEventListener('touchmove', (event) => {
+    if (!touchActive) return;
+    touchCurrentY = event.touches[0].clientY;
+    const deltaY = touchCurrentY - touchStartY;
+
+    if (deltaY > 0 && list.scrollTop <= 0) {
+      panel.style.transform = `translateY(${deltaY}px)`;
+      panel.style.opacity = String(Math.max(0, 1 - deltaY / 200));
+    }
+  }, { passive: true });
+
+  panel.addEventListener('touchend', () => {
+    if (!touchActive) return;
+    touchActive = false;
+    panel.style.transition = '';
+
+    const deltaY = touchCurrentY - touchStartY;
+    if (deltaY > 60 && list.scrollTop <= 0) {
+      setPanelOpen(false);
+    }
+    panel.style.transform = '';
+    panel.style.opacity = '';
+  });
+
+  const oldEscHandler = window.__postTocEscHandler;
+  if (oldEscHandler) {
+    document.removeEventListener('keydown', oldEscHandler);
+  }
+
+  const escHandler = (event) => {
+    if (event.key === 'Escape' && panel.classList.contains('is-open')) {
+      setPanelOpen(false);
+    }
+  };
+
+  document.addEventListener('keydown', escHandler);
+  window.__postTocEscHandler = escHandler;
+
+  const oldScrollHandler = window.__postTocScrollHandler;
+  if (oldScrollHandler) {
+    document.removeEventListener('scroll', oldScrollHandler, true);
+  }
+
+  document.addEventListener('scroll', onScrollProgress, { passive: true, capture: true });
+  window.__postTocScrollHandler = onScrollProgress;
+
+  if (window.innerWidth >= 1024) {
+    setPanelOpen(false);
+  }
+}
+
+onPageLifecycle(initPostToc);
+</script>
+
+<style is:global>
+.post-toc-root {
+  z-index: 990;
+}
+
+.post-toc-root--hidden {
+  display: none !important;
+}
+
+.post-toc-panel {
+  display: flex;
+  flex-direction: column;
+  width: var(--toc-width);
+  max-height: 50vh;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+  box-shadow: 0 6px 20px var(--shadow-color);
+  backdrop-filter: blur(8px);
+}
+
+.post-toc-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.post-toc-panel__title {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.post-toc-panel__close {
+  display: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.post-toc-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.post-toc-progress__track {
+  flex: 1 1 auto;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--border-color);
+  overflow: hidden;
+  min-width: 2rem;
+}
+
+.post-toc-progress__bar {
+  height: 100%;
+  width: 0%;
+  background: var(--link-color);
+  border-radius: 999px;
+  transition: width 0.1s linear;
+}
+
+.post-toc-progress__text {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--link-color);
+  white-space: nowrap;
+  min-width: 2.2rem;
+  text-align: right;
+}
+
+.post-toc-list {
+  margin: 0;
+  padding: 0.4rem;
+  list-style: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.post-toc-item a {
+  display: block;
+  color: color-mix(in srgb, var(--text-color) 84%, transparent);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-decoration: none;
+  border-radius: 0.4rem;
+  padding: 0.24rem 0.45rem;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.post-toc-item--sub a {
+  padding-left: 1rem;
+  font-size: 0.78rem;
+}
+
+.post-toc-item a:hover {
+  background: var(--hover-bg-color);
+  color: var(--text-color);
+  transform: translateX(2px);
+}
+
+.post-toc-item a.is-active {
+  color: var(--link-color);
+  background: var(--hover-bg-color);
+  font-weight: 700;
+}
+
+.post-toc-fab,
+.post-toc-backdrop {
+  display: none;
+}
+
+@media (max-width: 1400px) {
+  .post-toc-panel {
+    max-height: 45vh;
+  }
+}
+
+@media (max-width: 1023px) {
+  .post-toc-root {
+    display: block;
+    z-index: var(--z-modal);
+  }
+
+  .post-toc-fab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-width: 3.4rem;
+    height: 2.5rem;
+    padding: 0 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-color) 94%, transparent);
+    color: var(--text-color);
+    box-shadow: 0 6px 18px var(--shadow-color);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+
+  .post-toc-fab:active {
+    transform: scale(0.94);
+  }
+
+  .post-toc-fab::after {
+    content: '';
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 0.22s ease;
+    opacity: 0.7;
+  }
+
+  .post-toc-fab[aria-expanded="true"]::after {
+    transform: rotate(-135deg);
+  }
+
+  .post-toc-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.24);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+    z-index: var(--z-mask);
+  }
+
+  .post-toc-backdrop.is-open {
+    display: block;
+    opacity: 1;
+  }
+
+  .post-toc-panel {
+    position: fixed;
+    right: 0.8rem;
+    left: 0.8rem;
+    top: calc(var(--header-height) - 12px + 3.2rem);
+    bottom: auto;
+    width: auto;
+    max-height: 55vh;
+    max-height: 55dvh;
+    transform: translateY(-12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.22s ease, opacity 0.22s ease;
+    z-index: var(--z-modal);
+  }
+
+  .post-toc-panel.is-open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .post-toc-panel__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+</style>

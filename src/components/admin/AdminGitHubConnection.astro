@@ -1,0 +1,37 @@
+---
+import { externalUrlsConfig } from "../../config";
+---
+<div class="rounded-lg border border-[var(--border-color)] p-5">
+  <h2 class="text-xl font-semibold mb-4">GitHub 连接</h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div>
+      <label class="block text-sm mb-2">GitHub Token（repo 权限）</label>
+      <input id="gh-token" type="password" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder="ghp_xxx 或 github_pat_xxx" />
+      <label class="flex items-center gap-1.5 mt-1.5 text-xs text-[var(--text-color)]/70 cursor-pointer select-none">
+        <input id="gh-remember-token" type="checkbox" class="cursor-pointer" />
+        记住 Token（勾选后长期保留，不勾选关闭标签即清除）
+      </label>
+    </div>
+    <div>
+      <label class="block text-sm mb-2">分支</label>
+      <input id="gh-branch" type="text" value="main" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" />
+    </div>
+    <div>
+      <label class="block text-sm mb-2">API 端点</label>
+      <select id="gh-api-endpoint" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2">
+        <option value={externalUrlsConfig.githubApi}>直连 (api.github.com)</option>
+        <option value="custom">自定义代理</option>
+      </select>
+    </div>
+  </div>
+  <div id="custom-api-url-wrap" class="mt-3 hidden">
+    <label class="block text-sm mb-2">自定义 API 代理 URL</label>
+    <input id="gh-api-custom-url" type="text" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder="例如：https://your-proxy.workers.dev" />
+    <p class="text-xs mt-1 text-[var(--text-color)]/60">如果直连 api.github.com 不通（国内网络），可以部署 Cloudflare Worker 反代。代理需透传所有请求到 {externalUrlsConfig.githubApi} 并保留 Authorization 头。</p>
+  </div>
+  <div class="mt-3 flex items-center gap-3">
+    <button id="test-connection-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">测试连接</button>
+    <button id="auto-detect-btn" class="rounded border border-[var(--border-color)] px-3 py-1.5 text-sm hover:bg-[var(--hover-bg-color)]">自动检测可用端点</button>
+    <span id="connection-msg" class="text-sm text-[var(--text-color)]/70"></span>
+  </div>
+</div>

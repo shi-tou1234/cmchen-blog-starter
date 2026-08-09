@@ -1,0 +1,1256 @@
+---
+type TravelCityInput =
+  | string
+  | {
+      province?: string;
+      city?: string;
+      name?: string;
+      visited?: boolean;
+    };
+
+export interface Props {
+  editable?: boolean;
+  visitedCities?: TravelCityInput[];
+  storageInputId?: string;
+}
+
+const {
+  editable = false,
+  visitedCities = [],
+  storageInputId = '',
+} = Astro.props;
+---
+
+<div
+  class="travel-map-wrapper"
+  data-editable={String(editable)}
+  data-initial={JSON.stringify(visitedCities)}
+  data-storage-input-id={storageInputId}
+>
+  <div class="stats-bar">
+    <div class="stat-card">
+      <span class="stat-number" data-role="visited-city-count">0</span>
+      <div class="stat-label">已访问城市</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-number" data-role="visited-province-count">0</span>
+      <div class="stat-label">涉及省份</div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="map-container">
+      <div class="map-toolbar">
+        <button class="back-btn" data-role="back-btn" type="button">返回全国</button>
+        <div class="breadcrumb">
+          <span class="crumb-country" data-role="crumb-country">中国</span>
+          <span class="crumb-separator">/</span>
+          <span class="crumb-current" data-role="crumb-current">全国视图</span>
+        </div>
+      </div>
+
+      <div class="map-stage" data-role="map"></div>
+      <div class="map-error" data-role="map-error" hidden>地图数据加载失败，请检查网络后刷新</div>
+      <div class="loading" data-role="loading">正在加载地图数据...</div>
+
+      <div class="legend">
+        <div class="legend-item">
+          <span class="legend-color visited"></span>
+          <span>已去过</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color unvisited"></span>
+          <span>未标记</span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="panel">
+        <div class="panel-title">已点亮城市</div>
+        <input class="search-box" data-role="search" type="text" placeholder="搜索城市或省份..." />
+        <div class="city-list" data-role="city-list">
+          <div class="empty-state">暂无标记城市</div>
+        </div>
+      </div>
+
+      {editable && (
+        <div class="panel">
+          <button class="clear-btn" data-role="clear-btn" type="button">清空全部标记</button>
+        </div>
+      )}
+    </aside>
+  </div>
+
+  <div class="notification" data-role="notification"></div>
+</div>
+
+<style>
+  .travel-map-wrapper {
+    --tm-bg-main: color-mix(in srgb, var(--bg-color) 92%, transparent);
+    --tm-card-bg: color-mix(in srgb, var(--bg-color) 80%, transparent);
+    --tm-card-border: var(--border-color);
+    --tm-text: var(--text-color);
+    --tm-subtle: color-mix(in srgb, var(--text-color) 70%, transparent);
+    --tm-strong: var(--link-color);
+    --tm-accent: color-mix(in srgb, var(--link-color) 75%, var(--text-color));
+    --tm-ok: color-mix(in srgb, var(--link-color) 70%, #2e8b57);
+    --tm-map-area: color-mix(in srgb, var(--text-color) 8%, transparent);
+    --tm-map-border: color-mix(in srgb, var(--text-color) 18%, transparent);
+    --tm-map-emphasis: var(--link-color);
+    --tm-tooltip-bg: var(--bg-color);
+    --tm-tooltip-border: var(--border-color);
+    --tm-tooltip-text: var(--text-color);
+    --tm-tooltip-action: var(--link-color);
+    color: var(--tm-text);
+    background: var(--tm-bg-main);
+    border: 1px solid var(--tm-card-border);
+    border-radius: 24px;
+    padding: 18px;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow-color) 60%, transparent);
+  }
+
+  .travel-map-wrapper * {
+    box-sizing: border-box;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .stat-card {
+    flex: 1;
+    min-width: 130px;
+    border-radius: 16px;
+    border: 1px solid var(--tm-card-border);
+    background: var(--tm-card-bg);
+    backdrop-filter: blur(8px);
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-number {
+    display: block;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--tm-strong);
+    line-height: 1.1;
+  }
+
+  .stat-label {
+    margin-top: 4px;
+    font-size: 0.82rem;
+    color: var(--tm-subtle);
+    letter-spacing: 0.02em;
+  }
+
+  .main-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 16px;
+  }
+
+  .map-container,
+  .panel {
+    border-radius: 18px;
+    border: 1px solid var(--tm-card-border);
+    background: var(--tm-card-bg);
+    backdrop-filter: blur(8px);
+  }
+
+  .map-container {
+    padding: 14px;
+    position: relative;
+  }
+
+  .map-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .back-btn {
+    display: none;
+    border: 1px solid color-mix(in srgb, var(--tm-strong) 35%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--tm-strong) 16%, transparent);
+    color: var(--tm-strong);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+
+  .back-btn.show {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .breadcrumb {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.85rem;
+    color: var(--tm-subtle);
+  }
+
+  .crumb-country {
+    color: var(--tm-strong);
+    cursor: pointer;
+  }
+
+  .crumb-country.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .crumb-separator {
+    opacity: 0.45;
+  }
+
+  .crumb-current {
+    color: var(--tm-text);
+    font-weight: 600;
+  }
+
+  .map-stage {
+    width: 100%;
+    height: 560px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--tm-strong) 10%, transparent), transparent 56%);
+  }
+
+  .legend {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: var(--tm-subtle);
+  }
+
+  .map-error {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 28px);
+    max-width: 460px;
+    text-align: center;
+    color: color-mix(in srgb, var(--tm-text) 85%, transparent);
+    border: 1px solid var(--tm-card-border);
+    background: color-mix(in srgb, var(--bg-color) 85%, transparent);
+    border-radius: 12px;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    padding: 10px 14px;
+    z-index: 2;
+    backdrop-filter: blur(6px);
+  }
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--tm-text) 18%, transparent);
+  }
+
+  .legend-color.visited {
+    background: linear-gradient(135deg, var(--tm-strong), var(--tm-accent));
+  }
+
+  .legend-color.unvisited {
+    background: color-mix(in srgb, var(--tm-text) 10%, transparent);
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .panel-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--tm-strong);
+  }
+
+  .search-box {
+    width: 100%;
+    margin-top: 10px;
+    border: 1px solid color-mix(in srgb, var(--tm-text) 22%, transparent);
+    background: color-mix(in srgb, var(--bg-color) 60%, transparent);
+    border-radius: 10px;
+    color: var(--tm-text);
+    font-size: 0.85rem;
+    padding: 9px 11px;
+    outline: none;
+  }
+
+  .search-box::placeholder {
+    color: var(--tm-subtle);
+  }
+
+  .search-box:focus {
+    border-color: color-mix(in srgb, var(--tm-strong) 50%, transparent);
+  }
+
+  .city-list {
+    margin-top: 10px;
+    max-height: 416px;
+    overflow: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-content: flex-start;
+  }
+
+  .city-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--tm-strong) 30%, transparent);
+    background: color-mix(in srgb, var(--tm-strong) 14%, transparent);
+    color: var(--tm-strong);
+    font-size: 0.77rem;
+    padding: 5px 10px;
+    user-select: none;
+  }
+
+  .travel-map-wrapper[data-editable="true"] .city-tag {
+    cursor: pointer;
+  }
+
+  .travel-map-wrapper[data-editable="true"] .city-tag::after {
+    content: "×";
+    opacity: 0.7;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .travel-map-wrapper[data-editable="true"] .city-tag:hover {
+    border-color: color-mix(in srgb, var(--tm-accent) 50%, transparent);
+    background: color-mix(in srgb, var(--tm-accent) 18%, transparent);
+    color: color-mix(in srgb, var(--tm-accent) 90%, var(--tm-text));
+  }
+
+  .empty-state {
+    width: 100%;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--tm-subtle);
+    padding: 24px 8px;
+  }
+
+  .clear-btn {
+    width: 100%;
+    border: 1px solid color-mix(in srgb, var(--tm-accent) 45%, transparent);
+    background: color-mix(in srgb, var(--tm-accent) 16%, transparent);
+    color: color-mix(in srgb, var(--tm-accent) 90%, var(--tm-text));
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .clear-btn:hover {
+    background: color-mix(in srgb, var(--tm-accent) 24%, transparent);
+  }
+
+  .loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: color-mix(in srgb, var(--tm-text) 85%, transparent);
+    font-size: 0.9rem;
+    pointer-events: none;
+  }
+
+  .notification {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    transform: translateX(420px);
+    transition: transform 0.24s ease;
+    background: var(--tm-ok);
+    border: 1px solid color-mix(in srgb, var(--tm-text) 18%, transparent);
+    color: var(--bg-color);
+    border-radius: 10px;
+    font-size: 0.84rem;
+    padding: 10px 14px;
+    z-index: 999;
+    backdrop-filter: blur(8px);
+  }
+
+  .notification.show {
+    transform: translateX(0);
+  }
+
+  .city-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .city-list::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--tm-text) 28%, transparent);
+  }
+
+  .city-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  @media (max-width: 1200px) {
+    .main-content {
+      grid-template-columns: 1fr;
+    }
+
+    .map-stage {
+      height: 440px;
+    }
+
+    .city-list {
+      max-height: 240px;
+    }
+  }
+</style>
+
+<script>
+  import * as echarts from "echarts";
+  import { externalUrlsConfig } from "../../config";
+
+  (function setupTravelMap() {
+    const GEO_BASE = externalUrlsConfig.geoDataVBase;
+    const GEO_BASE_LEGACY = externalUrlsConfig.geoDataVBaseLegacy;
+    const BASE_URL = import.meta.env.BASE_URL || "/";
+    const BASE_PREFIX = BASE_URL.endsWith("/") ? BASE_URL : `${BASE_URL}/`;
+    const LOCAL_CHINA_MAP_URL = `${BASE_PREFIX}maps/china.full.json`;
+    const LOCAL_PROVINCE_MAP_PREFIX = `${BASE_PREFIX}maps/provinces`;
+    const FALLBACK_ADCODE_MAP = {
+      "北京市": "110000",
+      "天津市": "120000",
+      "河北省": "130000",
+      "山西省": "140000",
+      "内蒙古自治区": "150000",
+      "辽宁省": "210000",
+      "吉林省": "220000",
+      "黑龙江省": "230000",
+      "上海市": "310000",
+      "江苏省": "320000",
+      "浙江省": "330000",
+      "安徽省": "340000",
+      "福建省": "350000",
+      "江西省": "360000",
+      "山东省": "370000",
+      "河南省": "410000",
+      "湖北省": "420000",
+      "湖南省": "430000",
+      "广东省": "440000",
+      "广西壮族自治区": "450000",
+      "海南省": "460000",
+      "重庆市": "500000",
+      "四川省": "510000",
+      "贵州省": "520000",
+      "云南省": "530000",
+      "西藏自治区": "540000",
+      "陕西省": "610000",
+      "甘肃省": "620000",
+      "青海省": "630000",
+      "宁夏回族自治区": "640000",
+      "新疆维吾尔自治区": "650000",
+      "台湾省": "710000",
+      "香港特别行政区": "810000",
+      "澳门特别行政区": "820000"
+    };
+
+    const FALLBACK_ADCODE_BY_NORMALIZED = Object.fromEntries(
+      Object.entries(FALLBACK_ADCODE_MAP).map(([name, adcode]) => [
+        normalizeRegionName(name),
+        adcode,
+      ]),
+    );
+
+    const globalGeoCache = window.__travelGeoCache || (window.__travelGeoCache = new Map());
+
+    function normalizeRegionName(name) {
+      return String(name || "")
+        .trim()
+        .replace(/\s+/g, "")
+        .replace(/特别行政区$/u, "")
+        .replace(/壮族自治区$/u, "")
+        .replace(/回族自治区$/u, "")
+        .replace(/维吾尔自治区$/u, "")
+        .replace(/自治区$/u, "")
+        .replace(/省$/u, "")
+        .replace(/市$/u, "");
+    }
+
+    function normalizeCityName(name) {
+      return String(name || "").trim().replace(/\s+/g, "");
+    }
+
+    function makeCityKey(province, city) {
+      const p = normalizeRegionName(province);
+      const c = normalizeCityName(city || province);
+      return `${p}::${c}`;
+    }
+
+    function normalizeTravelItems(rawItems) {
+      const list = Array.isArray(rawItems) ? rawItems : [];
+      const map = new Map();
+
+      list.forEach((item) => {
+        if (typeof item === "string") {
+          const text = item.trim();
+          if (!text) return;
+          map.set(makeCityKey(text, text), { province: text, city: text, visited: true });
+          return;
+        }
+
+        const visited = item?.visited !== false;
+        if (!visited) return;
+
+        const province = String(item?.province || item?.parent || item?.city || item?.name || "").trim();
+        const city = String(item?.city || item?.name || item?.province || "").trim();
+
+        if (!province && !city) return;
+        const finalProvince = province || city;
+        const finalCity = city || province;
+        map.set(makeCityKey(finalProvince, finalCity), {
+          province: finalProvince,
+          city: finalCity,
+          visited: true,
+        });
+      });
+
+      return map;
+    }
+
+    function parseStoredValue(raw) {
+      const text = String(raw || "").trim();
+      if (!text) return [];
+
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+      }
+
+      const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      return lines
+        .map((line) => {
+          const [province, _lat, _lng, visitedText] = line.split("|");
+          return {
+            province: String(province || "").trim(),
+            city: String(province || "").trim(),
+            visited: visitedText === "1" || /^true$/i.test(String(visitedText || "")),
+          };
+        })
+        .filter((item) => item.province);
+    }
+
+    function exportTravelItems(visitedMap) {
+      return Array.from(visitedMap.values())
+        .map((item) => ({
+          province: String(item.province || "").trim(),
+          city: String(item.city || item.province || "").trim(),
+          visited: true,
+        }))
+        .filter((item) => item.province && item.city)
+        .sort((a, b) => {
+          const byProvince = a.province.localeCompare(b.province, "zh-Hans-CN", { sensitivity: "base" });
+          if (byProvince !== 0) return byProvince;
+          return a.city.localeCompare(b.city, "zh-Hans-CN", { sensitivity: "base" });
+        });
+    }
+
+    async function ensureEchartsReady() {
+      if (!window.echarts) {
+        window.echarts = echarts;
+      }
+
+      if (!window.echarts) {
+        throw new Error("ECharts load failed");
+      }
+    }
+
+    async function fetchGeoJson(adcode) {
+      const code = String(adcode || "").trim();
+      if (!code) {
+        throw new Error("地图编码为空");
+      }
+
+      if (globalGeoCache.has(code)) {
+        return globalGeoCache.get(code);
+      }
+
+      const encodedCode = encodeURIComponent(code);
+      const candidateUrls = [
+        `${LOCAL_PROVINCE_MAP_PREFIX}/${encodedCode}.json`,
+        `${GEO_BASE}/${encodedCode}_full.json`,
+        `${GEO_BASE}/${encodedCode}.json`,
+        `${GEO_BASE_LEGACY}/${encodedCode}.json`,
+      ];
+
+      let lastError = null;
+      for (const url of candidateUrls) {
+        try {
+          const response = await fetch(url, { mode: "cors" });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const geoJson = await response.json();
+          globalGeoCache.set(code, geoJson);
+          return geoJson;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      const reason = lastError instanceof Error ? ` (${lastError.message})` : "";
+      throw new Error(`地图加载失败: ${code}${reason}`);
+    }
+
+    async function fetchLocalChinaGeoJson() {
+      const cacheKey = "local-100000";
+      if (globalGeoCache.has(cacheKey)) {
+        return globalGeoCache.get(cacheKey);
+      }
+
+      const response = await fetch(LOCAL_CHINA_MAP_URL);
+      if (!response.ok) {
+        throw new Error("本地全国地图加载失败");
+      }
+
+      const geoJson = await response.json();
+      globalGeoCache.set(cacheKey, geoJson);
+      return geoJson;
+    }
+
+    function formatCityLabel(item) {
+      const province = String(item?.province || "").trim();
+      const city = String(item?.city || "").trim();
+      if (!province) return city;
+      if (!city || city === province) return province;
+      return `${province} · ${city}`;
+    }
+
+    function createNotifier(notifEl) {
+      let timer = null;
+      return function notify(message, isError = false) {
+        if (!(notifEl instanceof HTMLElement)) return;
+        notifEl.textContent = message;
+        notifEl.style.background = isError ? "rgba(255, 107, 107, 0.92)" : "rgba(46, 213, 115, 0.92)";
+        notifEl.classList.add("show");
+        if (timer) window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          notifEl.classList.remove("show");
+        }, 2200);
+      };
+    }
+
+    function bindWrapper(wrapper) {
+      if (!(wrapper instanceof HTMLElement) || wrapper.dataset.bound === "true") return;
+      wrapper.dataset.bound = "true";
+
+      const editable = wrapper.dataset.editable === "true";
+      const storageInputId = wrapper.dataset.storageInputId || "";
+      const mapEl = wrapper.querySelector('[data-role="map"]');
+      const loadingEl = wrapper.querySelector('[data-role="loading"]');
+      const mapErrorEl = wrapper.querySelector('[data-role="map-error"]');
+      const backBtn = wrapper.querySelector('[data-role="back-btn"]');
+      const crumbCountry = wrapper.querySelector('[data-role="crumb-country"]');
+      const crumbCurrent = wrapper.querySelector('[data-role="crumb-current"]');
+      const searchEl = wrapper.querySelector('[data-role="search"]');
+      const cityListEl = wrapper.querySelector('[data-role="city-list"]');
+      const visitedCityCountEl = wrapper.querySelector('[data-role="visited-city-count"]');
+      const visitedProvinceCountEl = wrapper.querySelector('[data-role="visited-province-count"]');
+      const clearBtn = wrapper.querySelector('[data-role="clear-btn"]');
+      const notifier = createNotifier(wrapper.querySelector('[data-role="notification"]'));
+
+      if (!(mapEl instanceof HTMLElement)) return;
+
+      const parsedInitial = parseStoredValue(wrapper.dataset.initial || "[]");
+      let visitedMap = normalizeTravelItems(parsedInitial);
+
+      const mapState = {
+        chart: null,
+        currentLevel: "country",
+        currentProvinceName: "",
+        currentProvinceAdcode: "",
+        provinceAdcodeByName: new Map(),
+        provinceAdcodeByNormalized: new Map(),
+        visitedProvinceNameSet: new Set(),
+        visitedCitySetByProvince: new Map(),
+      };
+
+      function getCssColor(name, fallback) {
+        const value = getComputedStyle(wrapper).getPropertyValue(name).trim();
+        return value || fallback;
+      }
+
+      const themeColors = {
+        strong: getCssColor("--tm-strong", "#8b4513"),
+        accent: getCssColor("--tm-accent", "#a0522d"),
+        text: getCssColor("--tm-text", "#2c2416"),
+        subtle: getCssColor("--tm-subtle", "rgba(44, 36, 22, 0.7)"),
+        mapArea: getCssColor("--tm-map-area", "rgba(44, 36, 22, 0.08)"),
+        mapBorder: getCssColor("--tm-map-border", "rgba(44, 36, 22, 0.18)"),
+        mapEmphasis: getCssColor("--tm-map-emphasis", "#8b4513"),
+        tooltipBg: getCssColor("--tm-tooltip-bg", "#fdf8f0"),
+        tooltipBorder: getCssColor("--tm-tooltip-border", "#e8dcc8"),
+        tooltipText: getCssColor("--tm-tooltip-text", "#2c2416"),
+        tooltipAction: getCssColor("--tm-tooltip-action", "#8b4513"),
+      };
+
+      function visitedGradient() {
+        return {
+          type: "linear",
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: themeColors.strong },
+            { offset: 1, color: themeColors.accent },
+          ],
+        };
+      }
+
+      function setLoading(loading) {
+        if (loadingEl instanceof HTMLElement) {
+          loadingEl.style.display = loading ? "block" : "none";
+        }
+      }
+
+      function setMapError(message = "") {
+        if (!(mapErrorEl instanceof HTMLElement)) return;
+        if (!message) {
+          mapErrorEl.hidden = true;
+          mapErrorEl.textContent = "";
+          return;
+        }
+        mapErrorEl.textContent = message;
+        mapErrorEl.hidden = false;
+      }
+
+      function getStorageInput() {
+        if (!storageInputId) return null;
+        const input = document.getElementById(storageInputId);
+        return input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement ? input : null;
+      }
+
+      function syncStorage() {
+        if (!editable || !storageInputId) return;
+        const input = getStorageInput();
+        if (!input) return;
+
+        const items = exportTravelItems(visitedMap);
+        input.value = JSON.stringify(items);
+        document.dispatchEvent(
+          new CustomEvent("travel-map-change", {
+            detail: {
+              inputId: storageInputId,
+              items,
+            },
+          }),
+        );
+      }
+
+      function rebuildVisitedIndex() {
+        mapState.visitedProvinceNameSet.clear();
+        mapState.visitedCitySetByProvince.clear();
+
+        visitedMap.forEach((item) => {
+          const provinceName = String(item.province || item.city || "").trim();
+          const cityName = String(item.city || item.province || "").trim();
+          if (!provinceName || !cityName) return;
+
+          const provinceKey = normalizeRegionName(provinceName);
+          if (!provinceKey) return;
+          mapState.visitedProvinceNameSet.add(provinceKey);
+
+          if (!mapState.visitedCitySetByProvince.has(provinceKey)) {
+            mapState.visitedCitySetByProvince.set(provinceKey, new Set());
+          }
+
+          mapState.visitedCitySetByProvince.get(provinceKey).add(normalizeCityName(cityName));
+        });
+      }
+
+      function renderCityList() {
+        if (!(cityListEl instanceof HTMLElement)) return;
+        const query = searchEl instanceof HTMLInputElement ? searchEl.value.trim().toLowerCase() : "";
+
+        const items = Array.from(visitedMap.values()).filter((item) => {
+          if (!query) return true;
+          return formatCityLabel(item).toLowerCase().includes(query);
+        });
+
+        if (items.length === 0) {
+          cityListEl.innerHTML = '<div class="empty-state">暂无标记城市</div>';
+          return;
+        }
+
+        cityListEl.innerHTML = items
+          .map((item) => {
+            const label = formatCityLabel(item).replace(/"/g, "&quot;");
+            const key = makeCityKey(item.province, item.city).replace(/"/g, "&quot;");
+            return `<span class="city-tag" data-city-key="${key}" title="${label}">${label}</span>`;
+          })
+          .join("");
+
+        if (editable) {
+          cityListEl.querySelectorAll(".city-tag").forEach((tag) => {
+            tag.addEventListener("click", () => {
+              const key = tag.getAttribute("data-city-key") || "";
+              if (!key) return;
+              if (visitedMap.has(key)) {
+                visitedMap.delete(key);
+                rebuildVisitedIndex();
+                updateStats();
+                syncStorage();
+                if (mapState.currentLevel === "province" && mapState.currentProvinceName) {
+                  renderProvinceView(mapState.currentProvinceName, mapState.currentProvinceAdcode).catch(() => {});
+                } else {
+                  renderChinaView().catch(() => {});
+                }
+              }
+            });
+          });
+        }
+      }
+
+      function updateStats() {
+        if (visitedCityCountEl instanceof HTMLElement) {
+          visitedCityCountEl.textContent = String(visitedMap.size);
+        }
+        if (visitedProvinceCountEl instanceof HTMLElement) {
+          visitedProvinceCountEl.textContent = String(mapState.visitedProvinceNameSet.size);
+        }
+        renderCityList();
+      }
+
+      function getProvinceAdcode(name) {
+        const raw = String(name || "").trim();
+        const normalized = normalizeRegionName(raw);
+
+        return (
+          mapState.provinceAdcodeByName.get(raw) ||
+          mapState.provinceAdcodeByNormalized.get(normalized) ||
+          FALLBACK_ADCODE_MAP[raw] ||
+          FALLBACK_ADCODE_BY_NORMALIZED[normalized] ||
+          null
+        );
+      }
+
+      function getVisitedCountInProvince(provinceName) {
+        const key = normalizeRegionName(provinceName);
+        return mapState.visitedCitySetByProvince.get(key)?.size || 0;
+      }
+
+      function buildProvinceData(geoJson, provinceName) {
+        const provinceKey = normalizeRegionName(provinceName);
+        const visitedCitySet = mapState.visitedCitySetByProvince.get(provinceKey) || new Set();
+
+        return (geoJson.features || []).map((feature) => {
+          const cityName = String(feature?.properties?.name || "").trim();
+          const visited = visitedCitySet.has(normalizeCityName(cityName));
+          return {
+            name: cityName,
+            value: visited ? 1 : 0,
+            itemStyle: visited
+              ? {
+                  areaColor: visitedGradient(),
+                }
+              : undefined,
+          };
+        });
+      }
+
+      async function renderChinaView() {
+        mapState.currentLevel = "country";
+        mapState.currentProvinceName = "";
+        mapState.currentProvinceAdcode = "";
+
+        if (backBtn instanceof HTMLElement) backBtn.classList.remove("show");
+        if (crumbCurrent instanceof HTMLElement) crumbCurrent.textContent = "全国视图";
+        if (crumbCountry instanceof HTMLElement) crumbCountry.classList.add("disabled");
+        setMapError("");
+
+        setLoading(true);
+        try {
+          let geoJson = null;
+          let countryMapName = "travel-map-china";
+
+          try {
+            geoJson = await fetchGeoJson("100000");
+          } catch {
+            try {
+              geoJson = await fetchLocalChinaGeoJson();
+              notifier("边界数据线路切换为本地地图");
+            } catch (localError) {
+              const hasBuiltinChina = Boolean(window.echarts?.getMap && window.echarts.getMap("china"));
+              if (!hasBuiltinChina) {
+                setMapError("全国地图数据加载失败，请检查网络后刷新");
+                throw localError;
+              }
+              countryMapName = "china";
+              notifier("边界数据线路切换为内置地图");
+            }
+          }
+
+          if (geoJson) {
+            window.echarts.registerMap(countryMapName, geoJson);
+          }
+
+          mapState.provinceAdcodeByName.clear();
+          mapState.provinceAdcodeByNormalized.clear();
+
+          const provinceNames = geoJson
+            ? (geoJson.features || []).map((feature) => String(feature?.properties?.name || "").trim()).filter(Boolean)
+            : Object.keys(FALLBACK_ADCODE_MAP);
+
+          if (geoJson) {
+            (geoJson.features || []).forEach((feature) => {
+              const provinceName = String(feature?.properties?.name || "").trim();
+              const adcode = String(feature?.properties?.adcode || "").slice(0, 6);
+              if (provinceName && adcode) {
+                mapState.provinceAdcodeByName.set(provinceName, adcode);
+                mapState.provinceAdcodeByNormalized.set(normalizeRegionName(provinceName), adcode);
+              }
+            });
+          }
+
+          Object.entries(FALLBACK_ADCODE_MAP).forEach(([name, adcode]) => {
+            const normalized = normalizeRegionName(name);
+            if (!mapState.provinceAdcodeByName.has(name)) {
+              mapState.provinceAdcodeByName.set(name, adcode);
+            }
+            if (!mapState.provinceAdcodeByNormalized.has(normalized)) {
+              mapState.provinceAdcodeByNormalized.set(normalized, adcode);
+            }
+          });
+
+          const seriesData = provinceNames.map((provinceName) => {
+            const provinceVisited = mapState.visitedProvinceNameSet.has(normalizeRegionName(provinceName));
+            return {
+              name: provinceName,
+              value: provinceVisited ? 1 : 0,
+              itemStyle: provinceVisited
+                ? {
+                    areaColor: visitedGradient(),
+                  }
+                : undefined,
+            };
+          });
+
+          mapState.chart.setOption(
+            {
+              backgroundColor: "transparent",
+              tooltip: {
+                trigger: "item",
+                backgroundColor: themeColors.tooltipBg,
+                borderColor: themeColors.tooltipBorder,
+                textStyle: { color: themeColors.tooltipText },
+                formatter: (params) => {
+                  const count = getVisitedCountInProvince(params.name);
+                  const action = editable ? "点击进入城市视图" : "点击查看城市分布";
+                  return `<div style="font-weight:600;color:${themeColors.tooltipText}">${params.name}</div><div style="color:${themeColors.tooltipText}">已标记城市：${count}</div><div style="margin-top:4px;color:${themeColors.tooltipAction};font-size:12px">${action}</div>`;
+                },
+              },
+              series: [
+                {
+                  name: "中国",
+                  type: "map",
+                  map: countryMapName,
+                  roam: true,
+                  zoom: 1.16,
+                  label: {
+                    show: true,
+                    color: themeColors.subtle,
+                    fontSize: 10,
+                  },
+                  emphasis: {
+                    label: {
+                      color: themeColors.text,
+                      fontWeight: "bold",
+                    },
+                    itemStyle: {
+                      areaColor: themeColors.mapEmphasis,
+                    },
+                  },
+                  itemStyle: {
+                    areaColor: themeColors.mapArea,
+                    borderColor: themeColors.mapBorder,
+                    borderWidth: 1,
+                  },
+                  data: seriesData,
+                },
+              ],
+            },
+            true,
+          );
+          setMapError("");
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      async function renderProvinceView(provinceName, adcode) {
+        const code = String(adcode || "").trim();
+        if (!code) {
+          notifier("未找到该省份边界数据", true);
+          return;
+        }
+
+        mapState.currentLevel = "province";
+        mapState.currentProvinceName = provinceName;
+        mapState.currentProvinceAdcode = code;
+
+        if (backBtn instanceof HTMLElement) backBtn.classList.add("show");
+        if (crumbCurrent instanceof HTMLElement) crumbCurrent.textContent = `${provinceName} · 城市视图`;
+        if (crumbCountry instanceof HTMLElement) crumbCountry.classList.remove("disabled");
+
+        setLoading(true);
+        try {
+          const mapId = `travel-map-${code}`;
+          const geoJson = await fetchGeoJson(code);
+          window.echarts.registerMap(mapId, geoJson);
+
+          const data = buildProvinceData(geoJson, provinceName);
+
+          mapState.chart.setOption(
+            {
+              backgroundColor: "transparent",
+              tooltip: {
+                trigger: "item",
+                backgroundColor: themeColors.tooltipBg,
+                borderColor: themeColors.tooltipBorder,
+                textStyle: { color: themeColors.tooltipText },
+                formatter: (params) => {
+                  const isVisited = Number(params.value) > 0;
+                  if (editable) {
+                    return `<div style="font-weight:600;color:${themeColors.tooltipText}">${params.name}</div><div style="color:${themeColors.tooltipText}">${isVisited ? "已去过" : "未标记"}</div><div style="margin-top:4px;color:${themeColors.tooltipAction};font-size:12px">点击切换状态</div>`;
+                  }
+                  return `<div style="font-weight:600;color:${themeColors.tooltipText}">${params.name}</div><div style="color:${themeColors.tooltipText}">${isVisited ? "已去过" : "未标记"}</div>`;
+                },
+              },
+              series: [
+                {
+                  name: provinceName,
+                  type: "map",
+                  map: mapId,
+                  roam: true,
+                  zoom: 0.92,
+                  label: {
+                    show: true,
+                    color: themeColors.subtle,
+                    fontSize: 10,
+                  },
+                  emphasis: {
+                    label: {
+                      color: themeColors.text,
+                      fontWeight: "bold",
+                    },
+                    itemStyle: {
+                      areaColor: themeColors.mapEmphasis,
+                    },
+                  },
+                  itemStyle: {
+                    areaColor: themeColors.mapArea,
+                    borderColor: themeColors.mapBorder,
+                    borderWidth: 1,
+                  },
+                  data,
+                },
+              ],
+            },
+            true,
+          );
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      function toggleCity(cityName) {
+        if (!editable || mapState.currentLevel !== "province") return;
+
+        const province = mapState.currentProvinceName;
+        const key = makeCityKey(province, cityName);
+
+        if (visitedMap.has(key)) {
+          visitedMap.delete(key);
+          notifier(`已取消 ${cityName}`);
+        } else {
+          visitedMap.set(key, { province, city: cityName, visited: true });
+          notifier(`已标记 ${cityName}`);
+        }
+
+        rebuildVisitedIndex();
+        updateStats();
+        syncStorage();
+        renderProvinceView(province, mapState.currentProvinceAdcode).catch(() => {
+          notifier("城市状态更新失败", true);
+        });
+      }
+
+      function onMapClick(params) {
+        if (!params?.name) return;
+        if (mapState.currentLevel === "country") {
+          const adcode = getProvinceAdcode(params.name);
+          if (!adcode) {
+            notifier("该区域暂不支持下钻", true);
+            return;
+          }
+          renderProvinceView(params.name, adcode).catch(() => {
+            notifier("省份地图加载失败", true);
+          });
+          return;
+        }
+
+        if (mapState.currentLevel === "province") {
+          toggleCity(params.name);
+        }
+      }
+
+      function bindInputSync() {
+        if (!editable || !storageInputId) return;
+        const input = getStorageInput();
+        if (!input || !input.value.trim()) return;
+        visitedMap = normalizeTravelItems(parseStoredValue(input.value));
+        rebuildVisitedIndex();
+        updateStats();
+      }
+
+      function backToChina() {
+        renderChinaView().catch(() => {
+          notifier("全国地图加载失败", true);
+        });
+      }
+
+      if (searchEl instanceof HTMLInputElement) {
+        searchEl.addEventListener("input", renderCityList);
+      }
+
+      if (backBtn instanceof HTMLButtonElement) {
+        backBtn.addEventListener("click", backToChina);
+      }
+
+      if (crumbCountry instanceof HTMLElement) {
+        crumbCountry.addEventListener("click", () => {
+          if (mapState.currentLevel === "country") return;
+          backToChina();
+        });
+      }
+
+      if (editable && clearBtn instanceof HTMLButtonElement) {
+        clearBtn.addEventListener("click", () => {
+          const confirmed = window.confirm("确定清空所有城市标记吗？");
+          if (!confirmed) return;
+          visitedMap.clear();
+          rebuildVisitedIndex();
+          updateStats();
+          syncStorage();
+          if (mapState.currentLevel === "country") {
+            renderChinaView().catch(() => {});
+          } else {
+            renderProvinceView(mapState.currentProvinceName, mapState.currentProvinceAdcode).catch(() => {});
+          }
+          notifier("已清空标记");
+        });
+      }
+
+      document.addEventListener("travel-map-refresh", (event) => {
+        const detail = event?.detail || {};
+        if (!editable || !storageInputId) return;
+        if (detail.inputId && detail.inputId !== storageInputId) return;
+
+        const input = getStorageInput();
+        if (!input) return;
+
+        visitedMap = normalizeTravelItems(parseStoredValue(input.value));
+        rebuildVisitedIndex();
+        updateStats();
+
+        if (mapState.currentLevel === "country") {
+          renderChinaView().catch(() => {});
+        } else {
+          renderProvinceView(mapState.currentProvinceName, mapState.currentProvinceAdcode).catch(() => {});
+        }
+      });
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const active = entries.some((entry) => entry.isIntersecting);
+          if (!active) return;
+
+          observer.disconnect();
+
+          const chart = window.echarts.getInstanceByDom(mapEl) || window.echarts.init(mapEl);
+          mapState.chart = chart;
+          chart.off("click");
+          chart.on("click", onMapClick);
+
+          bindInputSync();
+          rebuildVisitedIndex();
+          updateStats();
+
+          if (editable) {
+            syncStorage();
+          }
+
+          renderChinaView().catch(() => {
+            notifier("地图初始化失败，请刷新重试", true);
+          });
+
+          window.addEventListener("resize", () => {
+            if (mapState.chart) {
+              mapState.chart.resize();
+            }
+          });
+        },
+        {
+          rootMargin: "120px",
+        },
+      );
+
+      observer.observe(wrapper);
+    }
+
+    async function initTravelMapWrappers() {
+      await ensureEchartsReady();
+      document.querySelectorAll(".travel-map-wrapper").forEach((wrapper) => {
+        bindWrapper(wrapper);
+      });
+    }
+
+    initTravelMapWrappers().catch(() => {});
+    document.addEventListener("astro:page-load", () => {
+      initTravelMapWrappers().catch(() => {});
+    });
+    document.addEventListener("astro:after-swap", () => {
+      initTravelMapWrappers().catch(() => {});
+    });
+  })();
+</script>

@@ -1,0 +1,44 @@
+---
+import MainPageLayout from '@layouts/MainPageLayout.astro'
+import Cover from '@components/Cover.astro'
+import NavCard from '@components/NavCard.astro';
+import type { NavCardItem } from '@components/NavCard.astro';
+
+import { siteConfig } from '@/config'
+import i18nit from '@i18n/translation'
+import toolsLinks from '@/data/tools-links'
+
+
+const currentLang = 'zh-cn';
+const t = i18nit(currentLang);
+
+const pageTitle = t("header.tools") + " - " + siteConfig.title;
+
+const navCards: NavCardItem[] = toolsLinks.map((link) => ({
+  name: link.name,
+  url: link.url,
+  icon: link.icon,
+  description: link.description,
+  color: link.color,
+}));
+---
+
+<MainPageLayout title={pageTitle} lang={currentLang}>
+    <div class="relative z-10 mx-auto w-full max-w-[var(--page-width)]">
+        <Cover title={t("cover.title.tools")} subTitle={t("cover.subTitle.tools")} />
+
+        <div class="nav-card-grid">
+            {navCards.map((card) => <NavCard item={card} />)}
+        </div>
+    </div>
+</MainPageLayout>
+
+<style is:global>
+  .nav-card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 1rem 1rem 2rem;
+  }
+</style>

@@ -1,0 +1,32 @@
+<script>
+function initHeaderScroll() {
+  const header = document.getElementById('main-header');
+  if (!header) return;
+
+  let ticking = false;
+
+  function updateHeader() {
+    const currentScrollY = window.scrollY;
+    header.classList.toggle('header-scrolled', currentScrollY > 4);
+    ticking = false;
+  }
+
+  function onScroll() {
+    if (!ticking) {
+      window.requestAnimationFrame(updateHeader);
+      ticking = true;
+    }
+  }
+
+  const oldHeaderScrollHandler = window.__headerScrollHandler;
+  if (oldHeaderScrollHandler) {
+    window.removeEventListener('scroll', oldHeaderScrollHandler);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.__headerScrollHandler = onScroll;
+  onScroll();
+}
+
+document.addEventListener('astro:page-load', initHeaderScroll);
+document.addEventListener('astro:after-swap', initHeaderScroll);
+</script>

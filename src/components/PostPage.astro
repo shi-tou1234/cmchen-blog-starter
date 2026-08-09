@@ -1,0 +1,236 @@
+---
+import { blogCoverUrl} from '@utils/url-utils'
+import PostCard from '@components/PostCard.astro';
+import type { CollectionEntry } from 'astro:content';
+import { getPostCategories } from '@utils/blog-taxonomy';
+import { estimateReadingMinutes } from '@utils/reading-time';
+import { buildPostPreview } from '@utils/post-preview';
+import { resolveCoverImage } from '@utils/cover-image-api';
+
+const { page } = Astro.props;
+const currentLang = Astro.currentLocale || 'zh-cn';
+
+const blogEntries = page.data as CollectionEntry<'blog'>[];
+
+const resolvedCovers = await Promise.all(
+    blogEntries.map(async (entry) => {
+        const categories = getPostCategories(entry, currentLang);
+        const userImage = blogCoverUrl(entry.data.image, entry.id);
+        return resolveCoverImage(entry.id, userImage, entry.data.title, categories);
+    }),
+);
+
+---
+
+<section data-post-list class="post-list-shell relative">
+    <div data-post-list-skeleton class="post-list-skeleton" aria-hidden="true">
+        {Array.from({ length: 3 }).map(() => (
+            <div class="post-list-skeleton__item">
+                <div class="post-list-skeleton__cover"></div>
+                <div class="post-list-skeleton__content">
+                    <div class="post-list-skeleton__line post-list-skeleton__line--short"></div>
+                    <div class="post-list-skeleton__line"></div>
+                    <div class="post-list-skeleton__line"></div>
+                    <div class="post-list-skeleton__line post-list-skeleton__line--mini"></div>
+                </div>
+            </div>
+        ))}
+    </div>
+
+    <div data-post-list-content class="post-list-content">
+        {
+            blogEntries.map((entry, index) => {
+                const categories = getPostCategories(entry, currentLang);
+                const preview = buildPostPreview(entry.data.description || '', entry.body || '', 80);
+                const readingMinutes = estimateReadingMinutes(entry.body || '');
+                const resolved = resolvedCovers[index];
+
+                return (
+                    <PostCard
+                        title={entry.data.title}
+                        description={entry.data.description}
+                        image={resolved.source === 'user' ? resolved.imageUrl : ''}
+                        pubDate={entry.data.pubDate}
+                        url={entry.id}
+                        fallback={entry.isFallback}
+                        categories={categories}
+                        preview={preview}
+                        readingMinutes={readingMinutes}
+                        updatedDate={entry.data.updatedDate}
+                        aosDelay={index * 95}
+                        externalImage={resolved.source !== 'user' ? resolved.imageUrl : ''}
+                        photographer={resolved.photographer}
+                        photographerUrl={resolved.photographerUrl}
+                    />
+                );
+            })
+        }
+    </div>
+</section>
+
+<script is:inline>
+    function initPostListLoading() {
+        const shell = document.querySelector('[data-post-list]');
+        const skeleton = document.querySelector('[data-post-list-skeleton]');
+        const content = document.querySelector('[data-post-list-content]');
+        if (!(shell instanceof HTMLElement) || !(skeleton instanceof HTMLElement) || !(content instanceof HTMLElement)) return;
+
+        const oldTimer = window.__postListLoadingTimer;
+        if (typeof oldTimer === 'number') {
+            window.clearTimeout(oldTimer);
+        }
+
+        shell.classList.add('is-loading');
+        content.classList.remove('is-ready');
+
+        window.__postListLoadingTimer = window.setTimeout(() => {
+            shell.classList.remove('is-loading');
+            content.classList.add('is-ready');
+        }, 340);
+    }
+
+    function initPostCardReveal() {
+        const cards = Array.from(document.querySelectorAll('[data-card-reveal]'));
+        if (cards.length === 0) return;
+
+        const oldObserver = window.__postCardRevealObserver;
+        if (oldObserver) {
+            oldObserver.disconnect();
+        }
+
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduceMotion) {
+            cards.forEach((card) => {
+                if (!(card instanceof HTMLElement)) return;
+                card.classList.remove('post-card-reveal');
+                card.classList.add('is-visible');
+            });
+            return;
+        }
+
+        cards.forEach((card) => {
+            if (!(card instanceof HTMLElement)) return;
+            card.classList.add('post-card-reveal');
+            card.classList.remove('is-visible');
+        });
+
+        const observer = new IntersectionObserver(
+            (entries, currentObserver) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) return;
+                    const element = entry.target;
+                    if (element instanceof HTMLElement) {
+                        element.classList.add('is-visible');
+                    }
+                    currentObserver.unobserve(entry.target);
+                });
+            },
+            {
+                root: null,
+                rootMargin: '0px 0px -12% 0px',
+                threshold: 0.08,
+            },
+        );
+
+        cards.forEach((card) => observer.observe(card));
+        window.__postCardRevealObserver = observer;
+    }
+
+    initPostListLoading();
+    initPostCardReveal();
+    document.addEventListener('astro:page-load', initPostListLoading);
+    document.addEventListener('astro:after-swap', initPostListLoading);
+    document.addEventListener('astro:page-load', initPostCardReveal);
+    document.addEventListener('astro:after-swap', initPostCardReveal);
+</script>
+
+<style is:global>
+    .post-list-shell {
+        position: relative;
+        --post-card-width: min(720px, 88vw);
+    }
+
+    .post-list-content {
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 0.52s cubic-bezier(0.16, 1, 0.3, 1), transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .post-list-content.is-ready {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .post-list-skeleton {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        gap: 1.1rem;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .post-list-shell.is-loading .post-list-skeleton {
+        opacity: 1;
+    }
+
+    .post-list-shell.is-loading .post-list-content {
+        opacity: 0;
+    }
+
+    .post-list-skeleton__item {
+        border: 1px solid var(--border-color);
+        border-radius: 1.35rem;
+        overflow: hidden;
+        background: color-mix(in srgb, var(--bg-color) 90%, var(--hover-bg-color));
+        width: var(--post-card-width);
+        margin-inline: auto;
+    }
+
+    .post-list-skeleton__cover {
+        aspect-ratio: 1200 / 630;
+        background: linear-gradient(100deg, color-mix(in srgb, var(--hover-bg-color) 76%, transparent), color-mix(in srgb, var(--bg-color) 86%, transparent), color-mix(in srgb, var(--hover-bg-color) 76%, transparent));
+        background-size: 220% 100%;
+        animation: post-list-skeleton-wave 1.5s linear infinite;
+    }
+
+    .post-list-skeleton__content {
+        padding: 0.95rem 1rem 1.05rem;
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .post-list-skeleton__line {
+        height: 0.72rem;
+        border-radius: 999px;
+        background: linear-gradient(100deg, color-mix(in srgb, var(--hover-bg-color) 70%, transparent), color-mix(in srgb, var(--bg-color) 90%, transparent), color-mix(in srgb, var(--hover-bg-color) 70%, transparent));
+        background-size: 220% 100%;
+        animation: post-list-skeleton-wave 1.5s linear infinite;
+    }
+
+    .post-list-skeleton__line--short {
+        width: 36%;
+    }
+
+    .post-list-skeleton__line--mini {
+        width: 22%;
+    }
+
+    @keyframes post-list-skeleton-wave {
+        0% { background-position: 100% 0; }
+        100% { background-position: -100% 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .post-list-skeleton,
+        .post-list-content {
+            transition: none !important;
+        }
+
+        .post-list-skeleton__cover,
+        .post-list-skeleton__line {
+            animation: none !important;
+        }
+    }
+</style>

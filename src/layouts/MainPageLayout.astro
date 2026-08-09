@@ -1,0 +1,798 @@
+---
+import Layout from '@layouts/Layout.astro';
+import Header from '@components/Header.astro';
+import Footer from '@components/Footer.astro';
+import Search from '@components/misc/Search.astro';
+import KeyboardShortcuts from '@components/control/KeyboardShortcuts.astro';
+import blogGuideContent from '@/data/blog-guide-content';
+import { getRelativeLocaleUrl } from '@utils/url-utils';
+
+
+interface Props {
+  title: string;
+  lang: string;
+  description?: string;
+  updateNotice?: {
+    title: string;
+    url: string;
+    updatedAt: string;
+    version: string;
+  } | null;
+}
+const { title, lang, description, updateNotice = null } = Astro.props;
+const guideText = blogGuideContent['zh-cn'];
+const baseUrl = import.meta.env.BASE_URL || '/';
+
+const navIndex = getRelativeLocaleUrl(lang, '/');
+const navArchives = getRelativeLocaleUrl(lang, '/archives/');
+const navAbout = getRelativeLocaleUrl(lang, '/about/');
+const navTools = getRelativeLocaleUrl(lang, '/tools/');
+const navHomeLabel = '首页';
+const navArchiveLabel = '归档';
+const navAboutLabel = '关于';
+const navToolsLabel = '工具栏';
+---
+
+<Layout title={title} lang={lang} description={description}>
+  <div class="flex flex-col min-h-screen">
+    <div id="global-page-particles" class="pointer-events-none fixed inset-0 z-0"></div>
+    <div>
+      <Header />
+    </div>
+    <main id="main-content" class="relative z-10 flex-grow transition-fade pt-[var(--header-height)] md:pt-[var(--header-height-lg)]">
+      <slot />
+    </main>
+
+    <div id="blog-guide-modal" class="hidden fixed inset-0 z-[var(--z-guide)]" role="dialog" aria-modal="true" aria-labelledby="blog-guide-title">
+      <div id="blog-guide-mask" class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"></div>
+      <div class="relative z-10 h-full overflow-y-auto px-4 pt-24 pb-6 md:pt-28">
+      <div class="blog-guide-panel mx-auto w-[min(94vw,920px)] rounded-xl border border-[var(--border-color)] bg-[var(--bg-color)]/97 p-6 text-[var(--text-color)] shadow-[0_8px_24px_var(--shadow-color)]">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 id="blog-guide-title" class="text-2xl font-bold">{guideText.title}</h2>
+            <p class="text-sm text-[var(--text-color)]/80 mt-1">{guideText.subtitle}</p>
+          </div>
+          <button id="blog-guide-close-btn" type="button" class="rounded-lg border border-[var(--border-color)] px-3 py-1.5 text-sm hover:bg-[var(--hover-bg-color)]">关闭</button>
+        </div>
+
+        <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm leading-7 text-[var(--text-color)]/95">
+          {guideText.items.map((item) => (
+            <p class="rounded-lg border border-[var(--border-color)]/70 bg-[var(--hover-bg-color)]/30 px-3 py-2">• {item}</p>
+          ))}
+        </div>
+      </div>
+      </div>
+    </div>
+
+    {updateNotice && (
+      <div id="blog-update-modal" class="hidden fixed inset-0 z-[var(--z-update)]" role="dialog" aria-modal="true" aria-labelledby="blog-update-title">
+        <div id="blog-update-mask" class="absolute inset-0 bg-black/35 backdrop-blur-[2px]"></div>
+        <div class="relative z-10 flex min-h-full items-center justify-center px-4 py-10">
+          <div class="blog-update-panel w-[min(92vw,560px)] rounded-xl border border-[var(--border-color)] bg-[var(--bg-color)]/98 p-6 shadow-[0_12px_30px_var(--shadow-color)] text-[var(--text-color)]">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="blog-update-title" class="text-2xl font-bold">博客有新更新</h2>
+                <p class="mt-1 text-sm text-[var(--text-color)]/78">检测到你上次访问后有新内容更新。</p>
+              </div>
+              <button id="blog-update-close-btn" type="button" class="rounded-lg border border-[var(--border-color)] px-3 py-1.5 text-sm hover:bg-[var(--hover-bg-color)]">关闭</button>
+            </div>
+
+            <div class="mt-5 rounded-lg border border-[var(--border-color)]/70 bg-[var(--hover-bg-color)]/25 px-4 py-3">
+              <p class="text-sm text-[var(--text-color)]/70">最新更新</p>
+              <p class="mt-1 text-base font-semibold leading-6">{updateNotice.title}</p>
+            </div>
+
+            <div class="mt-5 flex flex-wrap items-center gap-2">
+              <a
+                id="blog-update-jump-btn"
+                href={updateNotice.url}
+                class="inline-flex items-center rounded-lg border border-[var(--border-color)] px-4 py-2 text-sm font-semibold hover:bg-[var(--hover-bg-color)]"
+              >
+                前往查看更新
+              </a>
+              <button id="blog-update-ignore-btn" type="button" class="rounded-lg border border-[var(--border-color)] px-4 py-2 text-sm hover:bg-[var(--hover-bg-color)]">稍后再看</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    <!-- 移动端底部导航栏 -->
+    <nav id="mobile-bottom-nav" class="mobile-bottom-nav" aria-label="Mobile navigation">
+      <a href={navIndex} class="mobile-bottom-nav__link" data-nav-home>
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span class="mobile-bottom-nav__label">{navHomeLabel}</span>
+      </a>
+      <a href={navArchives} class="mobile-bottom-nav__link" data-nav-archives>
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+        <span class="mobile-bottom-nav__label">{navArchiveLabel}</span>
+      </a>
+      <a href={navAbout} class="mobile-bottom-nav__link" data-nav-about>
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="mobile-bottom-nav__label">{navAboutLabel}</span>
+      </a>
+      <a href={navTools} class="mobile-bottom-nav__link" data-nav-tools>
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.6 5.6L3 18v3h3l6.1-6.1a4 4 0 0 0 5.6-5.6l-3-3z"/><path d="M12.5 8.5 16 5"/></svg>
+        <span class="mobile-bottom-nav__label">{navToolsLabel}</span>
+      </a>
+    </nav>
+
+    <Footer />
+    <Search />
+    <KeyboardShortcuts />
+
+    <button id="backtop-global" title="回到顶部" class="fixed bottom-[8vh] right-6 w-10 h-10 rounded-full bg-[--bg-color] cursor-pointer items-center justify-center z-[var(--z-backtop)] transition-all duration-300 opacity-90 border-0 hover:scale-110 active:scale-90 hover:shadow-[0_4px_15px_rgba(139,69,19,0.4)]" style="display:none">
+      <svg class="absolute top-0 left-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
+        <circle id="circle-global" cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="2"></circle>
+        <circle id="progress-circle-global" cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="0 125.6" stroke-linecap="round"></circle>
+      </svg>
+      <svg class="relative z-10 w-4 h-4 text-[var(--text-color)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+  </div>
+</Layout>
+
+<script>
+  import { tsParticles } from "@tsparticles/engine";
+  import { loadSlim } from "@tsparticles/slim";
+
+  const containerId = "global-page-particles";
+
+  function getNormalizedPathname() {
+    const rawPath = window.location.pathname.replace(/\/+$/, "") || "/";
+    const base = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
+    if (base && base !== "/" && rawPath.startsWith(base)) {
+      const normalized = rawPath.slice(base.length);
+      return normalized || "/";
+    }
+    return rawPath;
+  }
+
+  function shouldMountParticles() {
+    const hasContainer = Boolean(document.getElementById(containerId));
+    if (!hasContainer) return false;
+    if (window.location.pathname.includes("/admin")) return false;
+    // 移动端不加载粒子动画，节省 CPU/GPU
+    if (window.matchMedia("(max-width: 768px)").matches) return false;
+    return true;
+  }
+
+  function isBlogDetailPage() {
+    return /\/blog\/.+/.test(window.location.pathname);
+  }
+
+  function isBlogListPage() {
+    const path = getNormalizedPathname();
+    if (/\/(archives|categories)(\/|$)/.test(path)) return true;
+    if (/^\/zh-cn\/?$/.test(path)) return true;
+    return path === "/";
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function getParticleProfile() {
+    if (prefersReducedMotion()) {
+      return {
+        number: 28,
+        area: 1400,
+        opacity: { min: 0.05, max: 0.16 },
+        size: { min: 0.6, max: 1.3 },
+        speed: 0.3,
+        bubble: { distance: 58, size: 1.4, duration: 0.7, opacity: 0.2 },
+        push: 0,
+        containerOpacity: 0.25,
+        hoverEnabled: false,
+        clickEnabled: false,
+        fpsLimit: 40,
+      };
+    }
+
+    if (isBlogDetailPage()) {
+      return {
+        number: 52,
+        area: 1280,
+        opacity: { min: 0.06, max: 0.2 },
+        size: { min: 0.6, max: 1.6 },
+        speed: 0.48,
+        bubble: { distance: 72, size: 1.8, duration: 0.75, opacity: 0.26 },
+        push: 0,
+        containerOpacity: 0.34,
+        hoverEnabled: false,
+        clickEnabled: false,
+        fpsLimit: 46,
+      };
+    }
+
+    if (isBlogListPage()) {
+      return {
+        number: 70,
+        area: 1000,
+        opacity: { min: 0.15, max: 0.5 },
+        size: { min: 1, max: 2.8 },
+        speed: 1.2,
+        bubble: { distance: 100, size: 3, duration: 1.2, opacity: 0.5 },
+        push: 1,
+        containerOpacity: 0.7,
+        hoverEnabled: true,
+        clickEnabled: true,
+        fpsLimit: 50,
+      };
+    }
+
+    return {
+      number: 90,
+      area: 850,
+      opacity: { min: 0.25, max: 0.7 },
+      size: { min: 1.2, max: 3.5 },
+      speed: 1.6,
+      bubble: { distance: 120, size: 3.8, duration: 1.6, opacity: 0.7 },
+      push: 2,
+      containerOpacity: 0.85,
+      hoverEnabled: true,
+      clickEnabled: true,
+      fpsLimit: 50,
+    };
+  }
+
+  function getParticleColor() {
+    const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
+    if (currentTheme === "dark") {
+      return ["#e0a060", "#d4a574", "#c89b6f", "#b8860b"];
+    }
+    return ["#8b4513", "#a0522d", "#b8860b", "#cd853f"];
+  }
+
+  async function mountParticles() {
+    if (!shouldMountParticles()) return;
+
+    await loadSlim(tsParticles);
+
+    const mounted = tsParticles.dom().find((item) => item.id === containerId);
+    if (mounted) {
+      await mounted.destroy();
+    }
+
+    const profile = getParticleProfile();
+    const color = getParticleColor();
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.style.opacity = String(profile.containerOpacity ?? 1);
+    }
+
+    await tsParticles.load({
+      id: containerId,
+      options: {
+        fullScreen: { enable: false },
+        background: { color: "transparent" },
+        fpsLimit: profile.fpsLimit ?? 60,
+        detectRetina: true,
+        particles: {
+          number: { value: profile.number, density: { enable: true, area: profile.area } },
+          color: { value: color },
+          opacity: {
+            value: profile.opacity,
+            animation: { enable: true, speed: 0.9, sync: false },
+          },
+          size: {
+            value: profile.size,
+            animation: { enable: true, speed: 1.4, sync: false },
+          },
+          move: {
+            enable: true,
+            speed: profile.speed,
+            direction: "none",
+            random: true,
+            straight: false,
+            outModes: { default: "bounce" },
+          },
+          links: {
+            enable: false,
+          },
+        },
+        interactivity: {
+          detectsOn: "canvas",
+          events: {
+            onHover: { enable: profile.hoverEnabled ?? true, mode: ["bubble"] },
+            onClick: { enable: profile.clickEnabled ?? true, mode: "push" },
+            resize: { enable: true },
+          },
+          modes: {
+            bubble: profile.bubble,
+            push: { quantity: profile.push },
+          },
+        },
+        pauseOnBlur: false,
+        pauseOnOutsideViewport: false,
+      },
+    });
+  }
+
+  function setupThemeWatcher() {
+    if (!shouldMountParticles()) return;
+
+    const oldObserver = window.__globalParticleThemeObserver;
+    if (oldObserver) oldObserver.disconnect();
+
+    const observer = new MutationObserver(() => {
+      // 主题切换时仅更新粒子颜色，不销毁重建
+      const container = tsParticles.dom().find((item) => item.id === containerId);
+      if (container) {
+        container.options.particles.color.value = getParticleColor();
+        container.refresh();
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    window.__globalParticleThemeObserver = observer;
+  }
+
+  function initGlobalParticles() {
+    if (!shouldMountParticles()) return;
+    mountParticles().catch((error) => {
+      console.error("[particle] init failed", error);
+    });
+    setupThemeWatcher();
+  }
+
+  initGlobalParticles();
+  document.addEventListener("astro:page-load", initGlobalParticles);
+  document.addEventListener("astro:after-swap", initGlobalParticles);
+</script>
+
+<script define:vars={{ updateNotice, baseUrl }}>
+  import { trapFocus } from "../utils/modal";
+
+  function getNormalizedPathname() {
+    const rawPath = window.location.pathname.replace(/\/+$/, "") || "/";
+    const base = (baseUrl || "/").replace(/\/+$/, "");
+    if (base && base !== "/" && rawPath.startsWith(base)) {
+      const normalized = rawPath.slice(base.length);
+      return normalized || "/";
+    }
+    return rawPath;
+  }
+
+  const blogGuideSeenKey = "cmchen_blog_guide_seen_v1";
+  const blogUpdateSeenVersionKey = "cmchen_blog_update_seen_version_v1";
+  const guideHideDuration = 260;
+  let guideHideTimer = null;
+  let updateHideTimer = null;
+
+  function setPageScrollLocked(locked) {
+    if (locked) {
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    } else {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
+  }
+
+  function safeStorageGet(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  function safeStorageSet(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function syncPageScrollLock() {
+    const guideOpen = document.getElementById("blog-guide-modal")?.classList.contains("is-open");
+    const updateOpen = document.getElementById("blog-update-modal")?.classList.contains("is-open");
+    setPageScrollLocked(Boolean(guideOpen || updateOpen));
+  }
+
+  function shouldEnableGuide() {
+    return !window.location.pathname.includes("/admin");
+  }
+
+  function setGuideVisible(visible) {
+    const modal = document.getElementById("blog-guide-modal");
+    const openBtn = document.getElementById("blog-guide-open-btn");
+    if (!modal || !openBtn) return;
+
+    if (guideHideTimer) {
+      clearTimeout(guideHideTimer);
+      guideHideTimer = null;
+    }
+
+    if (visible) {
+      modal.classList.remove("hidden");
+      requestAnimationFrame(() => {
+        modal.classList.add("is-open");
+        syncPageScrollLock();
+      });
+      // 打开后把焦点移进弹窗
+      const closeBtn = document.getElementById("blog-guide-close-btn");
+      if (closeBtn) closeBtn.focus();
+    } else {
+      modal.classList.remove("is-open");
+      guideHideTimer = setTimeout(() => {
+        if (!modal.classList.contains("is-open")) {
+          modal.classList.add("hidden");
+        }
+      }, guideHideDuration);
+      syncPageScrollLock();
+    }
+  }
+
+  function shouldEnableUpdateNotice() {
+    if (!updateNotice || !updateNotice.version || !updateNotice.url) return false;
+    const path = getNormalizedPathname();
+    return path === "/" || path === "/zh-cn";
+  }
+
+  function setUpdateNoticeVisible(visible) {
+    const modal = document.getElementById("blog-update-modal");
+    if (!modal) return;
+
+    if (updateHideTimer) {
+      clearTimeout(updateHideTimer);
+      updateHideTimer = null;
+    }
+
+    if (visible) {
+      modal.classList.remove("hidden");
+      requestAnimationFrame(() => {
+        modal.classList.add("is-open");
+        syncPageScrollLock();
+      });
+      return;
+    }
+
+    modal.classList.remove("is-open");
+    updateHideTimer = setTimeout(() => {
+      if (!modal.classList.contains("is-open")) {
+        modal.classList.add("hidden");
+      }
+    }, guideHideDuration);
+    syncPageScrollLock();
+  }
+
+  function initBlogUpdateNotice() {
+    const modal = document.getElementById("blog-update-modal");
+    const closeBtn = document.getElementById("blog-update-close-btn");
+    const ignoreBtn = document.getElementById("blog-update-ignore-btn");
+    const jumpBtn = document.getElementById("blog-update-jump-btn");
+    const mask = document.getElementById("blog-update-mask");
+    if (!modal || !closeBtn || !ignoreBtn || !jumpBtn || !mask || !updateNotice) return;
+
+    if (!shouldEnableUpdateNotice()) {
+      modal.classList.add("hidden");
+      syncPageScrollLock();
+      return;
+    }
+
+    const seenVersion = safeStorageGet(blogUpdateSeenVersionKey) || "";
+    const shouldOpen = seenVersion !== updateNotice.version;
+    setUpdateNoticeVisible(shouldOpen);
+
+    const markSeen = () => {
+      safeStorageSet(blogUpdateSeenVersionKey, updateNotice.version);
+    };
+
+    const closeNotice = () => {
+      markSeen();
+      setUpdateNoticeVisible(false);
+    };
+
+    if (!closeBtn.dataset.bound) {
+      closeBtn.addEventListener("click", closeNotice);
+      closeBtn.dataset.bound = "1";
+    }
+
+    if (!ignoreBtn.dataset.bound) {
+      ignoreBtn.addEventListener("click", closeNotice);
+      ignoreBtn.dataset.bound = "1";
+    }
+
+    if (!mask.dataset.bound) {
+      mask.addEventListener("click", closeNotice);
+      mask.dataset.bound = "1";
+    }
+
+    if (!jumpBtn.dataset.bound) {
+      jumpBtn.addEventListener("click", () => {
+        markSeen();
+      });
+      jumpBtn.dataset.bound = "1";
+    }
+  }
+
+  function initBlogGuide() {
+    const modal = document.getElementById("blog-guide-modal");
+    const openBtn = document.getElementById("blog-guide-open-btn");
+    const closeBtn = document.getElementById("blog-guide-close-btn");
+    const mask = document.getElementById("blog-guide-mask");
+    if (!modal || !openBtn || !closeBtn || !mask) return;
+
+    if (!shouldEnableGuide()) {
+      modal.classList.add("hidden");
+      openBtn.classList.add("hidden");
+      setPageScrollLocked(false);
+      return;
+    }
+
+    openBtn.classList.add("inline-flex");
+    openBtn.classList.remove("hidden");
+    setGuideVisible(false);
+
+    const seen = safeStorageGet(blogGuideSeenKey) === "1";
+    setGuideVisible(!seen);
+
+    if (!openBtn.dataset.bound) {
+      openBtn.addEventListener("click", () => setGuideVisible(true));
+      openBtn.dataset.bound = "1";
+    }
+
+    const closeGuide = () => {
+      safeStorageSet(blogGuideSeenKey, "1");
+      setGuideVisible(false);
+    };
+
+    if (!closeBtn.dataset.bound) {
+      closeBtn.addEventListener("click", closeGuide);
+      closeBtn.dataset.bound = "1";
+    }
+
+    if (!mask.dataset.bound) {
+      mask.addEventListener("click", closeGuide);
+      mask.dataset.bound = "1";
+    }
+
+    // Esc 关闭 + 焦点圈住（弹窗打开时才生效）
+    const oldGuideKeydownHandler = window.__blogGuideKeydownHandler;
+    if (oldGuideKeydownHandler) {
+      document.removeEventListener("keydown", oldGuideKeydownHandler);
+    }
+    const handleGuideKeydown = (event) => {
+      if (!modal.classList.contains("is-open")) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeGuide();
+        openBtn.focus();
+        return;
+      }
+      trapFocus(modal, event);
+    };
+    document.addEventListener("keydown", handleGuideKeydown);
+    window.__blogGuideKeydownHandler = handleGuideKeydown;
+  }
+
+  const safeInitGuide = () => {
+    try {
+      initBlogGuide();
+    } catch (error) {
+      console.error("[guide] blog guide init failed", error);
+    }
+  };
+
+  const safeInitUpdateNotice = () => {
+    try {
+      initBlogUpdateNotice();
+    } catch (error) {
+      console.error("[guide] update notice init failed", error);
+    }
+  };
+
+  safeInitGuide();
+  safeInitUpdateNotice();
+  document.addEventListener("astro:page-load", safeInitGuide);
+  document.addEventListener("astro:page-load", safeInitUpdateNotice);
+  document.addEventListener("astro:after-swap", safeInitGuide);
+  document.addEventListener("astro:after-swap", safeInitUpdateNotice);
+</script>
+
+<script>
+  import { initBackToTop } from "../utils/back-to-top";
+
+  function initGlobalBackTop() {
+    if (document.querySelector('.post-right-sidebar')) return;
+
+    var btn = document.getElementById('backtop-global');
+    if (btn) btn.style.display = 'flex';
+
+    initBackToTop(
+      document.getElementById('backtop-global'),
+      document.getElementById('progress-circle-global')
+    );
+  }
+
+  document.addEventListener('astro:page-load', initGlobalBackTop);
+  document.addEventListener('astro:after-swap', initGlobalBackTop);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      if (document.getElementById('backtop-global')) initGlobalBackTop();
+    });
+  } else {
+    if (document.getElementById('backtop-global')) initGlobalBackTop();
+  }
+</script>
+
+<style is:global>
+#blog-guide-modal #blog-guide-mask {
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+#blog-guide-modal .blog-guide-panel {
+  opacity: 0;
+  transform: translateY(18px) scale(0.96);
+  transition: opacity 260ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#blog-guide-modal.is-open #blog-guide-mask {
+  opacity: 1;
+}
+
+#blog-guide-modal.is-open .blog-guide-panel {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+#blog-update-modal #blog-update-mask {
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+#blog-update-modal .blog-update-panel {
+  opacity: 0;
+  transform: translateY(16px) scale(0.97);
+  transition: opacity 260ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#blog-update-modal.is-open #blog-update-mask {
+  opacity: 1;
+}
+
+#blog-update-modal.is-open .blog-update-panel {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-nav);
+  display: none;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0.35rem 0 max(0.6rem, env(safe-area-inset-bottom, 0.6rem));
+  background: color-mix(in srgb, var(--bg-color) 88%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -4px 20px color-mix(in srgb, var(--shadow-color) 30%, transparent);
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+  min-height: unset;
+  height: auto;
+}
+
+.mobile-bottom-nav::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 775px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+}
+
+.mobile-bottom-nav__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.25rem 0.6rem;
+  text-decoration: none;
+  color: var(--text-color);
+  opacity: 0.5;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.mobile-bottom-nav__link:hover,
+.mobile-bottom-nav__link.is-active {
+  opacity: 1;
+}
+
+.mobile-bottom-nav__link:active {
+  transform: scale(0.92);
+}
+
+.mobile-bottom-nav__icon {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.mobile-bottom-nav__label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+@media (hover: hover) {
+  .mobile-bottom-nav__link:hover {
+    opacity: 0.8;
+  }
+}
+
+@media (max-width: 775px) {
+  body {
+    padding-bottom: calc(3.2rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+html.post-reading-fullscreen .mobile-bottom-nav {
+  display: none !important;
+}
+
+@media (max-width: 775px) {
+  html.post-reading-fullscreen body {
+    padding-bottom: 0;
+  }
+}
+
+#backtop-global {
+  box-shadow: 0 2px 10px var(--shadow-color);
+}
+
+#progress-circle-global {
+  stroke: var(--text-color);
+}
+
+#circle-global {
+  stroke: var(--border-color);
+}
+</style>
+
+<script>
+function initMobileBottomNav() {
+  const nav = document.getElementById('mobile-bottom-nav');
+  if (!nav) return;
+  const links = nav.querySelectorAll('a');
+  const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+
+  links.forEach((link) => {
+    const href = link.getAttribute('href')?.replace(/\/+$/, '') || '';
+    const isActive = href === currentPath || (href !== '/' && currentPath.startsWith(href));
+    link.classList.toggle('is-active', isActive);
+    if (isActive) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  });
+}
+
+document.addEventListener('astro:page-load', initMobileBottomNav);
+document.addEventListener('astro:after-swap', initMobileBottomNav);
+</script>

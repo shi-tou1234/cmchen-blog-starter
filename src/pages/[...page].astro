@@ -1,0 +1,62 @@
+---
+import MainPageLayout from '@layouts/MainPageLayout.astro';
+import Cover from '@components/Cover.astro';
+import PostPage from '@components/PostPage.astro';
+import Navi from '@components/control/Navi.astro';
+
+import { getBlogEntrySort } from '@utils/content-utils'
+import { siteConfig } from '@/config';
+import type { GetStaticPaths } from 'astro';
+import { getRelativeLocaleUrl } from '@utils/url-utils';
+
+import i18nit from '@i18n/translation'
+import homeCoverSignatures from '@/data/home-cover';
+
+// 所有分页数据都在 "page" 参数中传递
+const { page } = Astro.props;
+const currentLang = 'zh-cn';
+const t = i18nit(currentLang);
+const coverSignatures = homeCoverSignatures;
+
+export const getStaticPaths = (async ({ paginate }) => {
+
+  const blogEntries = await getBlogEntrySort();
+  const sortedBlogEntries = [...blogEntries].sort((a, b) => {
+    const aPinned = a.data.pinned ? 1 : 0;
+    const bPinned = b.data.pinned ? 1 : 0;
+    if (aPinned !== bPinned) return bPinned - aPinned;
+    return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
+  });
+  const paginatedPaths = paginate(sortedBlogEntries, {
+    pageSize: siteConfig.pageSize
+  });
+  
+  return paginatedPaths;
+}) satisfies GetStaticPaths
+
+
+
+const pageTitle = `${siteConfig.title} - ${siteConfig.subTitle}`;
+const allEntries = await getBlogEntrySort();
+const latestUpdatedEntry = allEntries.reduce((latest, current) => {
+  if (!current.data.updatedDate) return latest;
+  if (!latest) return current;
+  return current.data.updatedDate.valueOf() > latest.data.updatedDate.valueOf() ? current : latest;
+}, null as (typeof allEntries[number] | null));
+
+const updateNotice = latestUpdatedEntry && latestUpdatedEntry.data.updatedDate
+  ? {
+      title: latestUpdatedEntry.data.title,
+      url: getRelativeLocaleUrl(currentLang, `/blog/${latestUpdatedEntry.id}`),
+      updatedAt: latestUpdatedEntry.data.updatedDate.toISOString(),
+      version: `${latestUpdatedEntry.id}::${latestUpdatedEntry.data.updatedDate.toISOString()}`,
+    }
+  : null;
+
+---
+
+<MainPageLayout title={pageTitle} lang={currentLang} updateNotice={updateNotice}>
+  <Cover title={t("cover.title.home")} subTitle={t("cover.subTitle.home")} signatures={coverSignatures} />
+    <PostPage page={page} />
+    <Navi page={page} />
+</MainPageLayout>

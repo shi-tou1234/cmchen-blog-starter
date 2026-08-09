@@ -1,0 +1,41 @@
+---
+---
+<div class="rounded-lg border border-[var(--border-color)] p-5">
+  <h2 class="text-xl font-semibold mb-4">工具链接</h2>
+  <div class="flex gap-3 mb-3">
+    <button id="load-tools-links-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">加载</button>
+    <button id="save-tools-links-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">保存</button>
+    <button id="insert-tools-link-template-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">插入模板</button>
+  </div>
+  <textarea id="tools-links-content" class="w-full min-h-[200px] rounded border border-[var(--border-color)] bg-transparent px-3 py-2 font-mono text-sm" placeholder="[]"></textarea>
+
+  <details class="mt-3 rounded border border-[var(--border-color)] p-3">
+    <summary class="cursor-pointer text-sm font-medium">颜色选择器（渐变背景）</summary>
+    <div class="mt-3 space-y-3">
+      <div class="flex flex-wrap gap-2">
+        <button class="gradient-preset-btn rounded border-2 border-transparent px-3 py-1.5 text-sm text-white" data-grad="linear-gradient(-45deg, hsl(235, 45%, 46%) 0%, hsl(275, 42%, 42%) 100%)" style="background:linear-gradient(-45deg, hsl(235, 45%, 46%) 0%, hsl(275, 42%, 42%) 100%)">蓝紫</button>
+        <button class="gradient-preset-btn rounded border-2 border-transparent px-3 py-1.5 text-sm text-white" data-grad="linear-gradient(-45deg, hsl(0, 65%, 50%) 0%, hsl(40, 62%, 48%) 100%)" style="background:linear-gradient(-45deg, hsl(0, 65%, 50%) 0%, hsl(40, 62%, 48%) 100%)">红橙</button>
+        <button class="gradient-preset-btn rounded border-2 border-transparent px-3 py-1.5 text-sm text-white" data-grad="linear-gradient(-45deg, hsl(150, 50%, 40%) 0%, hsl(190, 47%, 36%) 100%)" style="background:linear-gradient(-45deg, hsl(150, 50%, 40%) 0%, hsl(190, 47%, 36%) 100%)">青绿</button>
+        <button class="gradient-preset-btn rounded border-2 border-transparent px-3 py-1.5 text-sm text-white" data-grad="linear-gradient(-45deg, hsl(270, 55%, 45%) 0%, hsl(310, 52%, 41%) 100%)" style="background:linear-gradient(-45deg, hsl(270, 55%, 45%) 0%, hsl(310, 52%, 41%) 100%)">紫粉</button>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-sm mb-1">色相 (H)</label>
+          <input id="color-hue-slider" type="range" min="0" max="360" value="235" class="w-full" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">饱和度 (S%)</label>
+          <input id="color-sat-slider" type="range" min="10" max="80" value="45" class="w-full" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">亮度 (L%)</label>
+          <input id="color-light-slider" type="range" min="20" max="70" value="46" class="w-full" />
+        </div>
+      </div>
+      <div id="color-preview" class="h-12 rounded border border-[var(--border-color)]" style="background:linear-gradient(-45deg, hsl(235, 45%, 46%) 0%, hsl(275, 42%, 42%) 100%)"></div>
+      <p id="color-preview-text" class="text-xs text-[var(--text-color)]/70 font-mono break-all">linear-gradient(-45deg, hsl(235, 45%, 46%) 0%, hsl(275, 42%, 42%) 100%)</p>
+      <button id="apply-gradient-btn" class="rounded border border-[var(--border-color)] px-3 py-1.5 text-sm hover:bg-[var(--hover-bg-color)]">应用到当前光标所在条目</button>
+    </div>
+  </details>
+  <p id="tools-links-msg" class="text-sm mt-3 text-[var(--text-color)]/70"></p>
+</div>

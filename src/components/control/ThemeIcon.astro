@@ -1,0 +1,106 @@
+---
+const className = Astro.props.class;
+import { Icon } from "astro-icon/components";
+---
+
+<button id="themeToggle" title="切换明暗模式" class={className}>
+    <Icon name="material-symbols:dark-mode-outline-rounded" class="moon w-5 h-5"/>
+    <Icon name="material-symbols:wb-sunny-outline-rounded" class="sun w-5 h-5"/>
+    <Icon name="material-symbols:radio-button-partial-outline" class="system w-5 h-5"/>
+</button>
+
+<script is:inline>
+if (typeof window !== 'undefined') {
+  const THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+
+  function initThemeToggle() {
+    const htmlRoot = document.querySelector('html');
+    const themeToggle = document.getElementById('themeToggle');
+
+    const getTheme = () => {
+      const localStorageTheme = localStorage?.getItem("theme") ?? '';
+      if (['dark', 'light', 'system'].includes(localStorageTheme)) {
+        return localStorageTheme;
+      }
+      return 'system';
+    };
+
+    const setTheme = (themeSet) => {
+      htmlRoot.classList.toggle('system-theme', themeSet === 'system');
+      // 始终显式设置 data-theme（亮色也设成 light），避免删属性导致部分样式失效
+      const resolved = themeSet === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : themeSet;
+      htmlRoot.setAttribute('data-theme', resolved);
+      window.localStorage.setItem('theme', themeSet);
+    };
+
+    // 系统主题变化监听器
+    const handleSystemThemeChange = (e) => {
+      if (htmlRoot.classList.contains('system-theme')) {
+        htmlRoot.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      }
+    };
+
+    const mediaQuery = window.matchMedia(THEME_MEDIA_QUERY);
+    const oldSystemThemeChangeHandler = window.__themeSystemThemeChangeHandler;
+    if (oldSystemThemeChangeHandler) {
+      mediaQuery.removeEventListener('change', oldSystemThemeChangeHandler);
+    }
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    window.__themeSystemThemeChangeHandler = handleSystemThemeChange;
+
+    const handleToggleClick = () => {
+      const isCurrentlyDark = htmlRoot.getAttribute('data-theme') === 'dark';
+      const nextTheme = isCurrentlyDark ? 'light' : 'dark';
+      setTheme(nextTheme);
+    };
+
+    if (themeToggle) {
+      themeToggle.onclick = handleToggleClick;
+    }
+
+    setTheme(getTheme());
+  }
+
+  document.addEventListener('astro:page-load', initThemeToggle);
+  document.addEventListener('astro:after-swap', initThemeToggle);
+}
+</script>
+
+
+<style>
+    #themeToggle .moon {
+        display: none;
+    }
+    
+    #themeToggle .sun {
+        display: none;
+    }
+    
+    #themeToggle .system {
+        display: none;
+    }
+    
+    #themeToggle .sun {
+        display: inline-block;
+    }
+    
+    html[data-theme="dark"] #themeToggle .moon {
+        display: inline-block;
+    }
+    
+    html[data-theme="dark"] #themeToggle .sun {
+        display: none;
+    }
+    
+    html.system-theme #themeToggle .system {
+        display: inline-block;
+    }
+    
+    html.system-theme #themeToggle .sun,
+    html.system-theme #themeToggle .moon {
+        display: none;
+    }
+    
+</style>

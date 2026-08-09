@@ -1,0 +1,107 @@
+---
+import type { BlogEntryWithLocaleStatus } from '@utils/content-utils';
+import { getRelativeLocaleUrl } from '@utils/url-utils';
+
+interface Props {
+  language: string;
+  category: string;
+  posts: BlogEntryWithLocaleStatus[];
+  categoryPageUrl: string;
+}
+
+const { language, category, posts, categoryPageUrl } = Astro.props;
+const panelTitle = language === 'zh-cn' ? '同分类文章' : 'More in this category';
+const viewAllText = language === 'zh-cn' ? '查看该分类全部文章' : 'View all posts in this category';
+---
+
+<aside class="post-category-nav-root" aria-label={panelTitle}>
+  <div class="post-category-nav-panel">
+    <div class="post-category-nav-panel__head">
+      <h2 class="post-category-nav-panel__title">{panelTitle}</h2>
+      <a href={categoryPageUrl} class="post-category-nav-panel__all">{viewAllText}</a>
+    </div>
+    <p class="post-category-nav-panel__category">{category}</p>
+    <ol class="post-category-nav-list">
+      {
+        posts.map((post) => (
+          <li class="post-category-nav-item">
+            <a href={getRelativeLocaleUrl(language, `/blog/${post.id}`)}>{post.data.title}</a>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</aside>
+
+<style is:global>
+.post-category-nav-root {
+  width: 100%;
+}
+
+.post-category-nav-panel {
+  width: 100%;
+  max-height: 58vh;
+  border: 1px solid var(--border-color);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+
+.post-category-nav-panel__head {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem 0.85rem 0.2rem;
+}
+
+.post-category-nav-panel__title {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.post-category-nav-panel__all {
+  color: color-mix(in srgb, var(--link-color) 84%, transparent);
+  font-size: 0.76rem;
+  text-decoration: none;
+}
+
+.post-category-nav-panel__all:hover {
+  text-decoration: underline;
+}
+
+.post-category-nav-panel__category {
+  margin: 0;
+  color: color-mix(in srgb, var(--text-color) 70%, transparent);
+  font-size: 0.8rem;
+  padding: 0 0.85rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.post-category-nav-list {
+  margin: 0;
+  padding: 0.55rem;
+  list-style: none;
+  max-height: calc(58vh - 5.2rem);
+  overflow-y: auto;
+}
+
+.post-category-nav-item a {
+  display: block;
+  color: color-mix(in srgb, var(--text-color) 84%, transparent);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  text-decoration: none;
+  border-radius: 0.45rem;
+  padding: 0.34rem 0.52rem;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.post-category-nav-item a:hover {
+  background: var(--hover-bg-color);
+  color: var(--text-color);
+  transform: translateX(-2px);
+}
+</style>

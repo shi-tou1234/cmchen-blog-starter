@@ -1,0 +1,415 @@
+---
+import "@styles/global.css"
+import ImageModule from "./misc/ImageModule.astro";
+
+import { getRelativeLocaleUrl } from '@utils/url-utils';
+import { formatFullDate } from '@/utils/time'
+import { hashString } from '@utils/hash';
+
+
+interface Props {
+    title: string;
+    description: string;
+    image: string;
+    pubDate: Date;
+    updatedDate?: Date;
+    url: string;
+    fallback: boolean;
+    categories?: string[];
+    preview?: string;
+    readingMinutes?: number;
+    aosDelay?: number;
+    externalImage?: string;
+    photographer?: string;
+    photographerUrl?: string;
+}
+
+const {
+    title,
+    description,
+    image,
+    pubDate,
+    updatedDate,
+    url,
+    fallback,
+    categories = [],
+    preview = description,
+    readingMinutes = 1,
+    aosDelay = 0,
+    externalImage = '',
+    photographer = '',
+    photographerUrl = '',
+} = Astro.props;
+
+
+
+const currentLang = 'zh-cn';
+
+const readingLabel = `${readingMinutes} 分钟阅读`;
+const previewText = String(preview || description || '').trim();
+const cardLabel = `阅读文章：${title}`;
+
+const decorativeSvgPool = [
+    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#fdf2f8"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#ffffff" stroke="#f9a8d4"/><circle cx="50" cy="52" r="18" fill="#fbcfe8"/><circle cx="88" cy="88" r="14" fill="#f9a8d4"/></svg>')}`,
+    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#ecfeff"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#ffffff" stroke="#67e8f9"/><path d="M26 86C50 60 80 56 114 78" stroke="#22d3ee" stroke-width="8" fill="none" stroke-linecap="round"/><circle cx="42" cy="48" r="10" fill="#a5f3fc"/></svg>')}`,
+    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#fef9c3"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#ffffff" stroke="#facc15"/><rect x="34" y="42" width="72" height="14" rx="7" fill="#fde047"/><rect x="28" y="70" width="84" height="14" rx="7" fill="#fef08a"/></svg>')}`,
+    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#eef2ff"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#ffffff" stroke="#a5b4fc"/><path d="M40 96L70 40L100 96Z" fill="#c7d2fe"/><circle cx="100" cy="44" r="9" fill="#93c5fd"/></svg>')}`,
+    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#ecfdf5"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#ffffff" stroke="#6ee7b7"/><circle cx="54" cy="56" r="16" fill="#86efac"/><circle cx="86" cy="82" r="13" fill="#34d399"/></svg>')}`,
+    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#fff7ed"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#ffffff" stroke="#fdba74"/><path d="M30 88L54 64L76 86L106 56" stroke="#fb923c" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>')}`,
+];
+
+const placeholderDecorations = Array.from({ length: 14 }, (_, index) => {
+    const seed = hashString(`${title}-${url}-${index}`);
+    const size = 38 + (seed % 44);
+    const left = (seed * 37) % 96;
+    const top = (seed * 53) % 88;
+    const rotate = ((seed * 19) % 26) - 13;
+    const opacity = 0.38 + ((seed % 24) / 100);
+    const image = decorativeSvgPool[seed % decorativeSvgPool.length];
+    return `left:${left}%;top:${top}%;width:${size}px;height:${size}px;transform:translate(-50%,-50%) rotate(${rotate}deg);opacity:${opacity};background-image:url("${image}");animation-delay:${(seed % 7) * 0.35}s;`;
+});
+
+const tagPalette = [
+    { bg: 'rgba(251, 191, 36, 0.35)', text: '#92400e', border: 'rgba(245, 158, 11, 0.88)', darkBg: 'rgba(251, 191, 36, 0.32)', darkText: '#fff4bf', darkBorder: 'rgba(245, 158, 11, 0.96)' },
+    { bg: 'rgba(34, 211, 238, 0.34)', text: '#0e7490', border: 'rgba(6, 182, 212, 0.86)', darkBg: 'rgba(34, 211, 238, 0.3)', darkText: '#d8fbff', darkBorder: 'rgba(34, 211, 238, 0.94)' },
+    { bg: 'rgba(167, 139, 250, 0.34)', text: '#5b21b6', border: 'rgba(139, 92, 246, 0.86)', darkBg: 'rgba(139, 92, 246, 0.3)', darkText: '#efe7ff', darkBorder: 'rgba(167, 139, 250, 0.94)' },
+    { bg: 'rgba(52, 211, 153, 0.34)', text: '#0f766e', border: 'rgba(16, 185, 129, 0.88)', darkBg: 'rgba(16, 185, 129, 0.3)', darkText: '#d8fff1', darkBorder: 'rgba(52, 211, 153, 0.94)' },
+    { bg: 'rgba(251, 113, 133, 0.34)', text: '#9f1239', border: 'rgba(244, 63, 94, 0.86)', darkBg: 'rgba(244, 63, 94, 0.3)', darkText: '#ffe2ea', darkBorder: 'rgba(251, 113, 133, 0.94)' },
+    { bg: 'rgba(180, 130, 90, 0.34)', text: '#7c5a34', border: 'rgba(160, 110, 70, 0.86)', darkBg: 'rgba(160, 110, 70, 0.3)', darkText: '#e8d5b8', darkBorder: 'rgba(180, 130, 90, 0.94)' },
+];
+
+function getTagStyle(tag: string): string {
+    const selected = tagPalette[hashString(tag) % tagPalette.length];
+    return `--post-tag-bg:${selected.bg};--post-tag-text:${selected.text};--post-tag-border:${selected.border};--post-tag-bg-dark:${selected.darkBg};--post-tag-text-dark:${selected.darkText};--post-tag-border-dark:${selected.darkBorder};`;
+}
+
+
+const pageUrl = getRelativeLocaleUrl(currentLang, "/blog/" + url);
+---
+
+<article
+    data-card-reveal
+    style={`--card-reveal-delay:${aosDelay}ms; --card-width:min(720px, 88vw);`}
+    class="post-card group relative mx-auto my-5 block min-w-0 w-full max-w-[var(--card-width)] overflow-hidden rounded-[1.35rem] border border-[var(--border-color)]/80 bg-[color-mix(in_srgb,var(--bg-color)_96%,transparent)] shadow-[0_12px_34px_color-mix(in_srgb,var(--shadow-color)_58%,transparent)]"
+>
+    <a
+        href={pageUrl}
+        aria-label={cardLabel}
+        class="post-card__stretched-link absolute inset-0 z-10 rounded-[inherit]"
+    >
+    </a>
+
+    {image && (
+        <div class="cover post-card__cover overflow-hidden">
+            <ImageModule src={image} alt={title} class="post-card__image"/>
+        </div>
+    )}
+
+    {!image && externalImage && (
+        <div class="cover post-card__cover overflow-hidden">
+            <ImageModule src={externalImage} alt={title} class="post-card__image"/>
+            {photographer && (
+                photographerUrl ? (
+                    <a href={photographerUrl} target="_blank" rel="noopener noreferrer" class="post-card__photo-credit" title={`Photo by ${photographer}`}>
+                        {photographer}
+                    </a>
+                ) : (
+                    <span class="post-card__photo-credit" title={`Photo by ${photographer}`}>
+                        {photographer}
+                    </span>
+                )
+            )}
+        </div>
+    )}
+
+    {!image && !externalImage && (
+        <div class="post-card__placeholder aspect-[1200/630]">
+            <div class="post-card__decor-grid" aria-hidden="true">
+                {placeholderDecorations.map((decoration) => (
+                    <span class="post-card__decor-item" style={decoration}></span>
+                ))}
+            </div>
+        </div>
+    )}
+
+    <div class="content post-card__body pointer-events-none p-4 md:p-5">
+        {categories.length > 0 && (
+            <div class="post-card__tags mb-2.5 flex flex-wrap gap-2">
+                {categories.map((category) => (
+                    <span class="post-card__tag" style={getTagStyle(category)}>
+                        #{category}
+                    </span>
+                ))}
+            </div>
+        )}
+
+        <h2 class="title post-card__title text-lg font-semibold text-[var(--text-color)] mb-2.5 md:text-xl">
+            {title}
+            {
+                fallback && (
+                <span class="self-center px-1 ml-2 text-xs text-[var(--text-color)]/70 font-mono uppercase bg-[var(--hover-bg-color)] rounded border border-[var(--border-color)]">zh-cn</span>
+                )
+            }
+        </h2>
+        <p class="description post-card__summary text-sm leading-relaxed text-[var(--text-color)]/66 md:text-[0.96rem]">{previewText}</p>
+        <div class="post-card__meta mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-color)]/66 md:text-sm">
+            <span>{formatFullDate(pubDate, currentLang)}</span>
+            {updatedDate && updatedDate.valueOf() > pubDate.valueOf() && (
+                <>
+                    <span class="text-[var(--text-color)]/35">•</span>
+                    <span>{`最后更新于 ${formatFullDate(updatedDate, currentLang)}`}</span>
+                </>
+            )}
+            <span class="text-[var(--text-color)]/35">•</span>
+            <span>{readingLabel}</span>
+        </div>
+    </div>
+</article>
+
+<style is:global>
+    .post-card {
+        position: relative;
+        transform: translate3d(0, 0, 0) scale(1);
+        background: color-mix(in srgb, var(--bg-color) 96%, transparent);
+        box-shadow: 0 0 0 1px var(--border-color), 0 12px 34px color-mix(in srgb, var(--shadow-color) 58%, transparent);
+        transition: transform 0.62s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.52s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, background-color 0.3s ease, opacity 0.45s ease;
+        will-change: transform, opacity, box-shadow;
+    }
+
+    .post-card__stretched-link {
+        outline: none;
+    }
+
+    .post-card__stretched-link:focus-visible {
+        outline: 2px solid var(--link-color);
+        outline-offset: 4px;
+    }
+
+    .post-card.post-card-reveal {
+        opacity: 0;
+        transform: translate3d(0, 24px, 0) scale(0.985);
+        filter: blur(5px) saturate(0.94);
+    }
+
+    .post-card.post-card-reveal.is-visible {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0) saturate(1);
+        transition-delay: var(--card-reveal-delay, 0ms);
+    }
+
+    .post-card:hover {
+        transform: translate3d(0, -6px, 0) scale(1.008);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--link-color) 28%, var(--border-color)), 0 26px 54px color-mix(in srgb, var(--shadow-color) 100%, transparent);
+        border-color: color-mix(in srgb, var(--link-color) 26%, var(--border-color));
+        background: color-mix(in srgb, var(--bg-color) 94%, var(--hover-bg-color));
+    }
+
+    .post-card:active {
+        transform: translate3d(0, -3px, 0) scale(1.004);
+    }
+
+    .post-card__cover {
+        position: relative;
+        isolation: isolate;
+        aspect-ratio: 1200 / 630;
+        line-height: 0;
+        background: linear-gradient(135deg, color-mix(in srgb, var(--bg-color) 84%, var(--hover-bg-color)), color-mix(in srgb, var(--bg-color) 72%, var(--link-color)));
+    }
+
+    .post-card__cover::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 12%, color-mix(in srgb, var(--bg-color) 30%, transparent) 100%);
+        opacity: 0;
+        transition: opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: none;
+    }
+
+    .post-card__image {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        transition: transform 0.72s cubic-bezier(0.16, 1, 0.3, 1), filter 0.5s ease, opacity 0.3s ease;
+        will-change: transform;
+    }
+
+    .post-card:hover .post-card__image {
+        transform: scale(1.035);
+        filter: brightness(1.04) saturate(1.06) contrast(1.01);
+    }
+
+    .post-card:hover .post-card__cover::after {
+        opacity: 1;
+    }
+
+    .post-card__body {
+        display: grid;
+        gap: 0.2rem;
+        transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+    }
+
+    .post-card:hover .post-card__body {
+        transform: translateY(-2px);
+    }
+
+    .post-card__title {
+        font-family: "ZCOOL KuaiLe", "Noto Serif SC", serif;
+    }
+
+    .post-card__summary,
+    .post-card__meta {
+        font-family: "ZCOOL KuaiLe", "Noto Serif SC", serif;
+    }
+
+    .post-card:hover .post-card__title {
+        color: var(--link-color);
+    }
+
+    .post-card:hover .post-card__summary,
+    .post-card:hover .post-card__meta {
+        color: color-mix(in srgb, var(--text-color) 78%, var(--link-color));
+    }
+
+    .post-card__placeholder {
+        position: relative;
+        overflow: hidden;
+        background: var(--postcard-placeholder-bg);
+    }
+
+    [data-theme="dark"] .post-card__decor-item {
+        filter: brightness(0.7) saturate(0.75);
+        border-color: rgba(255, 255, 255, 0.45);
+    }
+
+    .post-card__decor-grid {
+        position: absolute;
+        inset: 0;
+    }
+
+    .post-card__decor-item {
+        position: absolute;
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
+        border-radius: 0.9rem;
+        border: 2px solid rgba(255, 255, 255, 0.82);
+        box-shadow: 0 8px 18px color-mix(in srgb, var(--shadow-color) 42%, transparent);
+        animation: post-card-float 10.5s cubic-bezier(0.45, 0, 0.15, 1) infinite;
+    }
+
+    .post-card__decor-item:nth-child(3n) {
+        animation-duration: 11.5s;
+    }
+
+    .post-card__decor-item:nth-child(4n) {
+        animation-duration: 12.5s;
+    }
+
+    @keyframes post-card-float {
+        0%, 100% { transform: translate(-50%, -50%) rotate(0deg) translateY(0); }
+        50% { transform: translate(-50%, -50%) rotate(3deg) translateY(-4px); }
+    }
+
+    .post-card__summary {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .post-card__tags {
+        align-content: flex-start;
+    }
+
+    .post-card__tag {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        border: 1px solid var(--post-tag-border);
+        background: var(--post-tag-bg);
+        color: var(--post-tag-text);
+        font-size: 0.68rem;
+        line-height: 1;
+        padding: 0.28rem 0.5rem;
+        font-weight: 700;
+        box-shadow: 0 4px 10px color-mix(in srgb, var(--post-tag-border) 35%, transparent);
+        transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), filter 0.24s ease, box-shadow 0.24s ease;
+    }
+
+    [data-theme="dark"] .post-card__tag {
+        background: var(--post-tag-bg-dark);
+        color: var(--post-tag-text-dark);
+        border-color: var(--post-tag-border-dark);
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+    }
+
+    .post-card:hover .post-card__tag {
+        transform: translateY(-2px);
+        filter: saturate(1.1);
+        box-shadow: 0 8px 16px color-mix(in srgb, var(--post-tag-border) 58%, transparent);
+    }
+
+    .post-card__photo-credit {
+        position: absolute;
+        bottom: 0.7rem;
+        right: 0.75rem;
+        z-index: 30;
+        font-size: 0.65rem;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.48);
+        color: rgba(255, 255, 255, 0.82);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        pointer-events: auto;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .post-card__photo-credit a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .post-card__photo-credit a:hover {
+        text-decoration: underline;
+    }
+
+    .post-card:hover .post-card__photo-credit {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .post-card__body,
+    .post-card__title,
+    .post-card__summary,
+    .post-card__meta {
+        transform: translate3d(0, 0, 0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .post-card,
+        .post-card__image,
+        .post-card__cover::after,
+        .post-card__body,
+        .post-card__tag,
+        .post-card__photo-credit {
+            transition: none !important;
+            animation: none !important;
+        }
+
+        .post-card:hover,
+        .post-card:active,
+        .post-card:hover .post-card__body,
+        .post-card:hover .post-card__image,
+        .post-card:hover .post-card__tag {
+            transform: none !important;
+            filter: none !important;
+        }
+    }
+</style>

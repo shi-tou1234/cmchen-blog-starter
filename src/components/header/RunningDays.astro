@@ -1,0 +1,38 @@
+---
+const runtimeLabel = '已运行';
+const runtimeSuffix = '天';
+---
+
+<p id="header-running-days" class="text-sm text-[var(--text-color)]/65 mt-1" data-running-since="2026-02-12" data-runtime-label={runtimeLabel} data-runtime-suffix={runtimeSuffix}>
+  {runtimeLabel} 1 {runtimeSuffix}
+</p>
+
+<script>
+function updateHeaderRunningDays() {
+  const node = document.getElementById('header-running-days');
+  if (!node) return;
+
+  const startRaw = node.getAttribute('data-running-since');
+  const label = node.getAttribute('data-runtime-label') || '已运行';
+  const suffix = node.getAttribute('data-runtime-suffix') || '天';
+  if (!startRaw) return;
+
+  const startDate = new Date(`${startRaw}T00:00:00`);
+  const now = new Date();
+  if (Number.isNaN(startDate.getTime())) return;
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const startUtc = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const nowUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.max(1, Math.floor((nowUtc - startUtc) / msPerDay) + 1);
+
+  node.textContent = `${label} ${days} ${suffix}`;
+}
+
+document.addEventListener('DOMContentLoaded', updateHeaderRunningDays);
+document.addEventListener('astro:page-load', updateHeaderRunningDays);
+document.addEventListener('astro:after-swap', updateHeaderRunningDays);
+if (document.readyState !== 'loading') {
+  updateHeaderRunningDays();
+}
+</script>

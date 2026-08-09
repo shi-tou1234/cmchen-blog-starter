@@ -1,0 +1,19 @@
+---
+---
+<div class="rounded-lg border border-[var(--border-color)] p-5">
+  <h2 class="text-xl font-semibold mb-4">安全设置</h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div>
+      <label class="block text-sm mb-2">当前密码</label>
+      <input id="old-password" type="password" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder="输入当前密码" />
+    </div>
+    <div>
+      <label class="block text-sm mb-2">新密码</label>
+      <input id="new-password" type="password" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder="输入新密码" />
+    </div>
+    <div class="flex items-end">
+      <button id="change-password-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">修改密码</button>
+    </div>
+  </div>
+  <p id="pwd-msg" class="text-sm mt-3 text-[var(--text-color)]/70"></p>
+</div>

@@ -1,0 +1,179 @@
+<script>
+function initHeaderLogoFracture() {
+  const previousCleanup = window.__headerLogoFractureCleanup;
+  if (previousCleanup) {
+    previousCleanup();
+  }
+
+  const logo = document.querySelector('[data-header-logo="true"]');
+  if (!logo) return;
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (!window.matchMedia('(pointer: fine)').matches) return;
+
+  const baseLayer = logo.querySelector('.header-slice-text__base');
+  const shardLayer = logo.querySelector('.header-slice-text__shards');
+  if (!baseLayer || !shardLayer) return;
+
+  const title = logo.getAttribute('data-text') || baseLayer.textContent || '';
+  const shardBands = [
+    { top: 0, bottom: 18, dx: -5.6, dy: -8.4, rot: -1.8, scale: 1.01, opacity: 0.42 },
+    { top: 15, bottom: 34, dx: 4.8, dy: -4.1, rot: 1.4, scale: 1.014, opacity: 0.46 },
+    { top: 32, bottom: 52, dx: -3.3, dy: 3.4, rot: -1.0, scale: 1.008, opacity: 0.52 },
+    { top: 50, bottom: 70, dx: 6.1, dy: 6.8, rot: 1.6, scale: 1.015, opacity: 0.48 },
+    { top: 68, bottom: 100, dx: -4.5, dy: 10.4, rot: -1.2, scale: 1.009, opacity: 0.4 },
+  ];
+
+  shardLayer.textContent = '';
+
+  shardBands.forEach((band, index) => {
+    const fragment = document.createElement('span');
+    fragment.className = 'header-slice-text__fragment';
+    fragment.setAttribute('aria-hidden', 'true');
+    fragment.textContent = title;
+
+    const bandShift = index % 2 === 0 ? -1.4 : 1.4;
+    fragment.style.setProperty('--fragment-clip', `inset(${band.top}% 0 ${100 - band.bottom}% 0)`);
+    fragment.style.setProperty('--fragment-dx', String(band.dx + bandShift));
+    fragment.style.setProperty('--fragment-dy', String(band.dy));
+    fragment.style.setProperty('--fragment-rot', String(band.rot));
+    fragment.style.setProperty('--fragment-scale', String(band.scale));
+    fragment.style.setProperty('--fragment-opacity', String(band.opacity));
+
+    shardLayer.appendChild(fragment);
+  });
+
+  let animationFrame = 0;
+  let progress = 0;
+  let target = 0;
+  let pointerX = 0;
+  let pointerY = 0;
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+  const setProgress = (nextProgress) => {
+    progress = nextProgress;
+    logo.style.setProperty('--fracture-progress', progress.toFixed(4));
+    logo.classList.toggle('is-fracturing', progress > 0.015);
+  };
+
+  const sampleTarget = (clientX, clientY) => {
+    const rect = logo.getBoundingClientRect();
+    if (!rect.width || !rect.height) return 0;
+
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const haloX = Math.max(110, rect.width * 1.12);
+    const haloY = Math.max(72, rect.height * 1.5);
+    const distanceX = Math.abs(clientX - centerX) / haloX;
+    const distanceY = Math.abs(clientY - centerY) / haloY;
+    const distance = Math.hypot(distanceX, distanceY);
+
+    if (distance >= 1) return 0;
+
+    const proximity = 1 - distance;
+    return proximity * proximity * (3 - 2 * proximity);
+  };
+
+  const updateDirection = () => {
+    const rect = logo.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+      logo.style.setProperty('--fracture-shift-x', '0');
+      logo.style.setProperty('--fracture-shift-y', '0');
+      return;
+    }
+
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const shiftX = clamp((centerX - pointerX) / Math.max(rect.width, 1), -1, 1) * 0.85;
+    const shiftY = clamp((centerY - pointerY) / Math.max(rect.height, 1), -1, 1) * 0.85;
+
+    logo.style.setProperty('--fracture-shift-x', shiftX.toFixed(3));
+    logo.style.setProperty('--fracture-shift-y', shiftY.toFixed(3));
+  };
+
+  const stopAnimation = () => {
+    target = 0;
+    logo.style.setProperty('--fracture-shift-x', '0');
+    logo.style.setProperty('--fracture-shift-y', '0');
+    if (!animationFrame) {
+      animationFrame = window.requestAnimationFrame(step);
+    }
+  };
+
+  const step = () => {
+    animationFrame = 0;
+
+    const delta = target - progress;
+    if (Math.abs(delta) < 0.001) {
+      setProgress(target);
+    } else {
+      setProgress(progress + delta * 0.14);
+    }
+
+    if (target > 0.001 || progress > 0.001) {
+      animationFrame = window.requestAnimationFrame(step);
+    }
+  };
+
+  const schedule = () => {
+    if (!animationFrame) {
+      animationFrame = window.requestAnimationFrame(step);
+    }
+  };
+
+  const handlePointerMove = (event) => {
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+    target = sampleTarget(pointerX, pointerY);
+    updateDirection();
+    schedule();
+  };
+
+  const handlePointerOut = (event) => {
+    if (event.relatedTarget) return;
+    stopAnimation();
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      stopAnimation();
+    }
+  };
+
+  const handleResize = () => {
+    if (target > 0 || progress > 0) {
+      updateDirection();
+      schedule();
+    }
+  };
+
+  window.addEventListener('pointermove', handlePointerMove, { passive: true });
+  document.addEventListener('mouseout', handlePointerOut);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('blur', stopAnimation);
+  window.addEventListener('resize', handleResize, { passive: true });
+
+  window.__headerLogoFractureCleanup = () => {
+    window.removeEventListener('pointermove', handlePointerMove);
+    document.removeEventListener('mouseout', handlePointerOut);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('blur', stopAnimation);
+    window.removeEventListener('resize', handleResize);
+
+    if (animationFrame) {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+    }
+  };
+
+  setProgress(0);
+}
+
+document.addEventListener('DOMContentLoaded', initHeaderLogoFracture);
+document.addEventListener('astro:page-load', initHeaderLogoFracture);
+document.addEventListener('astro:after-swap', initHeaderLogoFracture);
+if (document.readyState !== 'loading') {
+  initHeaderLogoFracture();
+}
+</script>

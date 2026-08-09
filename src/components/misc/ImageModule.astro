@@ -1,0 +1,39 @@
+---
+// ImageModule - 图片组件
+// 使用 import.meta.glob 解析本地图片路径，直接输出 img 标签避免 sharp 处理耗时
+
+import path from "path"
+
+interface Props {
+    src: string;
+    alt?: string;
+    id?: string;
+    class?: string;
+}
+
+const { src, alt, id } = Astro.props;
+const className = Astro.props.class;
+
+const isLocal = !(
+    src.startsWith("/") ||
+    src.startsWith("http")
+);
+
+const isExternal = src.startsWith("http");
+
+let imageSrc = src;
+if (isLocal) {
+    const images = import.meta.glob<ImageMetadata>(
+        "../../**/*.{png,jpg,jpeg,gif,webp,svg,avif}",
+        { import: "default", eager: true }
+    );
+    let imagePath = path.normalize(path.join("../../", "/", src)).replace(/\\/g, "/");
+    const imageData = images[imagePath];
+    if (!imageData) {
+        console.error(`\n[ERROR] Image file not found: ${imagePath.replace('../../', 'src/')}`);
+    } else {
+        imageSrc = imageData.src;
+    }
+}
+---
+<img src={imageSrc} alt={alt || ""} id={id || ""} class={className || ""} loading="lazy" decoding="async" referrerpolicy={isExternal ? "no-referrer" : undefined}/>

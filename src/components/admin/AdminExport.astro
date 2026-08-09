@@ -1,0 +1,16 @@
+---
+---
+<div class="rounded-lg border border-[var(--border-color)] p-5">
+  <h2 class="text-xl font-semibold mb-4">导出</h2>
+  <div class="flex flex-wrap gap-3">
+    <button id="export-csv-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">导出为 CSV (ZIP)</button>
+    <button id="export-markdown-btn" class="rounded border border-[var(--border-color)] px-4 py-2 hover:bg-[var(--hover-bg-color)]">导出为 Markdown (ZIP)</button>
+  </div>
+  <div id="export-progress-wrap" class="hidden mt-3">
+    <div class="w-full bg-[var(--border-color)] rounded-full h-2.5">
+      <div id="export-progress-bar" class="bg-[var(--link-color)] h-2.5 rounded-full" style="width:0%"></div>
+    </div>
+    <p id="export-progress-text" class="text-sm mt-1 text-[var(--text-color)]/70">0 / 0</p>
+  </div>
+  <p id="export-msg" class="text-sm mt-3 text-[var(--text-color)]/70"></p>
+</div>

@@ -1,0 +1,115 @@
+---
+// 全局键盘快捷键：j/k 上下篇、g h 回首页、/ 唤起搜索（/ 已由 Search.astro 处理，这里兜底）
+import { baseUrl } from '@utils/url-utils';
+
+const homeUrl = baseUrl('/');
+---
+
+<script define:vars={{ homeUrl }}>
+  function initKeyboardShortcuts() {
+    if (window.__keyboardShortcutsBound) return;
+    window.__keyboardShortcutsBound = true;
+
+    const isTypingTarget = (target) => {
+      if (!target) return false;
+      const tag = target.tagName;
+      return target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    };
+
+    const isModalOpen = () => {
+      const searchModal = document.getElementById('search-modal');
+      if (searchModal && !searchModal.classList.contains('opacity-0')) return true;
+      const guideModal = document.getElementById('blog-guide-modal');
+      if (guideModal && guideModal.classList.contains('is-open')) return true;
+      const updateModal = document.getElementById('blog-update-modal');
+      if (updateModal && updateModal.classList.contains('is-open')) return true;
+      return false;
+    };
+
+    // g 前缀键：等待下一个键
+    let gPrefixTimer = null;
+    let gPrefixActive = false;
+
+    const goToPost = (direction) => {
+      const attr = direction === 'prev' ? '[data-navi-prev-post]' : '[data-navi-next-post]';
+      const link = document.querySelector(attr);
+      if (link instanceof HTMLAnchorElement && link.href) {
+        window.location.href = link.href;
+      }
+    };
+
+    const goToHome = () => {
+      window.location.href = homeUrl;
+    };
+
+    const triggerSearch = () => {
+      const searchButton = document.getElementById('search-button');
+      if (searchButton instanceof HTMLElement) {
+        searchButton.click();
+      }
+    };
+
+    const handleKeydown = (e) => {
+      // 在输入框/文本域中不拦截
+      if (isTypingTarget(e.target)) return;
+
+      // 模态框打开时不拦截（Escape 等由模态框自己处理）
+      if (isModalOpen()) return;
+
+      // 忽略带修饰键的组合
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+      const key = e.key;
+
+      // j = 下一篇（更新）；k = 上一篇（更旧）
+      if (key === 'j') {
+        e.preventDefault();
+        goToPost('next');
+        return;
+      }
+
+      if (key === 'k') {
+        e.preventDefault();
+        goToPost('prev');
+        return;
+      }
+
+      // g 前缀组合键：g h = 回首页
+      if (key === 'g') {
+        gPrefixActive = true;
+        if (gPrefixTimer) clearTimeout(gPrefixTimer);
+        gPrefixTimer = setTimeout(() => {
+          gPrefixActive = false;
+        }, 800);
+        return;
+      }
+
+      if (gPrefixActive) {
+        if (key === 'h') {
+          e.preventDefault();
+          gPrefixActive = false;
+          if (gPrefixTimer) clearTimeout(gPrefixTimer);
+          goToHome();
+          return;
+        }
+        // 其他 g 组合键可以在这里扩展，未匹配则重置
+        gPrefixActive = false;
+        if (gPrefixTimer) clearTimeout(gPrefixTimer);
+        return;
+      }
+
+      // / 唤起搜索（兜底，Search.astro 也会处理）
+      if (key === '/') {
+        e.preventDefault();
+        triggerSearch();
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeydown);
+  }
+
+  initKeyboardShortcuts();
+  document.addEventListener('astro:page-load', initKeyboardShortcuts);
+  document.addEventListener('astro:after-swap', initKeyboardShortcuts);
+</script>

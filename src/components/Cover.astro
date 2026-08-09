@@ -1,0 +1,109 @@
+---
+import "@styles/global.css"
+
+interface Props {
+    title?: string;
+    subTitle?: string;
+        signatures?: string[];
+}
+
+const { title, subTitle, signatures = [] } = Astro.props;
+const typewriterEnabled = Array.isArray(signatures) && signatures.length > 0;
+---
+
+<!-- Cover -->
+<div class="text-center pt-5 pb-10 max-w-[var(--page-width)] mx-auto md:mt-0 mt-28">
+    { title && <p class="text-[var(--text-color)] text-3xl py-5 font-bold">{ title }</p> }
+        {
+                typewriterEnabled ? (
+                        <p class="cover-signature text-[var(--cover-subtitle-color)]" data-cover-typewriter data-signatures={JSON.stringify(signatures)}>
+                                <span data-cover-typewriter-text>{signatures[0]}</span>
+                                <span class="cover-signature__cursor" aria-hidden="true">|</span>
+                        </p>
+                ) : (
+                        subTitle && <p class="text-[var(--cover-subtitle-color)]">{ subTitle }</p>
+                )
+        }
+</div>
+
+<style is:global>
+    .cover-signature {
+        min-height: 1.8rem;
+        font-size: 1rem;
+        letter-spacing: 0.01em;
+    }
+
+    .cover-signature__cursor {
+        display: inline-block;
+        margin-left: 0.1rem;
+        color: var(--link-color);
+        animation: cover-cursor-blink 1s steps(1) infinite;
+    }
+
+    @keyframes cover-cursor-blink {
+        0%, 48% { opacity: 1; }
+        49%, 100% { opacity: 0; }
+    }
+</style>
+
+<script is:inline>
+    function initCoverTypewriter() {
+        const root = document.querySelector('[data-cover-typewriter]');
+        if (!(root instanceof HTMLElement)) return;
+        const textNode = root.querySelector('[data-cover-typewriter-text]');
+        if (!(textNode instanceof HTMLElement)) return;
+
+        const raw = root.dataset.signatures || '[]';
+        let phrases = [];
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                phrases = parsed.map((item) => String(item).trim()).filter(Boolean);
+            }
+        } catch {
+            phrases = [];
+        }
+
+        if (phrases.length <= 1) {
+            textNode.textContent = phrases[0] || textNode.textContent || '';
+            return;
+        }
+
+        const oldCleanup = window.__coverTypewriterCleanup;
+        if (typeof oldCleanup === 'function') {
+            oldCleanup();
+        }
+
+        let stopped = false;
+        const timers = [];
+        const wait = (ms) => new Promise((resolve) => {
+            const timer = window.setTimeout(resolve, ms);
+            timers.push(timer);
+        });
+
+        (async () => {
+            let index = 0;
+            while (!stopped) {
+                const current = phrases[index];
+                for (let i = 0; i <= current.length && !stopped; i += 1) {
+                    textNode.textContent = current.slice(0, i);
+                    await wait(60);
+                }
+                await wait(1200);
+                for (let i = current.length; i >= 0 && !stopped; i -= 1) {
+                    textNode.textContent = current.slice(0, i);
+                    await wait(30);
+                }
+                index = (index + 1) % phrases.length;
+            }
+        })();
+
+        window.__coverTypewriterCleanup = () => {
+            stopped = true;
+            timers.forEach((timer) => window.clearTimeout(timer));
+        };
+    }
+
+    document.addEventListener('astro:page-load', initCoverTypewriter);
+    document.addEventListener('astro:after-swap', initCoverTypewriter);
+</script>

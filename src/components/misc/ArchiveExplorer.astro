@@ -1,0 +1,1138 @@
+---
+import { getRelativeLocaleUrl } from '@utils/url-utils';
+import type { BlogEntryWithLocaleStatus } from '@utils/content-utils';
+import {
+  buildCategoriesMap,
+  buildSubcategoriesByRoot,
+  buildTopLevelCategoriesMap,
+  getPostCategories,
+} from '@utils/blog-taxonomy';
+import { buildPostPreview, truncateText } from '@utils/post-preview';
+import { estimateReadingMinutes } from '@utils/reading-time';
+
+interface Props {
+  posts: BlogEntryWithLocaleStatus[];
+  language: string;
+  initialCategory?: string;
+}
+
+const {
+  posts,
+  language,
+  initialCategory = '',
+} = Astro.props;
+
+const visiblePosts = posts;
+const categoriesMap = buildCategoriesMap(visiblePosts, language);
+const topLevelCategoriesMap = buildTopLevelCategoriesMap(visiblePosts, language);
+const subcategoriesByRoot = buildSubcategoriesByRoot(visiblePosts, language);
+const topLevelCategories = Object.keys(topLevelCategoriesMap).sort(
+  (a, b) => topLevelCategoriesMap[b].length - topLevelCategoriesMap[a].length || a.localeCompare(b),
+);
+
+const archiveTimeZone = language.toLowerCase().startsWith('zh') ? 'Asia/Shanghai' : 'UTC';
+const dateFormatter = new Intl.DateTimeFormat(language, {
+  month: language.toLowerCase().startsWith('zh') ? 'numeric' : 'short',
+  day: 'numeric',
+  timeZone: archiveTimeZone,
+});
+
+const yearFormatter = new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric',
+  timeZone: archiveTimeZone,
+});
+
+const monthNumericFormatter = new Intl.DateTimeFormat('en-CA', {
+  month: '2-digit',
+  timeZone: archiveTimeZone,
+});
+
+const monthLabelFormatter = new Intl.DateTimeFormat(language, {
+  month: language.toLowerCase().startsWith('zh') ? 'long' : 'long',
+  timeZone: archiveTimeZone,
+});
+
+// 分类配色：根据分类名哈希到 0-7 的色相槽，保证同分类同色
+const categoryColorSlots = new Map<string, number>();
+let nextColorSlot = 0;
+function getCategoryColorSlot(category: string): number {
+  const key = category.toLowerCase();
+  if (!categoryColorSlots.has(key)) {
+    categoryColorSlots.set(key, nextColorSlot % 8);
+    nextColorSlot++;
+  }
+  return categoryColorSlots.get(key)!;
+}
+
+// 按年 -> 月 -> 文章 三级分组
+const postsByYearMonth = visiblePosts.reduce((acc, post) => {
+  const year = yearFormatter.format(post.data.pubDate);
+  const monthKey = monthNumericFormatter.format(post.data.pubDate);
+  if (!acc[year]) acc[year] = {};
+  if (!acc[year][monthKey]) acc[year][monthKey] = { label: monthLabelFormatter.format(post.data.pubDate), posts: [] };
+  acc[year][monthKey].posts.push(post);
+  return acc;
+}, {} as Record<string, Record<string, { label: string; posts: BlogEntryWithLocaleStatus[] }>>);
+
+// 每年总文章数
+const yearPostCounts: Record<string, number> = {};
+for (const [year, months] of Object.entries(postsByYearMonth)) {
+  yearPostCounts[year] = Object.values(months).reduce((sum, m) => sum + m.posts.length, 0);
+}
+
+const allLabel = language.toLowerCase().startsWith('zh') ? '全部文章' : 'All posts';
+const filterTitle = language.toLowerCase().startsWith('zh') ? '标签筛选' : 'Filter by tags';
+const filterHint = language.toLowerCase().startsWith('zh') ? '点击标签可筛选对应分类文章' : 'Use tags to filter posts by category';
+const emptyLabel = language.toLowerCase().startsWith('zh') ? '当前筛选下暂无文章' : 'No posts match this filter';
+const categoryLabel = language.toLowerCase().startsWith('zh') ? '分类' : 'Category';
+const backLabel = language.toLowerCase().startsWith('zh') ? '← 返回' : '← Back';
+const minLabel = language.toLowerCase().startsWith('zh') ? '分钟' : 'min';
+const postsLabel = language.toLowerCase().startsWith('zh') ? '篇' : 'posts';
+const collapseHint = language.toLowerCase().startsWith('zh') ? '点击折叠/展开' : 'Click to fold/unfold';
+
+const serializedTopLevelCategories = JSON.stringify(topLevelCategories);
+const serializedSubcategoriesByRoot = JSON.stringify(
+  Object.fromEntries(
+    Object.entries(subcategoriesByRoot).map(([k, v]) => [k, [...v]])
+  )
+);
+const serializedCategoryCounts = JSON.stringify(
+  Object.fromEntries(
+    Object.entries(categoriesMap).map(([k, v]) => [k, v.length])
+  )
+);
+---
+
+<div class="archive-explorer grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]" data-initial-category={initialCategory.toLowerCase()} data-top-level-categories={serializedTopLevelCategories} data-subcategories-by-root={serializedSubcategoriesByRoot} data-category-counts={serializedCategoryCounts} data-lang={language}>
+  <section class="min-w-0 space-y-8">
+    {Object.keys(postsByYearMonth).sort().reverse().map((year) => (
+      <section class="archive-explorer__year space-y-3" data-archive-year>
+        <button
+          type="button"
+          class="archive-explorer__year-header sticky top-20 z-10 inline-flex items-center gap-2 border-l-4 border-[var(--link-color)] pl-3 text-2xl font-bold text-[var(--text-color)] backdrop-blur"
+          data-archive-year-toggle
+          title={collapseHint}
+          aria-expanded="true"
+        >
+          <span class="archive-explorer__fold-icon" data-fold-icon aria-hidden="true">▾</span>
+          <span>{year}</span>
+          <span class="archive-explorer__year-count text-sm font-normal text-[var(--text-color)]/55">{yearPostCounts[year]} {postsLabel}</span>
+        </button>
+
+        <div class="archive-explorer__year-content space-y-4" data-archive-year-content>
+          {Object.keys(postsByYearMonth[year]).sort().reverse().map((monthKey) => {
+            const monthData = postsByYearMonth[year][monthKey];
+            return (
+              <section class="archive-explorer__month space-y-2" data-archive-month>
+                <button
+                  type="button"
+                  class="archive-explorer__month-header inline-flex items-center gap-2 rounded-lg px-2 py-1 text-base font-semibold text-[var(--text-color)]/80 transition-colors hover:bg-[var(--hover-bg-color)] hover:text-[var(--text-color)]"
+                  data-archive-month-toggle
+                  title={collapseHint}
+                  aria-expanded="true"
+                >
+                  <span class="archive-explorer__fold-icon archive-explorer__fold-icon--sm" data-fold-icon aria-hidden="true">▸</span>
+                  <span>{monthData.label}</span>
+                  <span class="archive-explorer__month-count text-xs font-normal text-[var(--text-color)]/45">{monthData.posts.length} {postsLabel}</span>
+                </button>
+
+                <div class="archive-explorer__month-content space-y-2" data-archive-month-content>
+                  {monthData.posts.map((post) => {
+                    const postCategories = getPostCategories(post, language);
+                    const postSummary = buildPostPreview(post.data.description || '', post.body || '', 80);
+                    const shortSummary = truncateText(postSummary, 30);
+                    const readingMinutes = estimateReadingMinutes(post.body || '');
+                    return (
+                      <a
+                        href={getRelativeLocaleUrl(language, `/blog/${post.id}`)}
+                        class="archive-explorer__post group block rounded-xl px-3 py-3 text-[var(--text-color)] hover:bg-[var(--hover-bg-color)] active:bg-[var(--hover-bg-color)]"
+                        data-archive-post
+                        data-categories={postCategories.map((category) => category.toLowerCase()).join('||')}
+                      >
+                        <div class="grid items-center gap-3 md:grid-cols-[6.5rem_minmax(0,1fr)_8rem]">
+                          <div class="flex flex-col gap-1 shrink-0">
+                            <div class="text-lg text-[var(--text-color)]/72">
+                              {dateFormatter.format(post.data.pubDate)}
+                            </div>
+                            <div class="archive-explorer__reading-time inline-flex items-center gap-1 text-xs text-[var(--text-color)]/45">
+                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                              </svg>
+                              <span>{readingMinutes} {minLabel}</span>
+                            </div>
+                          </div>
+
+                          <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                              <h3 class="archive-explorer__post-title truncate text-2xl font-medium tracking-[0.01em]" data-summary-short={shortSummary}>{post.data.title}</h3>
+                              {post.isFallback && (
+                                <span class="rounded border border-[var(--border-color)] bg-[var(--hover-bg-color)] px-1.5 py-0.5 text-xs text-[var(--text-color)]/70">fallback</span>
+                              )}
+                            </div>
+                            <div class="archive-explorer__post-summary-wrap">
+                              <p class="archive-explorer__post-summary mt-2 text-sm text-[var(--text-color)]/65">{postSummary}</p>
+                            </div>
+                          </div>
+
+                          <div class="flex flex-wrap justify-start gap-2 text-sm text-[var(--text-color)]/65 md:justify-end">
+                            {postCategories.map((category) => (
+                              <span
+                                class="archive-explorer__post-tag"
+                                style={`--cat-slot: ${getCategoryColorSlot(category)}`}
+                              >
+                                #{category}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </section>
+    ))}
+
+    <div class="archive-explorer__empty hidden rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-color)]/45 px-6 py-10 text-center text-[var(--text-color)]/65" data-archive-empty>
+      {emptyLabel}
+    </div>
+  </section>
+
+  <aside class="archive-explorer__sidebar lg:sticky lg:top-24 lg:self-start">
+    <div class="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-color)]/72 p-4 shadow-sm backdrop-blur">
+      <h2 class="archive-explorer__title text-xl font-bold text-[var(--text-color)]"># {filterTitle.replace(/^标签筛选$|^Filter by tags$/,'分类')}</h2>
+
+      <div class="archive-explorer__view-container mt-4">
+        <div class="archive-explorer__top-view" data-view-state="active">
+          <div class="archive-explorer__chips flex flex-wrap gap-2 lg:flex-col lg:items-stretch">
+            <button type="button" class="archive-explorer__chip" data-filter-category="">
+              <span>{allLabel}</span>
+              <span>{visiblePosts.length}</span>
+            </button>
+            {topLevelCategories.map((category) => (
+              <button type="button" class="archive-explorer__chip archive-explorer__root-chip" data-root-category={category.toLowerCase()}>
+                <span>{category}</span>
+                <span>{topLevelCategoriesMap[category].length}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div class="archive-explorer__sub-view" data-view-state="inactive">
+          <div class="archive-explorer__chips archive-explorer__sub-chips flex flex-wrap gap-2 lg:flex-col lg:items-stretch">
+            <button type="button" class="archive-explorer__chip archive-explorer__back-btn">
+              <span>{backLabel}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+  function initArchiveExplorers() {
+    document.querySelectorAll('.archive-explorer').forEach((root) => {
+      if (!(root instanceof HTMLElement) || root.dataset.bound === 'true') return;
+      root.dataset.bound = 'true';
+
+      const FLIP_DURATION = 600;
+      const FADE_DURATION = 150;
+      const STAGGER_STEP = 22;
+      const MOVE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const ownerId = root.dataset.motionOwner || `archive-${Math.random().toString(36).slice(2)}`;
+      root.dataset.motionOwner = ownerId;
+
+      const buttons = [...root.querySelectorAll('[data-filter-category]')];
+      const rootChips = [...root.querySelectorAll('[data-root-category]')];
+      const posts = [...root.querySelectorAll('[data-archive-post]')];
+      const years = [...root.querySelectorAll('[data-archive-year]')];
+      const months = [...root.querySelectorAll('[data-archive-month]')];
+      const emptyState = root.querySelector('[data-archive-empty]');
+      const topView = root.querySelector('.archive-explorer__top-view');
+      const subView = root.querySelector('.archive-explorer__sub-view');
+      const subChipsContainer = root.querySelector('.archive-explorer__sub-chips');
+      const backBtn = root.querySelector('.archive-explorer__back-btn');
+      const viewTitle = root.querySelector('.archive-explorer__title');
+      const initialCategories = (root.dataset.initialCategory || '')
+        .split(',')
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+      const selectedCategories = new Set();
+
+      const topLevelCategoriesList = (() => {
+        try { return JSON.parse(root.dataset.topLevelCategories || '[]'); }
+        catch { return []; }
+      })();
+      const subcategoriesByRootData = (() => {
+        try { return JSON.parse(root.dataset.subcategoriesByRoot || '{}'); }
+        catch { return {}; }
+      })();
+      const categoryCountsData = (() => {
+        try { return JSON.parse(root.dataset.categoryCounts || '{}'); }
+        catch { return {}; }
+      })();
+
+      let viewState = 'top';
+      let activeRootCategory = '';
+      const pageLang = root.dataset.lang || 'zh-cn';
+
+      const parseUrlCategories = () => {
+        const params = new URLSearchParams(window.location.search);
+        const categoryParam = params.get('category');
+        if (!categoryParam || categoryParam === 'null') return [];
+
+        return categoryParam
+          .split(',')
+          .map((value) => value.trim().toLowerCase())
+          .filter(Boolean);
+      };
+
+      const syncUrlCategories = () => {
+        const url = new URL(window.location.href);
+        if (selectedCategories.size > 0) {
+          url.searchParams.set('category', [...selectedCategories].join(','));
+        } else {
+          url.searchParams.delete('category');
+        }
+        window.history.replaceState({}, '', url);
+      };
+
+      const removeGhosts = () => {
+        document.querySelectorAll(`.archive-explorer__ghost[data-owner='${ownerId}']`).forEach((ghost) => {
+          ghost.remove();
+        });
+      };
+
+      const stopAnimations = (element) => {
+        if (!(element instanceof HTMLElement)) return;
+        element.getAnimations().forEach((animation) => animation.cancel());
+        element.style.opacity = '';
+        element.style.transform = '';
+        element.style.filter = '';
+      };
+
+      const captureRects = (elements) => {
+        const rectMap = new Map();
+        elements.forEach((element) => {
+          if (!(element instanceof HTMLElement) || element.hidden) return;
+          const rect = element.getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) return;
+          rectMap.set(element, rect);
+        });
+        return rectMap;
+      };
+
+      const createGhost = (sourceElement, rect) => {
+        if (prefersReducedMotion || !(sourceElement instanceof HTMLElement)) return;
+        const targetRect = rect || sourceElement.getBoundingClientRect();
+        if (targetRect.width <= 0 || targetRect.height <= 0) return;
+
+        const ghost = sourceElement.cloneNode(true);
+        if (!(ghost instanceof HTMLElement)) return;
+
+        ghost.classList.add('archive-explorer__ghost');
+        ghost.dataset.owner = ownerId;
+        ghost.setAttribute('aria-hidden', 'true');
+        ghost.style.left = `${targetRect.left}px`;
+        ghost.style.top = `${targetRect.top}px`;
+        ghost.style.width = `${targetRect.width}px`;
+        ghost.style.height = `${targetRect.height}px`;
+        document.body.appendChild(ghost);
+
+        ghost
+          .animate(
+            [
+              { opacity: 1, transform: 'translateY(0)', filter: 'blur(0)' },
+              { opacity: 0, transform: 'translateY(-8px)', filter: 'blur(0.8px)' },
+            ],
+            {
+              duration: FADE_DURATION,
+              easing: 'ease',
+              fill: 'both',
+            },
+          )
+          .finished.finally(() => {
+            ghost.remove();
+          });
+      };
+
+      const animateEnter = (element, index = 0, offset = 10) => {
+        if (prefersReducedMotion || !(element instanceof HTMLElement)) return;
+        const delay = Math.min(index, 7) * STAGGER_STEP;
+
+        element
+          .animate(
+            [
+              { opacity: 0, transform: `translateY(${offset}px)`, filter: 'blur(0.6px)' },
+              { opacity: 1, transform: 'translateY(0)', filter: 'blur(0)' },
+            ],
+            {
+              duration: FADE_DURATION + 90,
+              delay,
+              easing: MOVE_EASING,
+              fill: 'both',
+            },
+          )
+          .finished.finally(() => {
+            element.style.opacity = '';
+            element.style.transform = '';
+            element.style.filter = '';
+          });
+      };
+
+      const playFlip = (elements, firstRects) => {
+        if (prefersReducedMotion) return;
+
+        elements.forEach((element) => {
+          if (!(element instanceof HTMLElement) || element.hidden) return;
+          const firstRect = firstRects.get(element);
+          if (!firstRect) return;
+
+          const lastRect = element.getBoundingClientRect();
+          const deltaX = firstRect.left - lastRect.left;
+          const deltaY = firstRect.top - lastRect.top;
+
+          if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) return;
+
+          element.animate(
+            [
+              { transform: `translate(${deltaX}px, ${deltaY}px)` },
+              { transform: 'translate(0, 0)' },
+            ],
+            {
+              duration: FLIP_DURATION,
+              easing: MOVE_EASING,
+            },
+          );
+        });
+      };
+
+      const applyFilter = (activeCategories, animate = true) => {
+        let visibleCount = 0;
+        const activeSet = new Set(activeCategories);
+
+        const firstRects = captureRects([
+          ...years.filter((year) => year instanceof HTMLElement && !year.hidden),
+          ...months.filter((month) => month instanceof HTMLElement && !month.hidden),
+          ...posts.filter((post) => post instanceof HTMLElement && !post.hidden),
+        ]);
+
+        const nextPostVisibility = new Map();
+        const nextMonthVisibility = new Map();
+        const nextYearVisibility = new Map();
+        const enteringPosts = [];
+        const exitingPosts = [];
+        const enteringMonths = [];
+        const exitingMonths = [];
+        const enteringYears = [];
+        const exitingYears = [];
+
+        buttons.forEach((button) => {
+          if (!(button instanceof HTMLElement)) return;
+          const buttonCategory = (button.dataset.filterCategory || '').trim().toLowerCase();
+          const matched = buttonCategory ? activeSet.has(buttonCategory) : activeSet.size === 0;
+          button.dataset.active = matched ? 'true' : 'false';
+          button.setAttribute('aria-pressed', matched ? 'true' : 'false');
+        });
+
+        updateRootChipActiveStates();
+
+        posts.forEach((post) => {
+          if (!(post instanceof HTMLElement)) return;
+          stopAnimations(post);
+
+          const categories = (post.dataset.categories || '')
+            .split('||')
+            .map((value) => value.trim().toLowerCase())
+            .filter(Boolean);
+          const matched = activeSet.size === 0 || categories.some((category) => activeSet.has(category));
+          nextPostVisibility.set(post, matched);
+          if (matched && post.hidden) enteringPosts.push(post);
+          if (!matched && !post.hidden) exitingPosts.push(post);
+          if (matched) visibleCount += 1;
+        });
+
+        months.forEach((month) => {
+          if (!(month instanceof HTMLElement)) return;
+          stopAnimations(month);
+
+          const hasVisiblePost = [...month.querySelectorAll('[data-archive-post]')].some((post) => {
+            if (!(post instanceof HTMLElement)) return false;
+            return nextPostVisibility.get(post) === true;
+          });
+
+          nextMonthVisibility.set(month, hasVisiblePost);
+          if (hasVisiblePost && month.hidden) enteringMonths.push(month);
+          if (!hasVisiblePost && !month.hidden) exitingMonths.push(month);
+        });
+
+        years.forEach((year) => {
+          if (!(year instanceof HTMLElement)) return;
+          stopAnimations(year);
+
+          const yearMonths = [...year.querySelectorAll('[data-archive-month]')];
+          const hasVisibleMonth = yearMonths.some((month) => {
+            if (!(month instanceof HTMLElement)) return false;
+            return nextMonthVisibility.get(month) === true;
+          });
+
+          nextYearVisibility.set(year, hasVisibleMonth);
+          if (hasVisibleMonth && year.hidden) enteringYears.push(year);
+          if (!hasVisibleMonth && !year.hidden) exitingYears.push(year);
+        });
+
+        if (animate) {
+          removeGhosts();
+          exitingPosts.forEach((post) => {
+            createGhost(post);
+          });
+          exitingMonths.forEach((month) => {
+            const monthHeader = month.querySelector('.archive-explorer__month-header');
+            if (monthHeader instanceof HTMLElement) {
+              createGhost(monthHeader);
+            }
+          });
+          exitingYears.forEach((year) => {
+            const yearHeader = year.querySelector('.archive-explorer__year-header');
+            if (yearHeader instanceof HTMLElement) {
+              createGhost(yearHeader);
+            }
+          });
+        }
+
+        posts.forEach((post) => {
+          if (!(post instanceof HTMLElement)) return;
+          post.hidden = !(nextPostVisibility.get(post) === true);
+        });
+
+        months.forEach((month) => {
+          if (!(month instanceof HTMLElement)) return;
+          month.hidden = !(nextMonthVisibility.get(month) === true);
+        });
+
+        years.forEach((year) => {
+          if (!(year instanceof HTMLElement)) return;
+          year.hidden = !(nextYearVisibility.get(year) === true);
+        });
+
+        if (emptyState instanceof HTMLElement) {
+          emptyState.hidden = visibleCount > 0;
+        }
+
+        if (animate) {
+          const visibleElements = [
+            ...years.filter((year) => year instanceof HTMLElement && !year.hidden),
+            ...months.filter((month) => month instanceof HTMLElement && !month.hidden),
+            ...posts.filter((post) => post instanceof HTMLElement && !post.hidden),
+          ];
+          playFlip(visibleElements, firstRects);
+
+          enteringYears.forEach((year, index) => {
+            animateEnter(year, index, 8);
+          });
+
+          enteringMonths.forEach((month, index) => {
+            animateEnter(month, index, 8);
+          });
+
+          enteringPosts.forEach((post, index) => {
+            animateEnter(post, index, 10);
+          });
+        }
+      };
+
+      const setSelectedCategories = (nextCategories, animate = true, syncUrl = true) => {
+        selectedCategories.clear();
+        nextCategories.forEach((category) => {
+          const normalized = String(category || '').trim().toLowerCase();
+          if (normalized) {
+            selectedCategories.add(normalized);
+          }
+        });
+
+        applyFilter([...selectedCategories], animate);
+        if (syncUrl) {
+          syncUrlCategories();
+        }
+      };
+
+      const toggleCategory = (category) => {
+        const normalized = String(category || '').trim().toLowerCase();
+
+        if (!normalized) {
+          selectedCategories.clear();
+        } else if (selectedCategories.has(normalized)) {
+          selectedCategories.delete(normalized);
+        } else {
+          selectedCategories.add(normalized);
+        }
+
+        applyFilter([...selectedCategories], true);
+        syncUrlCategories();
+        updateSubcategoryActiveStates();
+      };
+
+      const renderSubcategoryButtons = (subcategories) => {
+        if (!subChipsContainer) return;
+        const backBtnEl = subChipsContainer.querySelector('.archive-explorer__back-btn');
+        subChipsContainer.innerHTML = '';
+        if (backBtnEl) subChipsContainer.appendChild(backBtnEl);
+
+        if (!subcategories.length) {
+          const emptyMsg = document.createElement('div');
+          emptyMsg.className = 'archive-explorer__no-sub text-sm text-[var(--text-color)]/50 px-2 py-1';
+          emptyMsg.textContent = pageLang.startsWith('zh') ? '暂无子分类' : 'No subcategories';
+          subChipsContainer.appendChild(emptyMsg);
+          return;
+        }
+
+        subcategories.forEach((subcategory) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'archive-explorer__chip';
+          btn.dataset.filterCategory = subcategory.toLowerCase();
+          const count = categoryCountsData[subcategory] || 0;
+          btn.innerHTML = `<span>${subcategory}</span><span>${count}</span>`;
+          btn.addEventListener('click', () => {
+            if (!(btn instanceof HTMLElement)) return;
+            toggleCategory(btn.dataset.filterCategory || '');
+          });
+          subChipsContainer.appendChild(btn);
+        });
+      };
+
+      const updateSubcategoryActiveStates = () => {
+        if (!subChipsContainer) return;
+        subChipsContainer.querySelectorAll('[data-filter-category]').forEach((btn) => {
+          if (!(btn instanceof HTMLElement)) return;
+          const category = (btn.dataset.filterCategory || '').trim().toLowerCase();
+          const matched = category ? selectedCategories.has(category) : selectedCategories.size === 0;
+          btn.dataset.active = matched ? 'true' : 'false';
+          btn.setAttribute('aria-pressed', matched ? 'true' : 'false');
+        });
+      };
+
+      const updateRootChipActiveStates = () => {
+        rootChips.forEach((chip) => {
+          if (!(chip instanceof HTMLElement)) return;
+          const cat = (chip.dataset.rootCategory || '').trim().toLowerCase();
+          const matched = cat ? selectedCategories.has(cat) : selectedCategories.size === 0;
+          chip.dataset.active = matched ? 'true' : 'false';
+          chip.setAttribute('aria-pressed', matched ? 'true' : 'false');
+        });
+      };
+
+      const animateViewSwitch = (fromView, toView, direction = 'forward') => {
+        if (!fromView || !toView) return;
+
+        if (prefersReducedMotion) {
+          fromView.dataset.viewState = 'inactive';
+          toView.dataset.viewState = 'active';
+          return;
+        }
+
+        const translateY = direction === 'forward' ? -8 : 8;
+        fromView.dataset.viewState = 'inactive';
+        fromView
+          .animate(
+            [
+              { opacity: 1, transform: 'translateY(0)' },
+              { opacity: 0, transform: `translateY(${translateY}px)` },
+            ],
+            { duration: 220, easing: 'ease', fill: 'both' },
+          )
+          .finished.then(() => {
+            toView.dataset.viewState = 'active';
+            toView
+              .animate(
+                [
+                  { opacity: 0, transform: `translateY(${-translateY}px)` },
+                  { opacity: 1, transform: 'translateY(0)' },
+                ],
+                { duration: 220, easing: 'ease', fill: 'both' },
+              )
+              .finished.finally(() => {
+                toView.style.opacity = '';
+                toView.style.transform = '';
+              });
+          });
+      };
+
+      const enterSubView = (rootCategory) => {
+        if (viewState === 'sub') return;
+        viewState = 'sub';
+        activeRootCategory = rootCategory;
+
+        selectedCategories.clear();
+        const subcategories = subcategoriesByRootData[rootCategory] || [];
+        renderSubcategoryButtons(subcategories);
+        applyFilter([], true);
+        syncUrlCategories();
+
+        if (viewTitle) {
+          const displayName = topLevelCategoriesList.find(
+            (cat) => cat.toLowerCase() === rootCategory
+          ) || rootCategory;
+          viewTitle.textContent = `# ${displayName}`;
+        }
+
+        animateViewSwitch(topView, subView, 'forward');
+      };
+
+      const exitSubView = () => {
+        if (viewState === 'top') return;
+        viewState = 'top';
+        activeRootCategory = '';
+
+        selectedCategories.clear();
+        applyFilter([], true);
+        syncUrlCategories();
+
+        if (viewTitle) {
+          viewTitle.textContent = `# ${pageLang.startsWith('zh') ? '分类' : 'Category'}`;
+        }
+
+        animateViewSwitch(subView, topView, 'backward');
+      };
+
+      rootChips.forEach((chip) => {
+        chip.addEventListener('click', () => {
+          if (!(chip instanceof HTMLElement)) return;
+          const rootCategory = chip.dataset.rootCategory || '';
+          if (!rootCategory) return;
+
+          const subcategories = subcategoriesByRootData[rootCategory] || [];
+          if (subcategories.length > 0) {
+            enterSubView(rootCategory);
+          } else {
+            if (selectedCategories.has(rootCategory)) {
+              selectedCategories.clear();
+            } else {
+              selectedCategories.clear();
+              selectedCategories.add(rootCategory);
+            }
+            applyFilter([...selectedCategories], true);
+            syncUrlCategories();
+          }
+        });
+      });
+
+      if (backBtn) {
+        backBtn.addEventListener('click', exitSubView);
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+          if (!(button instanceof HTMLElement)) return;
+          toggleCategory(button.dataset.filterCategory || '');
+        });
+      });
+
+      // ===== 折叠/展开：年 =====
+      years.forEach((year) => {
+        if (!(year instanceof HTMLElement)) return;
+        const toggle = year.querySelector('[data-archive-year-toggle]');
+        const content = year.querySelector('[data-archive-year-content]');
+        if (!toggle || !content) return;
+        if (toggle.dataset.bound === 'true') return;
+        toggle.dataset.bound = 'true';
+
+        toggle.addEventListener('click', () => {
+          const collapsed = year.dataset.collapsed === 'true';
+          year.dataset.collapsed = collapsed ? 'false' : 'true';
+          toggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+          if (prefersReducedMotion) {
+            content.classList.toggle('archive-explorer__hidden', !collapsed);
+          } else {
+            if (collapsed) {
+              content.classList.remove('archive-explorer__hidden');
+              content.animate(
+                [
+                  { opacity: 0, maxHeight: 0 },
+                  { opacity: 1, maxHeight: '9999px' },
+                ],
+                { duration: 280, easing: 'ease', fill: 'both' }
+              ).finished.finally(() => {
+                content.style.opacity = '';
+                content.style.maxHeight = '';
+              });
+            } else {
+              const anim = content.animate(
+                [
+                  { opacity: 1, maxHeight: content.scrollHeight + 'px' },
+                  { opacity: 0, maxHeight: 0 },
+                ],
+                { duration: 280, easing: 'ease', fill: 'both' }
+              );
+              anim.finished.finally(() => {
+                content.classList.add('archive-explorer__hidden');
+                content.style.opacity = '';
+                content.style.maxHeight = '';
+              });
+            }
+          }
+        });
+      });
+
+      // ===== 折叠/展开：月 =====
+      months.forEach((month) => {
+        if (!(month instanceof HTMLElement)) return;
+        const toggle = month.querySelector('[data-archive-month-toggle]');
+        const content = month.querySelector('[data-archive-month-content]');
+        if (!toggle || !content) return;
+        if (toggle.dataset.bound === 'true') return;
+        toggle.dataset.bound = 'true';
+
+        toggle.addEventListener('click', () => {
+          const collapsed = month.dataset.collapsed === 'true';
+          month.dataset.collapsed = collapsed ? 'false' : 'true';
+          toggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+          if (prefersReducedMotion) {
+            content.classList.toggle('archive-explorer__hidden', !collapsed);
+          } else {
+            if (collapsed) {
+              content.classList.remove('archive-explorer__hidden');
+              content.animate(
+                [
+                  { opacity: 0, transform: 'translateY(-4px)' },
+                  { opacity: 1, transform: 'translateY(0)' },
+                ],
+                { duration: 200, easing: 'ease', fill: 'both' }
+              ).finished.finally(() => {
+                content.style.opacity = '';
+                content.style.transform = '';
+              });
+            } else {
+              const anim = content.animate(
+                [
+                  { opacity: 1, transform: 'translateY(0)' },
+                  { opacity: 0, transform: 'translateY(-4px)' },
+                ],
+                { duration: 200, easing: 'ease', fill: 'both' }
+              );
+              anim.finished.finally(() => {
+                content.classList.add('archive-explorer__hidden');
+                content.style.opacity = '';
+                content.style.transform = '';
+              });
+            }
+          }
+        });
+      });
+
+      const urlCategories = parseUrlCategories();
+      if (urlCategories.length > 0) {
+        setSelectedCategories(urlCategories, false, false);
+      } else if (initialCategories.length > 0) {
+        const firstInitial = initialCategories[0];
+        const hasSubcategories = subcategoriesByRootData[firstInitial] && subcategoriesByRootData[firstInitial].length > 0;
+        if (hasSubcategories) {
+          enterSubView(firstInitial);
+        } else {
+          setSelectedCategories(initialCategories, false, false);
+          updateRootChipActiveStates();
+        }
+      } else {
+        setSelectedCategories([], false, false);
+      }
+
+      const handlePopState = () => {
+        const urlCats = parseUrlCategories();
+        if (urlCats.length === 0 && viewState === 'sub') {
+          exitSubView();
+        } else {
+          setSelectedCategories(urlCats, false, false);
+        }
+      };
+
+      window.addEventListener('popstate', handlePopState);
+    });
+  }
+
+  initArchiveExplorers();
+  document.addEventListener('astro:page-load', initArchiveExplorers);
+</script>
+
+<style is:global>
+  .archive-explorer__chips {
+    position: relative;
+  }
+
+  .archive-explorer__chip {
+    --chip-bg: color-mix(in srgb, var(--bg-color) 86%, transparent);
+    --chip-text: var(--text-color);
+    --chip-border: var(--border-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    border: 1px solid var(--chip-border);
+    border-radius: 999px;
+    background: var(--chip-bg);
+    color: var(--chip-text);
+    padding: 0.42rem 0.72rem;
+    text-align: left;
+    transition: border-color 0.22s ease, background-color 0.22s ease, color 0.22s ease, transform 0.22s ease;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 650;
+  }
+
+  .archive-explorer__chip:hover {
+    border-color: var(--link-color);
+    background: color-mix(in srgb, var(--hover-bg-color) 72%, transparent);
+    transform: translateX(2px);
+  }
+
+  .archive-explorer__chip[data-active='true'] {
+    border-color: var(--link-color);
+    background: var(--link-color);
+    color: #ffffff;
+    transform: translateX(0);
+  }
+
+  .archive-explorer__chip[data-active='true'] span:last-child {
+    background: var(--chip-badge-active-bg);
+    color: var(--chip-badge-active-color);
+    border-color: var(--chip-badge-active-border);
+  }
+
+  .archive-explorer__chip span:last-child {
+    min-width: 1.7rem;
+    border-radius: 999px;
+    background: var(--chip-badge-bg);
+    color: var(--chip-badge-color);
+    border: 1px solid var(--chip-badge-border);
+    padding: 0.08rem 0.45rem;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .archive-explorer__view-container {
+    position: relative;
+    min-height: 3rem;
+  }
+
+  .archive-explorer__top-view,
+  .archive-explorer__sub-view {
+    transition: opacity 220ms ease, transform 220ms ease;
+  }
+
+  .archive-explorer__top-view[data-view-state='inactive'],
+  .archive-explorer__sub-view[data-view-state='inactive'] {
+    display: none;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  .archive-explorer__top-view[data-view-state='active'],
+  .archive-explorer__sub-view[data-view-state='active'] {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .archive-explorer__back-btn {
+    justify-content: flex-start;
+    font-weight: 700;
+  }
+
+  .archive-explorer__back-btn:hover {
+    transform: translateX(-2px);
+  }
+
+  .archive-explorer__root-chip {
+    cursor: pointer;
+  }
+
+  .archive-explorer__no-sub {
+    text-align: center;
+    padding: 0.5rem 0;
+  }
+
+  .archive-explorer__post-tag {
+    --cat-slot: 0;
+    --cat-hue: calc(var(--cat-slot) * 45);
+    color: var(--cat-tag-color);
+    background: var(--cat-tag-bg);
+    border: 1px solid var(--cat-tag-border);
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition: color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  }
+
+  .archive-explorer__post-title {
+    position: relative;
+    transition: color 0.2s ease, transform 0.2s ease, padding-left 0.2s ease, font-weight 0.2s ease;
+  }
+
+  .archive-explorer__post-summary-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .archive-explorer__post-summary {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 0;
+    opacity: 0;
+    transform: translateY(-3px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+  }
+
+  .archive-explorer__post:hover .archive-explorer__post-summary-wrap,
+  .archive-explorer__post:focus-visible .archive-explorer__post-summary-wrap {
+    grid-template-rows: 1fr;
+  }
+
+  .archive-explorer__post:hover .archive-explorer__post-summary,
+  .archive-explorer__post:focus-visible .archive-explorer__post-summary {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .archive-explorer__post-title::after {
+    content: attr(data-summary-short);
+    position: absolute;
+    left: 0;
+    top: calc(100% + 0.4rem);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-3px);
+    background: color-mix(in srgb, var(--bg-color) 94%, var(--hover-bg-color));
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    white-space: normal;
+    max-width: min(28rem, 80vw);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--shadow-color) 60%, transparent);
+    z-index: 20;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+
+  .archive-explorer__post-title:hover::after,
+  .archive-explorer__post-title:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .archive-explorer__ghost {
+    position: fixed;
+    margin: 0 !important;
+    pointer-events: none;
+    z-index: 80;
+    overflow: hidden;
+    contain: layout style paint;
+  }
+
+  .archive-explorer__post {
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .archive-explorer__post:hover .archive-explorer__post-title {
+    color: var(--link-color);
+    padding-left: 0.5rem;
+    font-weight: 700;
+  }
+
+  .archive-explorer__post:hover .archive-explorer__post-tag {
+    transform: translateX(-0.15rem);
+  }
+
+  .archive-explorer__post[hidden],
+  [data-archive-year][hidden],
+  [data-archive-month][hidden],
+  .archive-explorer__empty[hidden] {
+    display: none !important;
+  }
+
+  /* 折叠/展开 */
+  .archive-explorer__year-header,
+  .archive-explorer__month-header {
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    width: 100%;
+    text-align: left;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .archive-explorer__year-header {
+    background: color-mix(in srgb, var(--bg-color) 72%, transparent);
+    border-radius: 0.5rem;
+  }
+
+  .archive-explorer__year-header:hover,
+  .archive-explorer__month-header:hover {
+    color: var(--link-color);
+  }
+
+  .archive-explorer__fold-icon {
+    display: inline-block;
+    transition: transform 0.22s ease;
+    font-size: 0.8em;
+    color: var(--text-color);
+    opacity: 0.55;
+  }
+
+  .archive-explorer__fold-icon--sm {
+    font-size: 0.7em;
+  }
+
+  .archive-explorer__year[data-collapsed='true'] .archive-explorer__fold-icon,
+  .archive-explorer__month[data-collapsed='true'] .archive-explorer__fold-icon {
+    transform: rotate(-90deg);
+  }
+
+  .archive-explorer__year[data-collapsed='true'] .archive-explorer__year-content,
+  .archive-explorer__month[data-collapsed='true'] .archive-explorer__month-content {
+    display: none;
+  }
+
+  .archive-explorer__hidden {
+    display: none !important;
+  }
+
+  .archive-explorer__reading-time {
+    pointer-events: none;
+  }
+
+  @media (max-width: 1024px) {
+    .archive-explorer__sidebar {
+      order: -1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .archive-explorer__chip,
+    .archive-explorer__post,
+    .archive-explorer__year-header,
+    .archive-explorer__month-header,
+    .archive-explorer__fold-icon {
+      transition: none !important;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .archive-explorer__post {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+</style>

@@ -1,0 +1,93 @@
+---
+import AboutMarkdown from '@/components/admin/settings/AboutMarkdown.astro';
+import AboutTimeline from '@/components/admin/settings/AboutTimeline.astro';
+import AboutPersonal from '@/components/admin/settings/AboutPersonal.astro';
+import AboutProfile from '@/components/admin/settings/AboutProfile.astro';
+import ToolsLinks from '@/components/admin/settings/ToolsLinks.astro';
+import SiteSlogan from '@/components/admin/settings/SiteSlogan.astro';
+import HeaderContact from '@/components/admin/settings/HeaderContact.astro';
+import BlogGuide from '@/components/admin/settings/BlogGuide.astro';
+
+const subTabs = [
+  { key: 'about-markdown', label: '关于页文本' },
+  { key: 'about-timeline', label: '时间线' },
+  { key: 'about-personal', label: '个人介绍' },
+  { key: 'about-profile', label: '特质' },
+  { key: 'tools-links', label: '工具链接' },
+  { key: 'site-slogan', label: '标语' },
+  { key: 'header-contact', label: '联系方式' },
+  { key: 'blog-guide', label: '博客介绍' },
+];
+---
+<div class="admin-site-settings space-y-4">
+  <div class="admin-subtabs flex gap-1 overflow-x-auto border-b border-[var(--border-color)]">
+    {subTabs.map((tab, idx) => (
+      <button
+        type="button"
+        class="admin-subtab whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 border-transparent transition-colors duration-[0.32s] [transition-timing-function:cubic-bezier(0.23,1,0.320,1)]"
+        data-subtab={tab.key}
+        aria-selected={idx === 0 ? 'true' : 'false'}
+      >{tab.label}</button>
+    ))}
+  </div>
+
+  <div class="admin-subpanels">
+    <div data-subpanel="about-markdown" class="admin-subpanel"><AboutMarkdown /></div>
+    <div data-subpanel="about-timeline" class="admin-subpanel hidden"><AboutTimeline /></div>
+    <div data-subpanel="about-personal" class="admin-subpanel hidden"><AboutPersonal /></div>
+    <div data-subpanel="about-profile" class="admin-subpanel hidden"><AboutProfile /></div>
+    <div data-subpanel="tools-links" class="admin-subpanel hidden"><ToolsLinks /></div>
+    <div data-subpanel="site-slogan" class="admin-subpanel hidden"><SiteSlogan /></div>
+    <div data-subpanel="header-contact" class="admin-subpanel hidden"><HeaderContact /></div>
+    <div data-subpanel="blog-guide" class="admin-subpanel hidden"><BlogGuide /></div>
+  </div>
+</div>
+
+<style>
+  .admin-subtab {
+    background: var(--bg-color);
+    color: var(--text-color);
+  }
+  .admin-subtab:hover {
+    color: var(--link-color);
+  }
+  .admin-subtab[aria-selected="true"] {
+    color: var(--link-color);
+    border-bottom-color: var(--link-color);
+  }
+  /* 隐藏滚动条但保留滚动能力 */
+  .admin-subtabs::-webkit-scrollbar {
+    height: 4px;
+  }
+  .admin-subtabs::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+  }
+</style>
+
+<script>
+  (function () {
+    const container = document.querySelector('.admin-site-settings');
+    if (!container) return;
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[data-subtab]'));
+    const panels = Array.from(container.querySelectorAll<HTMLElement>('[data-subpanel]'));
+
+    function activate(key: string) {
+      tabs.forEach((tab) => {
+        const active = tab.dataset.subtab === key;
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      panels.forEach((panel) => {
+        const active = panel.dataset.subpanel === key;
+        panel.classList.toggle('hidden', !active);
+      });
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const key = tab.dataset.subtab;
+        if (key) activate(key);
+      });
+    });
+  })();
+</script>

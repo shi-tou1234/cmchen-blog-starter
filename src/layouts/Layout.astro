@@ -1,0 +1,303 @@
+---
+import { siteConfig } from '@/config';
+import "@styles/global.css"
+import 'katex/dist/katex.min.css';
+import 'aos/dist/aos.css';
+import { ClientRouter } from "astro:transitions";
+
+interface Props {
+  title: string;
+  lang?: string;
+  description?: string;
+}
+const { title, lang, description } = Astro.props;
+
+const pageTitle = title;
+const pageLang = lang || "zh-cn";
+---
+
+<!DOCTYPE html>
+<html lang={pageLang} class="min-h-full">
+<head>
+    <script is:inline>
+        (function() {
+        // 只负责「首屏就位」：按已保存的明暗主题或跟随系统设置好 data-theme，避免闪白
+        const savedTheme = localStorage.getItem('theme');
+        let theme;
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          theme = savedTheme;
+        } else {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, max-image-preview:none">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, max-image-preview:none">
+    <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <link rel="icon" href={siteConfig.favicon} type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.font.im" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.font.im/css2?family=Noto+Serif+SC:wght@400;700&display=swap">
+    <link rel="preload" as="style" href="https://fonts.font.im/css2?family=EB+Garamond&display=swap">
+    <link rel="stylesheet" href="https://fonts.font.im/css2?family=Noto+Serif+SC:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.font.im/css2?family=EB+Garamond&display=swap">
+    <link rel="stylesheet" href="https://fonts.font.im/css2?family=ZCOOL+KuaiLe&family=Ma+Shan+Zheng&family=ZCOOL+QingKe+HuangYou&display=swap">
+    <title>{pageTitle}</title>
+    {description && <meta name="description" content={description} />}
+    <ClientRouter />
+</head>
+<body class="min-h-full bg-[var(--bg-color)]">
+
+    <div id="global-progress-bar" class="global-progress-bar" aria-hidden="true"></div>
+
+    <div id="loading-overlay" aria-hidden="true">
+      <div class="loader"></div>
+    </div>
+
+    <slot />
+    
+    <script is:inline>
+        let loaderTimeout;
+        let loaderWatchdog;
+
+        function showLoadingOverlay() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.style.display = 'flex';
+        }
+
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function clearLoaderTimers() {
+            clearTimeout(loaderTimeout);
+            clearTimeout(loaderWatchdog);
+        }
+
+        let progressTicking = false;
+        let progressBar = null;
+
+        function updateGlobalProgress() {
+            if (!progressBar) {
+                progressBar = document.getElementById('global-progress-bar');
+                if (!progressBar) return;
+            }
+            const isBlogPost = /\/blog\/.+/.test(window.location.pathname);
+            if (!isBlogPost) {
+                progressBar.style.width = '0%';
+                progressBar.classList.remove('is-visible');
+                progressTicking = false;
+                return;
+            }
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            if (docHeight <= 0) {
+                progressBar.style.width = '0%';
+                progressTicking = false;
+                return;
+            }
+            const percent = Math.min(Math.max(Math.round((scrollTop / docHeight) * 100), 0), 100);
+            progressBar.style.width = `${percent}%`;
+            progressBar.classList.add('is-visible');
+            progressTicking = false;
+        }
+
+        function onGlobalProgressScroll() {
+            if (!progressTicking) {
+                window.requestAnimationFrame(updateGlobalProgress);
+                progressTicking = true;
+            }
+        }
+
+        window.addEventListener('scroll', onGlobalProgressScroll, { passive: true });
+        updateGlobalProgress();
+
+        // 1. 开始准备跳转
+        document.addEventListener('astro:before-preparation', () => {
+            clearLoaderTimers();
+            loaderTimeout = setTimeout(() => {
+              showLoadingOverlay();
+            }, 200);
+
+            // 兜底：任何异常场景都不要让遮罩永久阻塞交互
+            loaderWatchdog = setTimeout(() => {
+              hideLoadingOverlay();
+            }, 8000);
+        });
+
+        // 2. 页面内容交换完成（DOM 已更新）
+        document.addEventListener('astro:after-swap', () => {
+            clearLoaderTimers();
+            hideLoadingOverlay();
+            updateGlobalProgress();
+        });
+
+        // 3. 兜底方案：页面完全加载完成（包括资源）
+        document.addEventListener('astro:page-load', () => {
+            clearLoaderTimers();
+            hideLoadingOverlay();
+            updateGlobalProgress();
+        });
+
+        // 额外兜底：导航异常、脚本报错后恢复可交互状态
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            hideLoadingOverlay();
+          }
+        });
+
+        window.addEventListener('pageshow', hideLoadingOverlay);
+        window.addEventListener('error', hideLoadingOverlay);
+        window.addEventListener('unhandledrejection', hideLoadingOverlay);
+
+
+        </script>
+</body>
+</html>
+
+<style is:global>
+  .global-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--link-color), color-mix(in srgb, var(--link-color) 60%, var(--text-color)));
+    z-index: var(--z-top);
+    transition: width 0.1s linear;
+    pointer-events: none;
+    opacity: 0;
+    box-shadow: 0 0 18px color-mix(in srgb, var(--link-color) 28%, transparent);
+  }
+
+  .global-progress-bar.is-visible {
+    opacity: 1;
+  }
+
+  @keyframes fadeInSoft {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .transition-fade {
+    animation: fadeInSoft 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .transition-fade {
+      animation: none;
+    }
+  }
+
+  #loading-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--overlay-bg);
+    z-index: var(--z-loading);
+    backdrop-filter: blur(2px);
+    animation: fadeInOverlay 0.3s ease-out;
+    pointer-events: auto;
+  }
+
+  @keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .loader {
+    position: relative;
+    width: 120px;
+    height: 90px;
+    margin: 0 auto;
+  }
+
+  .loader:before {
+    content: "";
+    position: absolute;
+    bottom: 30px;
+    left: 50px;
+    height: 30px;
+    width: 30px;
+    border-radius: 50%;
+    background: var(--link-color);
+    animation: loading-bounce 0.5s ease-in-out infinite alternate;
+  }
+
+  .loader:after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 7px;
+    width: 45px;
+    border-radius: 4px;
+    box-shadow: 0 5px 0 var(--text-color), -35px 50px 0 var(--text-color), -70px 95px 0 var(--text-color);
+    animation: loading-step 1s ease-in-out infinite;
+  }
+
+  @keyframes loading-bounce {
+    0% {
+      transform: scale(1, 0.7);
+    }
+    40% {
+      transform: scale(0.8, 1.2);
+    }
+    60% {
+      transform: scale(1, 1);
+    }
+    100% {
+      bottom: 140px;
+    }
+  }
+
+  @keyframes loading-step {
+    0% {
+      box-shadow: 0 10px 0 rgba(0, 0, 0, 0),
+                 0 10px 0 var(--text-color),
+                 -35px 50px 0 var(--text-color),
+                 -70px 90px 0 var(--text-color);
+    }
+    100% {
+      box-shadow: 0 10px 0 var(--text-color),
+                 -35px 50px 0 var(--text-color),
+                 -70px 90px 0 var(--text-color),
+                 -70px 90px 0 rgba(0, 0, 0, 0);
+    }
+  }
+</style>
+
+<script>
+  import AOS from 'aos';
+
+  function initApp() {
+    // 1. 先处理 Markdown 的动态注入 (如果有)
+    const container = document.querySelector('.markdown-content');
+    if (container) {
+      const elements = container.querySelectorAll(':scope > *');
+      elements.forEach((el, i) => {
+        el.setAttribute('data-aos', 'fade-up');
+        el.setAttribute('data-aos-delay', (i % 5 * 50).toString());
+      });
+    }
+
+    // 2. 统一初始化
+    AOS.init({
+      duration: 800,
+      once: true,
+    });
+    
+    // 3. 强力刷新
+    AOS.refreshHard();
+  }
+
+  document.addEventListener('astro:page-load', initApp);
+  document.addEventListener('astro:after-swap', initApp);
+
+</script>

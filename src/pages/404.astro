@@ -1,0 +1,133 @@
+---
+import MainPageLayout from '@layouts/MainPageLayout.astro';
+import ImageModule from '@components/misc/ImageModule.astro';
+import Cover from '@components/Cover.astro';
+import { baseUrl, getRelativeLocaleUrl } from '@utils/url-utils';
+
+import { siteConfig } from '@/config'
+import { getBlogEntrySort } from '@utils/content-utils'
+import { estimateReadingMinutes } from '@utils/reading-time'
+import { getPostCategories } from '@utils/blog-taxonomy'
+import { formatFullDate } from '@/utils/time'
+
+const pageTitle = "404 - " + siteConfig.title;
+
+// 获取所有文章用于推荐
+const allBlogPosts = await getBlogEntrySort();
+const candidatePosts = allBlogPosts;
+
+// 固定推荐最新 4 篇（构建时确定，每次部署内容稳定，对收录友好）
+const recommendCount = Math.min(4, candidatePosts.length);
+const recommendPosts = candidatePosts.slice(0, recommendCount);
+
+const currentLang = 'zh-cn';
+const minLabel = '分钟';
+const recommendTitle = '也许你感兴趣';
+const noRecommendHint = '暂时没有可推荐的文章，去首页逛逛吧～';
+---
+
+<MainPageLayout title={pageTitle} lang="zh-CN">
+    <div class="mx-auto w-full max-w-[var(--page-width)]">
+        <Cover title="秘密" subTitle="恭喜你发现一片未知的世界，这片世界还处于建设之中，请过段时间再来看看呢！" />
+        <ImageModule src={"assets/404.png"} alt="404" class="mx-auto" />
+        <br />
+        <div class="text-center">
+            <a href={baseUrl('/')} class="text-[var(--link-color)] hover:underline">返回首页</a>
+        </div>
+
+        {recommendPosts.length > 0 && (
+            <section class="not-found-recommend mt-16">
+                <h2 class="text-2xl font-bold text-[var(--text-color)] mb-6 text-center">
+                    {recommendTitle}
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {recommendPosts.map((post) => {
+                        const readingMinutes = estimateReadingMinutes(post.body || '');
+                        const categories = getPostCategories(post, currentLang);
+                        return (
+                            <a
+                                href={getRelativeLocaleUrl(currentLang, `/blog/${post.id}`)}
+                                class="recommend-card group block rounded-xl border border-[var(--border-color)] bg-[var(--bg-color)]/60 p-5 no-underline transition-all duration-300 hover:border-[var(--link-color)] hover:bg-[var(--hover-bg-color)] hover:shadow-[0_8px_24px_var(--shadow-color)] hover:-translate-y-1"
+                            >
+                                <div class="flex flex-wrap items-center gap-2 mb-2">
+                                    {categories.slice(0, 2).map((cat) => (
+                                        <span class="recommend-tag text-xs font-semibold px-2 py-0.5 rounded-full">
+                                            #{cat}
+                                        </span>
+                                    ))}
+                                </div>
+                                <h3 class="text-lg font-bold text-[var(--text-color)] group-hover:text-[var(--link-color)] transition-colors line-clamp-2 mb-2">
+                                    {post.data.title}
+                                </h3>
+                                <div class="flex items-center gap-3 text-xs text-[var(--text-color)]/55">
+                                    <span>{formatFullDate(post.data.pubDate, currentLang)}</span>
+                                    <span class="inline-flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        {readingMinutes} {minLabel}
+                                    </span>
+                                </div>
+                            </a>
+                        );
+                    })}
+                </div>
+            </section>
+        )}
+
+        {recommendPosts.length === 0 && (
+            <p class="text-center text-[var(--text-color)]/55 mt-12">{noRecommendHint}</p>
+        )}
+    </div>
+</MainPageLayout>
+
+<style is:global>
+  .not-found-recommend {
+    scroll-margin-top: 6rem;
+  }
+
+  .recommend-card {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: recommend-fade-in 0.5s ease forwards;
+  }
+
+  .recommend-card:nth-child(1) { animation-delay: 0.05s; }
+  .recommend-card:nth-child(2) { animation-delay: 0.15s; }
+  .recommend-card:nth-child(3) { animation-delay: 0.25s; }
+  .recommend-card:nth-child(4) { animation-delay: 0.35s; }
+
+  @keyframes recommend-fade-in {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .recommend-tag {
+    --cat-hue: 210;
+    color: var(--cat-tag-color);
+    background: var(--cat-tag-bg);
+    border: 1px solid var(--cat-tag-border);
+  }
+
+  .recommend-card:nth-child(2n) .recommend-tag {
+    --cat-hue: 280;
+  }
+
+  .recommend-card:nth-child(3n) .recommend-tag {
+    --cat-hue: 340;
+  }
+
+  .recommend-card:nth-child(4n) .recommend-tag {
+    --cat-hue: 160;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .recommend-card {
+      opacity: 1;
+      transform: none;
+      animation: none;
+    }
+  }
+</style>

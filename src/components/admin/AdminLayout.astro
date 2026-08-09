@@ -1,0 +1,292 @@
+---
+// 后台布局：侧边栏 Tab + 内容区。登录前只显示登录面板，登录后显示侧边栏。
+import { siteConfig } from '@/config';
+
+interface Props {
+  pageTitle?: string;
+}
+const { pageTitle } = Astro.props;
+
+const tabs = [
+  { id: 'posts', label: '文章', icon: '📝' },
+  { id: 'settings', label: '设置', icon: '⚙️' },
+  { id: 'security', label: '安全', icon: '🔒' },
+  { id: 'export', label: '导出', icon: '📦' },
+  { id: 'github', label: 'GitHub', icon: '🔗' },
+];
+---
+
+<div class="admin-shell">
+  <!-- 顶部栏 -->
+  <header class="admin-topbar">
+    <h1 class="admin-topbar-title">{pageTitle || `后台管理 - ${siteConfig.title}`}</h1>
+    <div class="admin-topbar-actions">
+      <a href={import.meta.env.BASE_URL} target="_blank" rel="noopener noreferrer" class="admin-topbar-link">
+        打开前台
+      </a>
+      <button id="admin-logout-btn" type="button" class="admin-topbar-link admin-logout-btn hidden">
+        退出
+      </button>
+    </div>
+  </header>
+
+  <div class="admin-body">
+    <!-- 侧边栏（登录后显示） -->
+    <nav class="admin-sidebar hidden" id="admin-sidebar" aria-label="后台导航">
+      {
+        tabs.map((tab) => (
+          <button type="button" class="admin-tab-btn" data-tab={tab.id} aria-selected={tab.id === 'posts' ? 'true' : 'false'}>
+            <span class="admin-tab-icon">{tab.icon}</span>
+            <span class="admin-tab-label">{tab.label}</span>
+          </button>
+        ))
+      }
+    </nav>
+
+    <!-- 内容区 -->
+    <main class="admin-main">
+      <!-- 登录面板（登录前显示） -->
+      <div id="login-section-wrap">
+        <slot name="login" />
+      </div>
+
+      <!-- 后台面板（登录后显示） -->
+      <section id="admin-panel" class="admin-panel hidden">
+        <div class="admin-panel-content" data-panel="posts">
+          <slot name="posts" />
+        </div>
+        <div class="admin-panel-content hidden" data-panel="settings">
+          <slot name="settings" />
+        </div>
+        <div class="admin-panel-content hidden" data-panel="security">
+          <slot name="security" />
+        </div>
+        <div class="admin-panel-content hidden" data-panel="export">
+          <slot name="export" />
+        </div>
+        <div class="admin-panel-content hidden" data-panel="github">
+          <slot name="github" />
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+  function initAdminLayout() {
+    const sidebar = document.getElementById('admin-sidebar');
+    const adminPanel = document.getElementById('admin-panel');
+    const logoutBtn = document.getElementById('admin-logout-btn');
+    const isLoggedIn = sessionStorage.getItem('cmchen_admin_ok') === '1';
+
+    function showAdminPanel() {
+      sidebar?.classList.remove('hidden');
+      logoutBtn?.classList.remove('hidden');
+      document.getElementById('login-section-wrap')?.classList.add('hidden');
+    }
+
+    function showLogin() {
+      sidebar?.classList.add('hidden');
+      logoutBtn?.classList.add('hidden');
+      document.getElementById('login-section-wrap')?.classList.remove('hidden');
+    }
+
+    if (isLoggedIn) {
+      showAdminPanel();
+    }
+
+    // 监听 admin-panel 的显隐变化（unlockPanel 会操作它的 hidden class）
+    if (adminPanel) {
+      const observer = new MutationObserver(() => {
+        if (!adminPanel.classList.contains('hidden')) {
+          showAdminPanel();
+        }
+      });
+      observer.observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // Tab 切换
+    const tabBtns = sidebar?.querySelectorAll('.admin-tab-btn');
+    tabBtns?.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.getAttribute('data-tab');
+        if (!tabId) return;
+
+        tabBtns.forEach((b) => b.setAttribute('aria-selected', 'false'));
+        btn.setAttribute('aria-selected', 'true');
+
+        const panels = adminPanel?.querySelectorAll('.admin-panel-content');
+        panels?.forEach((panel) => {
+          if (panel.getAttribute('data-panel') === tabId) {
+            panel.classList.remove('hidden');
+          } else {
+            panel.classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    // 退出登录
+    logoutBtn?.addEventListener('click', () => {
+      sessionStorage.removeItem('cmchen_admin_ok');
+      sessionStorage.removeItem('cmchen_admin_token');
+      sessionStorage.removeItem('cmchen_admin_branch');
+      showLogin();
+      window.location.reload();
+    });
+
+    // 监听登录成功事件（由 login.ts 触发）
+    document.addEventListener('admin:login-success', () => {
+      showAdminPanel();
+      // 自动切换到文章 Tab
+      const postsTab = sidebar?.querySelector('[data-tab="posts"]');
+      postsTab?.dispatchEvent(new Event('click'));
+    });
+  }
+
+  initAdminLayout();
+</script>
+
+<style is:global>
+  .admin-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--bg-color);
+    color: var(--text-color);
+  }
+
+  .admin-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .admin-topbar-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-color);
+  }
+
+  .admin-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .admin-topbar-link {
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+    background: transparent;
+    text-decoration: none;
+    transition: background 0.32s cubic-bezier(0.23, 1, 0.320, 1),
+                border-color 0.32s cubic-bezier(0.23, 1, 0.320, 1);
+  }
+
+  .admin-topbar-link:hover {
+    background: var(--hover-bg-color);
+    border-color: var(--link-color);
+  }
+
+  .admin-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .admin-sidebar {
+    width: 180px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-color);
+    padding: 1rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    background: var(--bg-color);
+  }
+
+  .admin-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 0.9rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: background 0.32s cubic-bezier(0.23, 1, 0.320, 1),
+                color 0.32s cubic-bezier(0.23, 1, 0.320, 1);
+  }
+
+  .admin-tab-btn:hover {
+    background: var(--hover-bg-color);
+  }
+
+  .admin-tab-btn[aria-selected="true"] {
+    background: var(--hover-bg-color);
+    color: var(--link-color);
+    font-weight: 600;
+  }
+
+  .admin-tab-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .admin-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    min-width: 0;
+  }
+
+  .admin-panel-content {
+    animation: admin-panel-fade 0.32s cubic-bezier(0.23, 1, 0.320, 1);
+  }
+
+  @keyframes admin-panel-fade {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 移动端：侧边栏改为顶部水平滚动 Tab */
+  @media (max-width: 768px) {
+    .admin-body {
+      flex-direction: column;
+    }
+
+    .admin-sidebar {
+      width: 100%;
+      flex-direction: row;
+      overflow-x: auto;
+      padding: 0.5rem;
+      border-right: none;
+      border-bottom: 1px solid var(--border-color);
+      gap: 0.25rem;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-tab-btn {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .admin-main {
+      padding: 1rem;
+    }
+  }
+</style>

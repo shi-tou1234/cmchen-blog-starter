@@ -1,0 +1,56 @@
+<script>
+let copyToastTimer = null;
+
+function ensureCopyToast() {
+  let toast = document.getElementById('copy-email-toast');
+  if (toast) return toast;
+
+  toast = document.createElement('div');
+  toast.id = 'copy-email-toast';
+  toast.className = 'fixed top-20 right-6 z-[var(--z-modal)] px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-color)] text-[var(--text-color)] shadow-[0_4px_12px_var(--shadow-color)] text-sm opacity-0 pointer-events-none transition-opacity duration-200';
+  document.body.appendChild(toast);
+  return toast;
+}
+
+function showCopyToast(message) {
+  const toast = ensureCopyToast();
+  toast.textContent = message;
+  toast.classList.remove('opacity-0');
+
+  if (copyToastTimer) {
+    clearTimeout(copyToastTimer);
+  }
+
+  copyToastTimer = setTimeout(() => {
+    toast.classList.add('opacity-0');
+  }, 1400);
+}
+
+function initHeaderContactCopy() {
+  const copyButtons = Array.from(document.querySelectorAll('[data-email].copy-email-action, #copy-email-btn'));
+
+  copyButtons.forEach((button) => {
+    if (button.dataset.bound === 'true') return;
+    button.dataset.bound = 'true';
+
+    button.addEventListener('click', async () => {
+      const email = button.getAttribute('data-email') || '';
+      if (!email) return;
+      try {
+        await navigator.clipboard.writeText(email);
+        button.setAttribute('title', '已复制邮箱');
+        showCopyToast('邮箱已复制');
+        setTimeout(() => button.setAttribute('title', '复制邮箱'), 1500);
+      } catch (_error) {
+        button.setAttribute('title', '复制失败');
+        showCopyToast('复制失败，请手动复制');
+        setTimeout(() => button.setAttribute('title', '复制邮箱'), 1500);
+      }
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initHeaderContactCopy);
+document.addEventListener('astro:page-load', initHeaderContactCopy);
+document.addEventListener('astro:after-swap', initHeaderContactCopy);
+</script>

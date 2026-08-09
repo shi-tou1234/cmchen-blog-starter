@@ -1,0 +1,62 @@
+---
+import { Icon } from "astro-icon/components"
+import i18nit from '@i18n/translation'
+import type { CollectionEntry } from 'astro:content'
+import { getRelativeLocaleUrl } from '@utils/url-utils';
+
+interface Props {
+    prev: CollectionEntry<'blog'> | null;
+    next: CollectionEntry<'blog'> | null;
+}
+
+const { prev, next } = Astro.props;
+
+const currentLang = 'zh-cn';
+const t = i18nit(currentLang);
+
+// 辅助函数：根据文章 id 和当前语言生成正确的 URL
+function getPostUrl(id: string) {
+    return getRelativeLocaleUrl(currentLang, `/blog/${id}`);
+}
+---
+
+<nav data-aos="fade-up" class="mt-8 border-t border-[var(--border-color)] pt-4 ">
+    <div class="flex flex-row items-stretch gap-2 sm:gap-4">
+        <div class="flex-1 min-w-0">
+            {prev && (
+            <a
+                href={getPostUrl(prev.id)}
+                class="group flex h-full flex-col gap-1 rounded-lg p-3 no-underline transition-all hover:bg-[var(--hover-bg-color)] active:bg-[var(--hover-bg-color)] sm:p-4"
+                data-navi-prev-post
+                rel="prev"
+            >
+                <div class="flex items-center gap-1.5 text-[var(--text-color)]/70">
+                    <Icon name="fa6-solid:arrow-left" class="h-4 w-4" />
+                    <span class="text-sm transition-colors group-hover:text-[var(--text-color)]">{t("blogNavi.prev")}</span>
+                </div>
+                <span class="transition-colors text-base font-bold text-[var(--text-color)] group-hover:text-[var(--link-color)] line-clamp-2 break-words">
+                    {prev.data.title}
+                </span>
+            </a>
+            )}
+        </div>
+        <div class="flex-1 min-w-0">
+            {next && (
+            <a
+                href={getPostUrl(next.id)}
+                class="group flex h-full flex-col items-end gap-1 rounded-lg p-3 text-right no-underline transition-all hover:bg-[var(--hover-bg-color)] active:bg-[var(--hover-bg-color)] sm:p-4"
+                data-navi-next-post
+                rel="next"
+            >
+                <div class="flex items-center gap-1.5 text-[var(--text-color)]/70">
+                    <span class="text-sm transition-colors group-hover:text-[var(--text-color)]">{t("blogNavi.next")}</span>
+                    <Icon name="fa6-solid:arrow-right" class="h-4 w-4" />
+                </div>
+                <span class="transition-colors text-base font-bold text-[var(--text-color)] group-hover:text-[var(--link-color)] line-clamp-2 break-words">
+                    {next.data.title}
+                </span>
+            </a>
+            )}
+        </div>
+    </div>
+</nav>

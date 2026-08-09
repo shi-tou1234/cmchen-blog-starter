@@ -1,0 +1,543 @@
+---
+import '@styles/global.css'
+import { siteConfig, licenseConfig } from '@/config'
+import MainPageLayout from '@layouts/MainPageLayout.astro'
+import Markdown from '@components/misc/Markdown.astro'
+import ImageModule from '@components/misc/ImageModule.astro'
+import BackTop from '@components/control/BackTop.astro'
+import PostToc from '@components/control/PostToc.astro'
+import CategoryPostNavi from '@components/control/CategoryPostNavi.astro'
+import LicenseCard from '@components/misc/LicenseCard.astro'
+import BlogNavi from '@components/control/BlogNavi.astro'
+import ReadingTime from '@components/misc/ReadingTime.astro'
+import Comments from '@components/misc/Comments.astro'
+import DerivationPopup from '@components/misc/DerivationPopup.astro'
+
+import { getCollection, render } from 'astro:content'
+import i18nit from '@i18n/translation'
+
+import { blogCoverUrl, getRelativeLocaleUrl } from '@/utils/url-utils'
+import { formatFullDate } from '@/utils/time'
+import { getBlogEntrySort } from '@utils/content-utils'
+import { estimateReadingMinutes, estimateWordCount } from '@utils/reading-time'
+import { getPostCategories, encodeCategoryParam } from '@utils/blog-taxonomy'
+import { resolveCoverImage } from '@utils/cover-image-api'
+
+
+const currentLang = 'zh-cn';
+const t = i18nit(currentLang);
+
+export async function getStaticPaths() {
+    
+    const blogEntries = await getBlogEntrySort();
+    const paths = [];
+
+    for (let i = 0; i < blogEntries.length; i++) {
+        const entry = blogEntries[i];
+        const next = i > 0 ? blogEntries[i - 1] : null;
+        const prev = i < blogEntries.length - 1 ? blogEntries[i + 1] : null;
+
+        paths.push({
+            params: {
+                id: entry.id
+            },
+            props: { 
+                entry,
+                prev,
+                next
+            }
+        });
+    }
+    
+    return paths;
+}
+const { entry, prev, next } = Astro.props;
+const { Content } = await render(entry); // 获取渲染后的正文内容
+
+const pageTitle = entry.data.title + ' - ' + siteConfig.title;
+const userImage = blogCoverUrl(entry.data.image, entry.id);
+const currentCategories = getPostCategories(entry, currentLang);
+const resolvedCover = await resolveCoverImage(entry.id, userImage, entry.data.title, currentCategories);
+const image = resolvedCover.source === 'user' ? resolvedCover.imageUrl : '';
+const externalImage = resolvedCover.source !== 'user' ? resolvedCover.imageUrl : '';
+const readingMinutes = estimateReadingMinutes(entry.body || '');
+const wordCount = estimateWordCount(entry.body || '');
+const backButtonText = '返回上一页';
+const backFallbackUrl = getRelativeLocaleUrl(currentLang, '/');
+const allBlogPosts = await getBlogEntrySort();
+const rootCategory = currentCategories[0] || '';
+const activeCategory = currentCategories.length > 1 ? currentCategories[currentCategories.length - 1] : rootCategory;
+const categoryTrail = currentCategories.join(' / ');
+const sameCategoryPosts = activeCategory
+    ? allBlogPosts
+        .filter((post) => post.id !== entry.id && getPostCategories(post, currentLang).includes(activeCategory))
+        .slice(0, 20)
+    : [];
+const rootCategoryPageUrl = rootCategory && rootCategory !== activeCategory
+    ? getRelativeLocaleUrl(currentLang, `/categories/${encodeCategoryParam(rootCategory)}`)
+    : '';
+const categoryPageUrl = activeCategory ? getRelativeLocaleUrl(currentLang, `/categories/${encodeCategoryParam(activeCategory)}`) : '';
+const homeLabel = '首页';
+const updatedLabel = '最后更新于';
+const showUpdatedDate = entry.data.updatedDate && entry.data.updatedDate.valueOf() > entry.data.pubDate.valueOf();
+
+---
+<MainPageLayout title={pageTitle} lang={currentLang} description={entry.data.description}>
+    <div class="post-layout-wrapper">
+        <aside class="post-left-sidebar" aria-label="同分类文章导航">
+            {sameCategoryPosts.length > 0 && activeCategory && (
+                <div class="post-left-sidebar-inner">
+                    <CategoryPostNavi
+                        language={currentLang}
+                        category={categoryTrail || activeCategory}
+                        posts={sameCategoryPosts}
+                        categoryPageUrl={categoryPageUrl}
+                    />
+                </div>
+            )}
+        </aside>
+
+        <div id="post-reading-shell" class="post-content-column">
+            <nav class="mb-4 text-sm text-[var(--text-color)]/65" aria-label="面包屑导航">
+                <a href={getRelativeLocaleUrl(currentLang, '/')} class="hover:text-[var(--link-color)]">{homeLabel}</a>
+                {rootCategory && (
+                    <>
+                        <span class="px-2">&gt;</span>
+                        <a href={rootCategoryPageUrl || categoryPageUrl} class="hover:text-[var(--link-color)]">{rootCategory}</a>
+                        {activeCategory && activeCategory !== rootCategory && (
+                            <>
+                                <span class="px-2">&gt;</span>
+                                <a href={categoryPageUrl} class="hover:text-[var(--link-color)]">{activeCategory}</a>
+                            </>
+                        )}
+                    </>
+                )}
+                <span class="px-2">&gt;</span>
+                <span class="text-[var(--text-color)]/90">{entry.data.title}</span>
+            </nav>
+
+            <div class="mb-8 text-center">
+                <h1 class="font-bold text-3xl mb-2 pt-10 text-[var(--text-color)]">{ entry.data.title }</h1>
+                <div class="pt-2">
+                    <ReadingTime minutes={readingMinutes} words={wordCount} language={currentLang} />
+                </div>
+                <p class="font-bold text-[var(--text-color)]/60 pt-4 pb-2">{ formatFullDate(entry.data.pubDate, currentLang) }</p>
+                {showUpdatedDate && entry.data.updatedDate && (
+                    <p class="font-medium text-sm text-[var(--text-color)]/55 pb-10">{updatedLabel} {formatFullDate(entry.data.updatedDate, currentLang)}</p>
+                )}
+                {!showUpdatedDate && <div class="pb-10"></div>}
+            </div>
+            {image && (
+                <div class="cover h-[55vh] min-h-[260px] max-h-[620px] overflow-hidden rounded-xl ring-1 ring-inset ring-[var(--border-color)]">
+                    <ImageModule src={image} alt={`${entry.data.title} 封面图`} class="w-full h-full object-cover object-center"/>
+                </div>
+            )}
+            {!image && externalImage && (
+                <div class="cover h-[55vh] min-h-[260px] max-h-[620px] overflow-hidden rounded-xl ring-1 ring-inset ring-[var(--border-color)] relative">
+                    <ImageModule src={externalImage} alt={`${entry.data.title} 封面图`} class="w-full h-full object-cover object-center"/>
+                    {resolvedCover.photographer && (
+                        <span class="absolute bottom-3 right-3 z-10 text-xs px-2.5 py-1 rounded-full bg-black/50 text-white/80 backdrop-blur">
+                            {resolvedCover.photographerUrl ? (
+                                <a href={resolvedCover.photographerUrl} target="_blank" rel="noopener noreferrer" class="hover:underline">Photo by {resolvedCover.photographer}</a>
+                            ) : (
+                                <>Photo by {resolvedCover.photographer}</>
+                            )}
+                        </span>
+                    )}
+                </div>
+            )}
+            <Markdown class="mb-6 markdown-content onload-animation">
+                <Content />
+            </Markdown>
+            <DerivationPopup />
+            {licenseConfig.enable &&
+            <LicenseCard title={entry.data.title} pubDate={entry.data.pubDate}/>
+            }
+            {
+                siteConfig.blogNavi.enable &&
+                <BlogNavi prev={prev} next={next}/>
+            }
+            <Comments mapping="pathname" title={entry.data.title} />
+        </div>
+
+        <aside class="post-right-sidebar" aria-label={t('toc')}>
+            <div class="post-right-sidebar-inner">
+                <PostToc title={t('toc')} />
+                <div class="post-back-floating">
+                    <button
+                        id="post-back-button"
+                        class="post-back-floating__button"
+                        type="button"
+                    >
+                        {backButtonText}
+                    </button>
+                    <button
+                        id="post-comment-button"
+                        class="post-back-floating__button post-comment-floating__button"
+                        type="button"
+                        title="跳转到评论"
+                        aria-label="跳转到评论"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                        <span>评论</span>
+                    </button>
+                </div>
+                <BackTop />
+            </div>
+        </aside>
+    </div>
+</MainPageLayout>
+
+<script define:vars={{ backFallbackUrl }}>
+    function initPostBackButton() {
+        const backButton = document.getElementById('post-back-button');
+        if (!(backButton instanceof HTMLButtonElement)) return;
+        if (backButton.dataset.bound === 'true') return;
+
+        backButton.dataset.bound = 'true';
+        backButton.addEventListener('click', () => {
+            if (window.history.length > 1) {
+                window.history.back();
+                return;
+            }
+            window.location.href = backFallbackUrl;
+        });
+    }
+
+    function initPostCommentButton() {
+        const commentButton = document.getElementById('post-comment-button');
+        if (!(commentButton instanceof HTMLButtonElement)) return;
+        if (commentButton.dataset.bound === 'true') return;
+
+        commentButton.dataset.bound = 'true';
+        commentButton.addEventListener('click', () => {
+            const comments = document.getElementById('comments');
+            if (!(comments instanceof HTMLElement)) return;
+            comments.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    function initPostReadingFullscreen() {
+        const shell = document.getElementById('post-reading-shell');
+        if (!(shell instanceof HTMLElement)) return;
+
+        const markdown = shell.querySelector('.markdown-content');
+        if (!(markdown instanceof HTMLElement)) return;
+        if (markdown.dataset.fullscreenBound === 'true') return;
+
+        markdown.dataset.fullscreenBound = 'true';
+
+        const isInteractiveTarget = (target) => {
+            return Boolean(target.closest('a, button, input, textarea, select, label, summary, details, img, video, audio, iframe, pre, code, [role="button"], [data-lightbox-close], [data-lightbox-prev], [data-lightbox-next], [data-lightbox-zoom-in], [data-lightbox-zoom-out], [data-lightbox-zoom-reset]'));
+        };
+
+        const syncReadingFullscreenState = () => {
+            const isReadingFullscreen = document.fullscreenElement === document.documentElement;
+            document.documentElement.classList.toggle('post-reading-fullscreen', isReadingFullscreen);
+            shell.classList.toggle('is-reading-fullscreen', isReadingFullscreen);
+        };
+
+        const toggleFullscreen = async () => {
+            if (document.fullscreenElement) {
+                await document.exitFullscreen();
+                return;
+            }
+
+            if (document.documentElement.requestFullscreen) {
+                await document.documentElement.requestFullscreen();
+            } else {
+                document.documentElement.classList.toggle('post-reading-fullscreen');
+                shell.classList.toggle('is-reading-fullscreen');
+            }
+
+            // Trigger viewport-based loaders/animations after entering reading mode.
+            requestAnimationFrame(() => {
+                window.dispatchEvent(new Event('resize'));
+                window.dispatchEvent(new Event('scroll'));
+            });
+        };
+
+        const oldFullscreenHandler = window.__postReadingFullscreenHandler;
+        if (oldFullscreenHandler) {
+            document.removeEventListener('fullscreenchange', oldFullscreenHandler);
+        }
+
+        const fullscreenHandler = () => {
+            syncReadingFullscreenState();
+        };
+
+        document.addEventListener('fullscreenchange', fullscreenHandler);
+        window.__postReadingFullscreenHandler = fullscreenHandler;
+        syncReadingFullscreenState();
+
+        markdown.addEventListener('dblclick', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+            if (isInteractiveTarget(target)) return;
+
+            const lightbox = document.getElementById('markdown-image-lightbox');
+            if (lightbox?.classList.contains('is-open')) return;
+
+            const selection = window.getSelection()?.toString().trim();
+            if (selection) return;
+
+            event.preventDefault();
+            toggleFullscreen().catch(() => {});
+        });
+    }
+
+    document.addEventListener('astro:page-load', initPostBackButton);
+    document.addEventListener('astro:after-swap', initPostBackButton);
+    document.addEventListener('astro:page-load', initPostCommentButton);
+    document.addEventListener('astro:after-swap', initPostCommentButton);
+    document.addEventListener('astro:page-load', initPostReadingFullscreen);
+    document.addEventListener('astro:after-swap', initPostReadingFullscreen);
+</script>
+
+<style is:global>
+    .post-layout-wrapper {
+        --page-width: min(800px, 88vw);
+        --toc-width: 230px;
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+        gap: clamp(1.25rem, 2vw, 2rem);
+        padding: 2rem clamp(0.75rem, 1.4vw, 1.5rem) 0;
+        max-width: 100vw;
+    }
+
+    .post-left-sidebar {
+        width: 200px;
+        flex-shrink: 0;
+        order: 1;
+    }
+
+    .post-content-column {
+        width: var(--page-width);
+        max-width: var(--page-width);
+        flex-shrink: 0;
+        order: 2;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    .post-right-sidebar {
+        width: var(--toc-width);
+        flex-shrink: 0;
+        order: 3;
+    }
+
+    .post-left-sidebar-inner,
+    .post-right-sidebar-inner {
+        position: sticky;
+        top: 16vh;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    #post-reading-shell {
+        transition: max-width 0.25s ease, padding 0.25s ease;
+    }
+
+    html.post-reading-fullscreen #post-reading-shell,
+    #post-reading-shell.is-reading-fullscreen {
+        width: min(1120px, 96vw);
+        max-width: none;
+        padding-top: 1.2rem;
+    }
+
+    html.post-reading-fullscreen #main-header,
+    html.post-reading-fullscreen .post-left-sidebar,
+    html.post-reading-fullscreen .post-right-sidebar {
+        display: none !important;
+    }
+
+    html.post-reading-fullscreen main {
+        padding-top: 0 !important;
+    }
+
+    @media (max-width: 1023px) {
+        html.post-reading-fullscreen .post-content-column {
+            padding-bottom: 2rem !important;
+        }
+    }
+
+    .post-back-floating__button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        width: 100%;
+        border-radius: 999px;
+        border: 1px solid var(--border-color);
+        background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+        color: var(--text-color);
+        padding: 0.55rem 1rem;
+        font-size: 0.82rem;
+        line-height: 1.2;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 8px 24px var(--shadow-color);
+        backdrop-filter: blur(8px);
+        transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        animation: post-back-pulse 3s ease-in-out 1s;
+    }
+
+    .post-back-floating__button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 12px 32px color-mix(in srgb, var(--shadow-color) 80%, transparent);
+        border-color: color-mix(in srgb, var(--link-color) 40%, var(--border-color));
+    }
+
+    .post-back-floating__button:active {
+        transform: scale(0.95);
+    }
+
+    .post-back-floating {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    /* 评论按钮：图标+文字紧凑样式，无 pulse 动画 */
+    .post-comment-floating__button {
+        animation: none;
+        padding: 0.5rem 0.9rem;
+    }
+
+    .post-comment-floating__button:hover {
+        background: var(--hover-bg-color);
+        border-color: color-mix(in srgb, var(--link-color) 40%, var(--border-color));
+        transform: translateX(-2px);
+    }
+
+    .post-comment-floating__button svg {
+        flex-shrink: 0;
+    }
+
+    @keyframes post-back-pulse {
+        0%, 100% { box-shadow: 0 8px 24px var(--shadow-color); }
+        15% { box-shadow: 0 8px 24px var(--shadow-color), 0 0 0 6px color-mix(in srgb, var(--link-color) 14%, transparent); }
+        30% { box-shadow: 0 8px 24px var(--shadow-color); }
+    }
+
+    .post-back-floating__button:hover {
+        background: var(--hover-bg-color);
+        transform: translateX(-2px);
+    }
+
+    @media (max-width: 1199px) {
+        .post-layout-wrapper {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
+            padding: 1rem 0 0;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .post-left-sidebar {
+            display: none;
+        }
+
+        .post-content-column {
+            width: 100%;
+            max-width: 100%;
+            padding-left: clamp(0.75rem, 1.5vw, 1.25rem);
+            padding-right: clamp(0.75rem, 1.5vw, 1.25rem);
+            box-sizing: border-box;
+        }
+
+        .post-right-sidebar {
+            width: 100%;
+            max-width: 100%;
+            padding-left: clamp(0.75rem, 1.5vw, 1.25rem);
+            padding-right: clamp(0.75rem, 1.5vw, 1.25rem);
+            box-sizing: border-box;
+        }
+
+        .post-right-sidebar-inner {
+            position: static;
+            flex-direction: row;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+        }
+
+        .post-right-sidebar .post-toc-root {
+            position: static;
+            display: block;
+        }
+
+        .post-right-sidebar .post-back-floating {
+            position: static;
+            display: flex;
+            flex-direction: row;
+            gap: 0.4rem;
+            width: auto;
+        }
+
+        .post-right-sidebar .post-back-floating__button {
+            width: auto;
+            min-width: 3.4rem;
+            height: 2.25rem;
+            padding: 0 0.75rem;
+            font-size: 0.78rem;
+        }
+    }
+
+    @media (max-width: 1023px) {
+        .post-right-sidebar {
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: visible;
+            pointer-events: none;
+        }
+
+        .post-right-sidebar-inner {
+            position: fixed;
+            left: auto;
+            right: 0.75rem;
+            top: calc(var(--header-height) + 0.5rem);
+            bottom: auto;
+            z-index: var(--z-modal);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.5rem;
+            padding: 0;
+            pointer-events: auto;
+        }
+
+        .post-right-sidebar .post-toc-root {
+            position: static;
+            display: block;
+        }
+
+        .post-right-sidebar .post-back-floating {
+            position: static;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            width: auto;
+            pointer-events: auto;
+        }
+
+        .post-right-sidebar .post-back-floating__button {
+            min-width: 2.6rem;
+            height: 2.5rem;
+            padding: 0 0.7rem;
+            font-size: 0.78rem;
+        }
+
+        .post-content-column {
+            padding-bottom: calc(2rem + 56px);
+            max-width: 100%;
+        }
+    }
+</style>

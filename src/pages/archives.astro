@@ -1,0 +1,29 @@
+---
+import MainPageLayout from '@layouts/MainPageLayout.astro'
+import Cover from '@components/Cover.astro'
+import ArchiveExplorer from '@components/misc/ArchiveExplorer.astro'
+
+import { siteConfig } from '@/config'
+import { getBlogEntrySort } from '@utils/content-utils'
+import i18nit from '@i18n/translation'
+
+ 
+
+const currentLang = 'zh-cn';
+const t = i18nit(currentLang);
+
+const allBlogPosts = await getBlogEntrySort();
+
+const pageTitle = t("header.archive") + " - " + siteConfig.title;
+const postNumber = allBlogPosts.length;
+---
+
+<MainPageLayout title={pageTitle} lang={currentLang}>
+    <div class="archives relative z-10 mx-auto w-full max-w-[var(--page-width)]">
+        <Cover title={t("cover.title.archive")} subTitle={t("cover.subTitle.archive", {count: postNumber})}/>
+
+        <div class="py-6 mx-auto text-[var(--text-color)]">
+            <ArchiveExplorer posts={allBlogPosts} language={currentLang} />
+        </div>
+    </div>
+</MainPageLayout>

@@ -1,0 +1,231 @@
+---
+import { Icon } from "astro-icon/components"
+import { getRelativeLocaleUrl } from '@utils/url-utils';
+import headerContact from "@/data/header-contact"
+import i18nit from '@i18n/translation'
+
+const currentLang = 'zh-cn';
+const t = i18nit(currentLang);
+const indexPage = getRelativeLocaleUrl(currentLang, "/");
+const archivesPage = getRelativeLocaleUrl(currentLang, "/archives/");
+const aboutPage = getRelativeLocaleUrl(currentLang, "/about/");
+const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
+---
+
+<div class="relative md:hidden shrink-0">
+  <!-- Mobile Menu -->
+  <button id="mobile-menu-button" aria-expanded="false" aria-controls="mobile-menu" class="flex items-center justify-center w-10 h-10 hover:bg-[var(--hover-bg-color)] active:scale-90 rounded-lg hover:text-current border border-[var(--border-color)] transition-all duration-300">
+    <Icon name="fa6-solid:align-justify" class="w-5 h-5" />
+  </button>
+  <!-- Mobile Menu -->
+  <div id="mobile-menu" aria-hidden="true" class="hidden fixed right-2 top-16 w-36 bg-[var(--bg-color)]/95 backdrop-blur border border-[var(--border-color)] rounded-lg shadow-[0_8px_24px_var(--shadow-color)] z-[var(--z-modal)] text-[var(--text-color)]">
+    <div class="tiny-only px-2 py-2 border-b border-[var(--border-color)] space-y-2">
+      <p class="text-[11px] leading-4 text-[var(--text-color)]/75 px-1">建议使用浏览器或电脑打开，以获得最佳显示效果。</p>
+      <div class="grid grid-cols-3 gap-2">
+        <button id="mobile-search-btn" class="px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]">搜索</button>
+        <button id="mobile-theme-btn" class="px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]">主题</button>
+        <button id="mobile-guide-btn" class="px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]">指南</button>
+        <button class="copy-email-action px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]" data-email={headerContact.email}>邮箱</button>
+        <button id="mobile-fontsize-btn" class="px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]">字体</button>
+      </div>
+    </div>
+    <div class="flex flex-col py-1">
+      <a href={ indexPage } class={`mx-2 my-1 p-2 text-sm rounded ${
+        Astro.url.pathname === indexPage 
+          ? 'bg-[var(--hover-bg-color)]' 
+          : 'hover:bg-[var(--hover-bg-color)]'
+      }`}>{t("header.home")}</a>
+      
+      <a href={ archivesPage } class={`mx-2 my-1 p-2 text-sm rounded ${
+        Astro.url.pathname === archivesPage 
+          ? 'bg-[var(--hover-bg-color)]' 
+          : 'hover:bg-[var(--hover-bg-color)]'
+      }`}>{t("header.archive")}</a>
+
+      <a href={ aboutPage } class={`mx-2 my-1 p-2 text-sm rounded ${
+        Astro.url.pathname === aboutPage 
+          ? 'bg-[var(--hover-bg-color)]' 
+          : 'hover:bg-[var(--hover-bg-color)]'
+      }`}>{t("header.about")}</a>
+
+      <a href={ toolsPage } class={`mx-2 my-1 p-2 text-sm rounded ${
+        Astro.url.pathname === toolsPage 
+          ? 'bg-[var(--hover-bg-color)]' 
+          : 'hover:bg-[var(--hover-bg-color)]'
+      }`}>{t("header.tools")}</a>
+    </div>
+  </div>
+</div>
+
+<script>
+import { lockBodyScroll, trapFocus } from "../../utils/modal";
+
+function initMobileNav() {
+  const menuButton = document.getElementById('mobile-menu-button');
+  const mobileMenu = document.getElementById('mobile-menu');
+  const searchButton = document.getElementById('search-button');
+  const mobileSearchButton = document.getElementById('mobile-search-btn');
+  const mobileThemeButton = document.getElementById('mobile-theme-btn');
+  const mobileGuideButton = document.getElementById('mobile-guide-btn');
+  const themeToggleButton = document.getElementById('themeToggle');
+  const guideOpenButton = document.getElementById('blog-guide-open-btn');
+  const fontSizeToggle = document.getElementById('fontSizeToggle');
+  const mobileFontSizeButton = document.getElementById('mobile-fontsize-btn');
+  let mobileMenuCloseTimer = null;
+
+  if (!menuButton) return;
+
+  const setMobileMenuOpen = (open) => {
+    if (!mobileMenu) return;
+
+    if (mobileMenuCloseTimer) {
+      clearTimeout(mobileMenuCloseTimer);
+      mobileMenuCloseTimer = null;
+    }
+
+    if (open) {
+      mobileMenu.classList.remove('hidden');
+      mobileMenu.setAttribute('aria-hidden', 'false');
+      menuButton.setAttribute('aria-expanded', 'true');
+      lockBodyScroll(true);
+      // 打开后把焦点移进弹窗
+      const firstFocusable = mobileMenu.querySelector('button, a[href]');
+      if (firstFocusable) firstFocusable.focus();
+      requestAnimationFrame(() => {
+        mobileMenu.classList.add('is-open');
+      });
+      return;
+    }
+
+    mobileMenu.classList.remove('is-open');
+    mobileMenu.setAttribute('aria-hidden', 'true');
+    menuButton.setAttribute('aria-expanded', 'false');
+    lockBodyScroll(false);
+    mobileMenuCloseTimer = window.setTimeout(() => {
+      if (!mobileMenu.classList.contains('is-open')) {
+        mobileMenu.classList.add('hidden');
+      }
+    }, 240);
+  };
+
+  menuButton.onclick = (e) => {
+    e.stopPropagation();
+    setMobileMenuOpen(!(mobileMenu && mobileMenu.classList.contains('is-open')));
+  };
+
+  if (mobileSearchButton && searchButton && mobileSearchButton.dataset.bound !== 'true') {
+    mobileSearchButton.dataset.bound = 'true';
+    mobileSearchButton.addEventListener('click', () => {
+      searchButton.click();
+      setMobileMenuOpen(false);
+    });
+  }
+
+  if (mobileThemeButton && themeToggleButton && mobileThemeButton.dataset.bound !== 'true') {
+    mobileThemeButton.dataset.bound = 'true';
+    mobileThemeButton.addEventListener('click', () => {
+      themeToggleButton.click();
+      setMobileMenuOpen(false);
+    });
+  }
+
+  if (mobileGuideButton && guideOpenButton && mobileGuideButton.dataset.bound !== 'true') {
+    mobileGuideButton.dataset.bound = 'true';
+    mobileGuideButton.addEventListener('click', () => {
+      guideOpenButton.click();
+      setMobileMenuOpen(false);
+    });
+  }
+
+  if (mobileFontSizeButton && mobileFontSizeButton.dataset.bound !== 'true') {
+    mobileFontSizeButton.dataset.bound = 'true';
+    mobileFontSizeButton.addEventListener('click', () => {
+      const fontSizeMenu = document.getElementById('font-size-menu');
+      if (fontSizeMenu) {
+        if (fontSizeMenu.classList.contains('hidden')) {
+          fontSizeMenu.classList.remove('hidden');
+          const slider = document.getElementById('font-size-slider');
+          const valueLabel = document.getElementById('font-size-value');
+          const saved = localStorage.getItem('blog-font-size');
+          const val = saved ? parseInt(saved, 10) : 100;
+          if (slider) slider.value = String(val);
+          if (valueLabel) valueLabel.textContent = val + '%';
+        } else {
+          fontSizeMenu.classList.add('hidden');
+        }
+      }
+      setMobileMenuOpen(false);
+    });
+  }
+
+  const tinyMedia = window.matchMedia('(max-width: 379px)');
+  const applyTinyScreenMode = () => {
+    mobileMenu?.classList.toggle('is-tiny-screen', tinyMedia.matches);
+  };
+  applyTinyScreenMode();
+
+  const oldTinyScreenHandler = window.__headerTinyScreenHandler;
+  if (oldTinyScreenHandler) {
+    tinyMedia.removeEventListener('change', oldTinyScreenHandler);
+  }
+  tinyMedia.addEventListener('change', applyTinyScreenMode);
+  window.__headerTinyScreenHandler = applyTinyScreenMode;
+
+  const oldDocClickHandler = window.__headerMobileOutsideClickHandler;
+  if (oldDocClickHandler) {
+    document.removeEventListener('click', oldDocClickHandler);
+  }
+  const handleDocClick = (event) => {
+    if (
+      menuButton &&
+      mobileMenu &&
+      !menuButton.contains(event.target) &&
+      !mobileMenu.contains(event.target)
+    ) {
+      setMobileMenuOpen(false);
+    }
+  };
+  document.addEventListener('click', handleDocClick);
+  window.__headerMobileOutsideClickHandler = handleDocClick;
+
+  // Esc 关闭 + 焦点圈住（弹窗打开时才生效）
+  const oldMenuKeydownHandler = window.__headerMobileMenuKeydownHandler;
+  if (oldMenuKeydownHandler) {
+    document.removeEventListener('keydown', oldMenuKeydownHandler);
+  }
+  const handleMenuKeydown = (event) => {
+    if (!mobileMenu?.classList.contains('is-open')) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setMobileMenuOpen(false);
+      menuButton.focus();
+      return;
+    }
+    trapFocus(mobileMenu, event);
+  };
+  document.addEventListener('keydown', handleMenuKeydown);
+  window.__headerMobileMenuKeydownHandler = handleMenuKeydown;
+
+  if (mobileMenu && mobileMenu.dataset.linksBound !== 'true') {
+    mobileMenu.dataset.linksBound = 'true';
+    mobileMenu.querySelectorAll('a[href]').forEach((link) => {
+      link.addEventListener('click', () => {
+        setMobileMenuOpen(false);
+      });
+    });
+  }
+
+  mobileMenu?.classList.remove('is-open');
+  mobileMenu?.classList.add('hidden');
+  mobileMenu?.setAttribute('aria-hidden', 'true');
+  menuButton.setAttribute('aria-expanded', 'false');
+
+}
+
+document.addEventListener('DOMContentLoaded', initMobileNav);
+document.addEventListener('astro:page-load', initMobileNav);
+document.addEventListener('astro:after-swap', initMobileNav);
+if (document.readyState !== 'loading') {
+  initMobileNav();
+}
+</script>

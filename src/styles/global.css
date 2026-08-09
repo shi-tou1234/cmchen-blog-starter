@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import "./variables.css";
+@import "./special.css";
+@import "./scrollbar.css";
+@import "@chinese-fonts/lxgwwenkaibright/dist/LXGWBright-Medium/result.css";
+
+@layer base {
+
+  :root {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+
+  body {
+    @apply bg-[--bg-color] text-[--text-color];
+    font-family: "Noto Serif SC", "Times New Roman", "STZhongsong", serif;
+    overflow-y: scroll;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  a,
+  button,
+  input,
+  textarea,
+  select,
+  summary,
+  img,
+  [role="button"] {
+    transition-property: color, background-color, border-color, opacity, transform, box-shadow, filter;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  a:hover,
+  button:hover,
+  [role="button"]:hover {
+    transform: translateY(-1px);
+  }
+
+  a:active,
+  button:active,
+  [role="button"]:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  img:hover {
+    filter: saturate(1.04);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--link-color);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  
+  /* 选中文本样式 */
+  ::selection {
+    background-color: var(--selection-color);
+    color: var(--text-color);
+  }
+
+}

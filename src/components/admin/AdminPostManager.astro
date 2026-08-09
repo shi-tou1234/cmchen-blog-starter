@@ -1,0 +1,458 @@
+---
+import PostToolbar from '@/components/admin/PostToolbar.astro';
+import { externalUrlsConfig } from '../../config';
+
+const previewEmbedUrl = `${import.meta.env.BASE_URL}admin-preview/?embed=1`;
+---
+
+<div class="post-manager">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <h2 class="text-xl font-semibold">文章管理</h2>
+    <div class="flex flex-wrap gap-2">
+      <button id="refresh-post-list-btn" class="rounded border border-[var(--border-color)] px-3 py-1.5 hover:bg-[var(--hover-bg-color)]">刷新列表</button>
+      <button id="new-post-btn" class="rounded border border-[var(--border-color)] px-3 py-1.5 hover:bg-[var(--hover-bg-color)]">新建文章</button>
+    </div>
+  </div>
+
+  <!-- 三栏分屏 -->
+  <div class="post-three-col">
+    <!-- 左栏：文章列表 -->
+    <div class="post-list-col">
+      <input id="post-search" type="text" class="post-search-input" placeholder="搜索文章..." />
+      <div id="post-select" class="post-list" role="listbox" aria-label="文章列表"></div>
+      <button id="load-selected-post-btn" class="post-load-btn">编辑所选文章</button>
+    </div>
+
+    <!-- 中栏：编辑器 -->
+    <div class="post-editor-col">
+      <!-- 标题 -->
+      <input id="post-title" type="text" class="post-title-input" placeholder="文章标题" />
+
+      <!-- 元数据（常用项默认展开） -->
+      <details class="post-meta-details" open>
+        <summary class="post-meta-summary">发布信息</summary>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+          <div>
+            <label class="block text-xs mb-1 text-[var(--text-color)]/70">语言</label>
+            <select id="post-lang" class="post-input">
+              <option value="zh-cn">中文（zh-cn）</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs mb-1 text-[var(--text-color)]/70">slug（留空自动生成）</label>
+            <input id="post-slug" type="text" class="post-input" />
+          </div>
+          <div>
+            <label class="block text-xs mb-1 text-[var(--text-color)]/70">发布日期</label>
+            <input id="post-date" type="datetime-local" class="post-input" />
+          </div>
+          <div>
+            <label class="block text-xs mb-1 text-[var(--text-color)]/70">简介</label>
+            <input id="post-desc" type="text" class="post-input" />
+          </div>
+        </div>
+        <div class="rounded border border-[var(--border-color)] p-2 mt-2">
+          <div class="space-y-2">
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <label class="text-xs font-medium whitespace-nowrap">大分类</label>
+              <div class="flex-1 min-w-0 flex flex-col gap-1 sm:flex-row sm:items-center">
+                <input id="post-category" list="post-category-options" type="text" class="post-input flex-1" placeholder="选择或输入" />
+                <datalist id="post-category-options"></datalist>
+                <select id="post-category-select" class="post-input flex-1 text-sm">
+                  <option value="">手动输入新分类</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <label class="text-xs font-medium whitespace-nowrap">小分类</label>
+              <div class="flex-1 min-w-0">
+                <input id="post-subcategory" list="post-subcategory-options" type="text" class="post-input w-full" placeholder="选择或输入" />
+                <datalist id="post-subcategory-options"></datalist>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+          <div>
+            <label class="block text-xs mb-1 text-[var(--text-color)]/70">封面路径</label>
+            <input id="post-cover" type="text" class="post-input" placeholder="./assets/cover.jpg" />
+          </div>
+          <div class="flex items-end gap-2">
+            <input id="post-cover-file" type="file" accept="image/*" class="hidden" />
+            <label for="post-cover-file" class="post-action-btn text-sm cursor-pointer">选择封面</label>
+            <span id="post-cover-filename" class="text-xs text-[var(--text-color)]/70">未选择</span>
+            <button id="upload-cover-btn" class="post-action-btn text-sm">上传</button>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pt-2">
+          <input id="post-pinned" type="checkbox" class="rounded" />
+          <label for="post-pinned" class="text-xs cursor-pointer select-none">置顶博客</label>
+        </div>
+      </details>
+
+      <!-- 工具栏 -->
+      <PostToolbar />
+
+      <!-- 正文 -->
+      <textarea id="post-content" class="post-content-textarea" placeholder="在这里写文章内容..."></textarea>
+
+      <!-- 文件上传区 -->
+      <div class="flex flex-wrap gap-2 items-center">
+        <input id="post-files" type="file" multiple accept="image/*,video/*,.pdf,application/pdf" class="hidden" />
+        <label for="post-files" class="post-action-btn text-sm font-medium cursor-pointer">选择文件</label>
+        <span id="post-files-count" class="text-xs text-[var(--text-color)]/70">未选择文件</span>
+        <button id="upload-files-btn" class="post-action-btn text-sm">上传资源</button>
+        <button id="insert-iframe-btn" class="post-action-btn text-sm">插入 iframe</button>
+      </div>
+
+      <!-- 上传图片缩略图预览 -->
+      <div id="post-upload-thumbs" class="post-upload-thumbs"></div>
+
+      <!-- 操作按钮 -->
+      <div class="flex flex-wrap gap-2 items-center pt-1">
+        <button id="open-preview-editor-btn" class="post-action-btn">预览编辑器</button>
+        <button id="apply-preview-content-btn" class="post-action-btn">从预览回填</button>
+        <button id="publish-post-btn" class="post-action-btn post-publish-btn">保存文章</button>
+        <button id="delete-post-btn" class="post-action-btn post-delete-btn">删除当前语言</button>
+        <button id="delete-post-all-btn" class="post-action-btn post-delete-btn">删除整个目录</button>
+      </div>
+    </div>
+
+    <!-- 右栏：实时预览 -->
+    <div class="post-preview-col">
+      <div class="post-preview-header">
+        <span class="text-sm font-medium">实时预览</span>
+        <span id="post-autosave-status" class="text-xs text-[var(--text-color)]/60"></span>
+      </div>
+      <div class="post-preview-iframe-wrap">
+        <iframe id="post-preview-iframe" class="post-preview-iframe" src={previewEmbedUrl} title="文章预览"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <p id="post-msg" class="text-sm mt-3 text-[var(--text-color)]/70"></p>
+</div>
+
+<style is:global>
+  .post-manager {
+    width: 100%;
+  }
+
+  .post-three-col {
+    display: grid;
+    grid-template-columns: 240px 1fr 40%;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+  /* 左栏 */
+  .post-list-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: calc(100vh - 180px);
+  }
+
+  .post-search-input {
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
+  }
+
+  .post-list {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-color);
+    min-height: 200px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .post-list:empty::before {
+    content: "暂无文章，点击「刷新列表」加载";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    color: var(--text-color);
+    opacity: 0.5;
+    font-size: 0.85rem;
+  }
+
+  .post-list-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--text-color);
+    opacity: 0.5;
+    font-size: 0.85rem;
+  }
+
+  .post-list-item {
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.32s cubic-bezier(0.23, 1, 0.320, 1);
+  }
+
+  .post-list-item:last-child {
+    border-bottom: none;
+  }
+
+  .post-list-item:hover {
+    background: var(--hover-bg-color);
+  }
+
+  .post-list-item.is-selected {
+    background: var(--hover-bg-color);
+    border-left: 3px solid var(--link-color);
+  }
+
+  .post-list-item-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .post-list-item-meta {
+    font-size: 0.72rem;
+    color: var(--text-color);
+    opacity: 0.6;
+    margin-top: 0.15rem;
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+  }
+
+  .post-list-item-pin {
+    color: var(--link-color);
+    font-size: 0.7rem;
+  }
+
+  .post-load-btn {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.32s cubic-bezier(0.23, 1, 0.320, 1);
+  }
+
+  .post-load-btn:hover {
+    background: var(--hover-bg-color);
+  }
+
+  /* 中栏 */
+  .post-editor-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .post-title-input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .post-meta-details {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+  }
+
+  .post-meta-summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-color);
+  }
+
+  .post-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
+  }
+
+  .post-content-textarea {
+    width: 100%;
+    min-height: 400px;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'JetBrains Mono Variable', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    resize: vertical;
+  }
+
+  .post-action-btn {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.32s cubic-bezier(0.23, 1, 0.320, 1),
+                border-color 0.32s cubic-bezier(0.23, 1, 0.320, 1);
+  }
+
+  .post-action-btn:hover {
+    background: var(--hover-bg-color);
+    border-color: var(--link-color);
+  }
+
+  /* 上传图片缩略图条 */
+  .post-upload-thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .post-upload-thumbs:empty {
+    display: none;
+  }
+
+  .post-upload-thumb {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .post-upload-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .post-upload-thumb-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    line-height: 1;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .post-upload-thumb-remove:hover {
+    background: rgba(225, 50, 56, 0.85);
+  }
+
+  .post-publish-btn {
+    background: var(--link-color);
+    color: var(--bg-color);
+    border-color: var(--link-color);
+  }
+
+  .post-publish-btn:hover {
+    opacity: 0.9;
+  }
+
+  .post-delete-btn {
+    color: #e13238;
+    border-color: #e13238;
+  }
+
+  .post-delete-btn:hover {
+    background: rgba(225, 50, 56, 0.1);
+  }
+
+  /* 右栏 */
+  .post-preview-col {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg-color);
+    height: calc(100vh - 180px);
+  }
+
+  .post-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-color);
+    flex-shrink: 0;
+  }
+
+  .post-preview-iframe-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .post-preview-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  /* 移动端：三栏改单栏 + Tab 切换 */
+  @media (max-width: 1024px) {
+    .post-three-col {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .post-list-col {
+      max-height: 300px;
+    }
+
+    .post-preview-col {
+      height: 500px;
+    }
+
+    .post-content-textarea {
+      min-height: 300px;
+    }
+  }
+</style>

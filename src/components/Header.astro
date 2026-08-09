@@ -1,0 +1,358 @@
+---
+import "@styles/global.css"
+import { Icon } from "astro-icon/components"
+import { profileConfig } from "@/config"
+import ThemeIcon from "./control/ThemeIcon.astro"
+import FontSizeControl from "./control/FontSizeControl.astro"
+import headerContact from "@/data/header-contact"
+import siteSlogan from "@/data/site-slogan"
+import HeaderLogoFracture from "./header/HeaderLogoFracture.astro"
+import MobileMenu from "./header/MobileMenu.astro"
+import CopyEmail from "./header/CopyEmail.astro"
+import RunningDays from "./header/RunningDays.astro"
+import HeaderScroll from "./header/HeaderScroll.astro"
+import PagefindLoader from "./header/PagefindLoader.astro"
+
+import i18nit from '@i18n/translation'
+import { getRelativeLocaleUrl } from '@utils/url-utils';
+
+const currentLang = 'zh-cn';
+const t = i18nit(currentLang);
+
+const indexPage = getRelativeLocaleUrl(currentLang, "/");
+const archivesPage = getRelativeLocaleUrl(currentLang, "/archives/");
+const aboutPage = getRelativeLocaleUrl(currentLang, "/about/");
+const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
+---
+
+<!-- header -->
+<div id="main-header" class="fixed top-0 left-0 right-0 z-[var(--z-header)] w-full overflow-visible transition-transform duration-300 ease-in-out">
+<div class="header-inner relative flex items-center pt-2 md:py-4 text-[var(--text-color)] max-w-[var(--header-width)] mx-auto">
+    <!-- logo -->
+    <div class="pr-3 md:pr-5 py-2 z-30 shrink-0 header-logo -ml-2 md:-ml-32 hidden md:block">
+        <a href={ indexPage } >
+            <span class="header-slice-text text-3xl font-bold" data-text={t("site.title")} data-header-logo="true">
+              <span class="header-slice-text__base">{ t("site.title") }</span>
+              <span class="header-slice-text__shards" aria-hidden="true"></span>
+            </span>
+        </a>
+      <RunningDays />
+      <p class="header-slogan mt-1.5 text-sm italic text-[var(--link-color)]/75 leading-relaxed">
+        {siteSlogan['zh-cn']}
+      </p>
+    </div>
+
+    <!-- nav_bar (desktop) -->
+    <div id="nav-bar" class="hidden md:flex absolute left-[calc(50%-30px)] -translate-x-1/2 items-center justify-center font-bold z-20 text-base lg:text-lg">
+      <div id="nav-bar-list" class="transition relative z-10 flex items-center justify-center rounded-outer p-2 overflow-x-auto whitespace-nowrap max-w-[min(58vw,860px)]">
+      <a href={ indexPage } class={`nav-link-item transition-colors rounded-lg px-2 lg:px-3 py-1 mx-1 hover:text-current shrink-0 ${
+            Astro.url.pathname === indexPage
+                ? 'bg-[var(--hover-bg-color)] is-active'
+                : 'hover:bg-[var(--hover-bg-color)]'
+            }`}>
+            <span class="nav-link-text">{t("header.home")}</span>
+        </a>
+      <a href={ archivesPage } class={`nav-link-item transition-colors rounded-lg px-2 lg:px-3 py-1 mx-1 hover:text-current shrink-0 ${
+            Astro.url.pathname === archivesPage
+                ? 'bg-[var(--hover-bg-color)] is-active'
+                : 'hover:bg-[var(--hover-bg-color)]'
+            }`}>
+            <span class="nav-link-text">{t("header.archive")}</span>
+        </a>
+        <a href={ aboutPage } class={`nav-link-item transition-colors rounded-lg px-2 lg:px-3 py-1 mx-1 hover:text-current shrink-0 ${
+            Astro.url.pathname === aboutPage
+                ? 'bg-[var(--hover-bg-color)] is-active'
+                : 'hover:bg-[var(--hover-bg-color)]'
+            }`}>
+            <span class="nav-link-text">{t("header.about")}</span>
+        </a>
+        <a href={ toolsPage } class={`nav-link-item transition-colors rounded-lg px-2 lg:px-3 py-1 mx-1 hover:text-current shrink-0 ${
+          Astro.url.pathname === toolsPage
+                ? 'bg-[var(--hover-bg-color)] is-active'
+                : 'hover:bg-[var(--hover-bg-color)]'
+            }`}>
+          <span class="nav-link-text">{t("header.tools")}</span>
+        </a>
+      </div>
+    </div>
+    
+    <!-- tools -->
+    <div class="shrink-0 ml-auto flex flex-nowrap gap-2 pl-1 md:pl-2 md:translate-x-48 py-2 justify-end z-30">
+        <!-- Search -->
+        <button id="search-button" aria-label="搜索" class="hidden min-[380px]:flex items-center justify-center w-10 h-10 hover:bg-[var(--hover-bg-color)] active:scale-90 rounded-lg hover:text-current border border-[var(--border-color)] transition-all duration-300">
+            <Icon name="fa6-solid:magnifying-glass" class="w-4 h-4" />
+        </button>
+        <!-- Dark Mode -->
+        <ThemeIcon class="hide-on-tiny flex items-center justify-center w-10 h-10 hover:bg-[var(--hover-bg-color)] rounded-lg hover:text-current active:scale-90 border border-[var(--border-color)] transition-all duration-300"/>
+        <!-- Font Size -->
+        <div class="relative">
+          <FontSizeControl class="hide-on-tiny flex items-center justify-center w-10 h-10 hover:bg-[var(--hover-bg-color)] rounded-lg hover:text-current active:scale-90 border border-[var(--border-color)] transition-all duration-300" />
+        </div>
+        <!-- Email Copy -->
+        <button id="copy-email-btn" data-email={headerContact.email} title="复制邮箱" aria-label="复制邮箱" class="hide-on-tiny copy-email-action hidden min-[430px]:flex items-center justify-center w-10 h-10 hover:bg-[var(--hover-bg-color)] active:scale-90 rounded-lg hover:text-current border border-[var(--border-color)] transition-all duration-300">
+          <Icon name="fa6-solid:envelope" class="w-4 h-4" />
+        </button>
+        <!-- Blog Guide -->
+        <button id="blog-guide-open-btn" type="button" title="博客功能说明" aria-label="博客功能说明" class="hide-on-tiny inline-flex items-center justify-center w-10 h-10 hover:bg-[var(--hover-bg-color)] active:scale-90 rounded-lg hover:text-current border border-[var(--border-color)] transition-all duration-300">
+          <Icon name="fa6-solid:circle-question" class="w-4 h-4" />
+        </button>
+        <MobileMenu />
+    </div>
+</div>
+</div>
+
+<style is:global>
+#main-header {
+  isolation: isolate;
+}
+
+#main-header.header-scrolled {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#main-header .header-inner {
+  background: transparent !important;
+}
+
+.header-inner {
+  position: relative;
+  z-index: 2;
+}
+
+#nav-bar-list {
+  transition: transform 0.3s ease;
+}
+
+#nav-bar-list:hover {
+  transform: translateY(-1px);
+}
+
+.header-logo {
+  font-family: "Ma Shan Zheng", "EB Garamond", cursive;
+  letter-spacing: 1px;
+}
+
+.header-slogan {
+  font-family: "ZCOOL QingKe HuangYou", sans-serif;
+  font-style: normal;
+}
+
+.nav-link-item {
+  position: relative;
+  overflow: hidden;
+  transition: color 0.24s ease, background-color 0.24s ease, transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+.nav-link-item::before {
+  content: '';
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 0.4rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--link-color) 70%, currentColor), transparent);
+  transform: scaleX(0);
+  transform-origin: center;
+  opacity: 0.88;
+  transition: transform 0.24s ease;
+}
+
+.nav-link-item .nav-link-text {
+  position: relative;
+  display: inline-block;
+}
+
+.nav-link-item .nav-link-text::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, currentColor, color-mix(in srgb, var(--link-color) 72%, currentColor));
+  border-radius: 2px;
+  transform: translateX(-50%);
+  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  opacity: 0.72;
+}
+
+.nav-link-item:hover,
+.nav-link-item.is-active {
+  color: var(--link-color);
+}
+
+.nav-link-item:hover::before,
+.nav-link-item.is-active::before {
+  transform: scaleX(1);
+}
+
+.nav-link-item:hover .nav-link-text::after {
+  width: 100%;
+}
+
+.nav-link-item.is-active .nav-link-text::after {
+  width: 100%;
+  opacity: 1;
+}
+
+.nav-link-item:hover .nav-link-text,
+.nav-link-item.is-active .nav-link-text {
+  color: inherit;
+}
+
+.header-slice-text {
+  position: relative;
+  display: inline-grid;
+  grid-template-areas: "stack";
+  color: var(--text-color);
+  cursor: pointer;
+  user-select: none;
+  isolation: isolate;
+  line-height: 1;
+  white-space: pre;
+  overflow: visible;
+  text-rendering: geometricPrecision;
+  --fracture-progress: 0;
+  --fracture-shift-x: 0;
+  --fracture-shift-y: 0;
+  --fracture-color: color-mix(in srgb, var(--text-color) 88%, var(--link-color) 12%);
+}
+
+.header-slice-text::before {
+  content: '';
+  position: absolute;
+  inset: -0.35rem -0.55rem;
+  z-index: -1;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--link-color) 12%, transparent) 0%, transparent 70%);
+  filter: blur(10px);
+  opacity: calc(var(--fracture-progress) * 0.24);
+  transform: scale(calc(0.95 + var(--fracture-progress) * 0.1));
+  pointer-events: none;
+}
+
+.header-slice-text::after {
+  content: '';
+  position: absolute;
+  left: -0.1rem;
+  right: -0.1rem;
+  top: 50%;
+  height: 1.5px;
+  z-index: -1;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--link-color) 26%, transparent), transparent);
+  filter: blur(0.35px);
+  opacity: calc(var(--fracture-progress) * 0.3);
+  transform: translateY(-50%) scaleX(calc(0.78 + var(--fracture-progress) * 0.22));
+  pointer-events: none;
+}
+
+.header-slice-text__base,
+.header-slice-text__shards {
+  grid-area: stack;
+}
+
+.header-slice-text__base {
+  position: relative;
+  z-index: 2;
+  white-space: pre;
+  transition: opacity 180ms ease, filter 180ms ease, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), letter-spacing 220ms ease;
+  opacity: calc(1 - var(--fracture-progress) * 0.26);
+  filter: blur(calc(var(--fracture-progress) * 0.22px));
+  transform: translate3d(0, calc(var(--fracture-progress) * -0.7px), 0) scale(calc(1 + var(--fracture-progress) * 0.012));
+  letter-spacing: calc(var(--fracture-progress) * 0.025em);
+}
+
+.header-slice-text__shards {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: var(--fracture-progress);
+}
+
+.header-slice-text__fragment {
+  position: absolute;
+  inset: 0;
+  display: block;
+  white-space: pre;
+  color: var(--fracture-color);
+  transform-origin: center center;
+  backface-visibility: hidden;
+  clip-path: var(--fragment-clip);
+  opacity: calc(var(--fracture-progress) * var(--fragment-opacity));
+  filter: blur(calc(var(--fracture-progress) * 0.18px));
+  transform:
+    translate3d(
+      calc(var(--fracture-progress) * (var(--fragment-dx) + var(--fracture-shift-x) * 3.5) * 1px),
+      calc(var(--fracture-progress) * (var(--fragment-dy) + var(--fracture-shift-y) * 3.5) * 1px),
+      0
+    )
+    rotate(calc(var(--fracture-progress) * var(--fragment-rot) * 1deg))
+    scale(calc(1 + var(--fracture-progress) * (var(--fragment-scale) - 1)));
+  will-change: transform, opacity, filter, clip-path;
+}
+
+.header-slice-text.is-fracturing {
+  filter: saturate(0.98) contrast(1.01);
+}
+
+.tiny-only {
+  display: none;
+}
+
+@media (max-width: 379px) {
+  #main-header .hide-on-tiny {
+    display: none !important;
+  }
+}
+
+  @media (max-width: 775px) {
+    #mobile-menu {
+      width: min(86vw, 320px);
+    }
+  }
+
+  #mobile-menu {
+    display: block;
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+    transform-origin: top right;
+    filter: blur(6px);
+    pointer-events: none;
+    transition: opacity 0.24s ease, transform 0.24s ease, filter 0.24s ease;
+  }
+
+  #mobile-menu:not(.hidden) {
+    display: block;
+  }
+
+  #mobile-menu.is-open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    pointer-events: auto;
+  }
+
+  #mobile-menu.is-tiny-screen {
+    top: 0;
+    right: 0;
+    width: min(84vw, 300px);
+    height: 100vh;
+    border-radius: 0;
+    border-top: 0;
+    border-right: 0;
+    padding-top: 3.8rem;
+    overflow-y: auto;
+  }
+
+  #mobile-menu.is-tiny-screen .tiny-only {
+    display: block;
+  }
+
+</style>
+
+<HeaderLogoFracture />
+<CopyEmail />
+<HeaderScroll />
+<PagefindLoader />

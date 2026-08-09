@@ -1,0 +1,49 @@
+---
+import MainPageLayout from '@layouts/MainPageLayout.astro'
+import Cover from '@components/Cover.astro'
+import ArchiveExplorer from '@components/misc/ArchiveExplorer.astro'
+
+import { siteConfig } from '@/config'
+import { getBlogEntrySort } from '@utils/content-utils'
+import i18nit from '@i18n/translation'
+
+import { decodeCategoryParam, encodeCategoryParam, buildCategoriesMap } from '@utils/blog-taxonomy';
+
+const currentLang = 'zh-cn';
+const t = i18nit(currentLang);
+
+export async function getStaticPaths() {
+  const posts = await getBlogEntrySort();
+  const categorySet = new Set<string>(Object.keys(buildCategoriesMap(posts, 'zh-cn')));
+  const paths = [];
+
+  categorySet.forEach((categoryName) => {
+    paths.push({
+      params: {
+        category: encodeCategoryParam(categoryName)
+      }
+    });
+  });
+
+  return paths;
+}
+
+const currentCategoryParam = Astro.params.category || '';
+const currentCategory = decodeCategoryParam(currentCategoryParam);
+
+const allBlogPosts = await getBlogEntrySort();
+const categoryCount = currentCategory
+  ? (buildCategoriesMap(allBlogPosts, currentLang)[currentCategory] || []).length
+  : allBlogPosts.length;
+const pageTitle = `${currentCategory} - ${t("header.categories")} - ${siteConfig.title}`;
+---
+
+<MainPageLayout title={pageTitle} lang={currentLang}>
+  <div class="relative z-10 mx-auto w-full max-w-[var(--page-width)]">
+    <Cover title={currentCategory || t("cover.title.categories")} subTitle={t("cover.subTitle.archive", {count: categoryCount})} />
+
+    <div class="py-6 text-[var(--text-color)]">
+      <ArchiveExplorer posts={allBlogPosts} language={currentLang} initialCategory={currentCategory} />
+    </div>
+  </div>
+</MainPageLayout>

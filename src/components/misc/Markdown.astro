@@ -1,0 +1,1063 @@
+---
+import '@fontsource-variable/jetbrains-mono'
+import '@fontsource-variable/jetbrains-mono/wght-italic.css'
+import '@styles/markdown.css'
+
+interface Props {
+  class?: string
+}
+const className = Astro.props.class
+const currentLang = (Astro.currentLocale || 'zh-cn').toLowerCase()
+const copyButtonLabel = '复制代码'
+const copyDoneLabel = '已复制'
+const copyErrorLabel = '复制失败'
+---
+<div data-pagefind-body class=`markdown-content ${className}`>
+    <slot/>
+</div>
+
+<script define:vars={{ copyButtonLabel, copyDoneLabel, copyErrorLabel }}>
+  import { trapFocus } from "../../utils/modal";
+
+  const LIGHTBOX_ID = 'markdown-image-lightbox';
+  const LIGHTBOX_MIN_SCALE = 1;
+  const LIGHTBOX_MAX_SCALE = 6;
+  const LIGHTBOX_ZOOM_STEP = 1;
+  const lightboxState = {
+    activeImage: null,
+    currentImages: [],
+    currentIndex: -1,
+    scrollY: 0,
+    scale: 1,
+    translateX: 0,
+    translateY: 0,
+    isDragging: false,
+    dragMoved: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    dragOriginX: 0,
+    dragOriginY: 0,
+    pinchStartDistance: 0,
+    pinchStartScale: 1,
+    pointers: new Map(),
+  };
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function lockLightboxScroll() {
+    lightboxState.scrollY = window.scrollY;
+    document.documentElement.classList.add('markdown-lightbox-open');
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${lightboxState.scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.width = '100%';
+  }
+
+  function unlockLightboxScroll() {
+    const savedScrollY = lightboxState.scrollY;
+    const previousScrollBehavior = document.documentElement.style.scrollBehavior;
+
+    document.documentElement.classList.remove('markdown-lightbox-open');
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.width = '';
+
+    requestAnimationFrame(() => {
+      document.documentElement.style.scrollBehavior = 'auto';
+      window.scrollTo(0, savedScrollY);
+      requestAnimationFrame(() => {
+        document.documentElement.style.scrollBehavior = previousScrollBehavior;
+      });
+    });
+  }
+
+  function getLightboxElements(lightbox) {
+    const preview = lightbox.querySelector('.markdown-image-lightbox__image');
+    const content = lightbox.querySelector('.markdown-image-lightbox__content');
+    const caption = lightbox.querySelector('.markdown-image-lightbox__caption');
+    const counter = lightbox.querySelector('.markdown-image-lightbox__counter');
+    const prevButton = lightbox.querySelector('[data-lightbox-prev]');
+    const nextButton = lightbox.querySelector('[data-lightbox-next]');
+    const zoomOutButton = lightbox.querySelector('[data-lightbox-zoom-out]');
+    const zoomResetButton = lightbox.querySelector('[data-lightbox-zoom-reset]');
+    const zoomInButton = lightbox.querySelector('[data-lightbox-zoom-in]');
+    const closeButton = lightbox.querySelector('.markdown-image-lightbox__close');
+    return {
+      preview: preview instanceof HTMLImageElement ? preview : null,
+      content: content instanceof HTMLElement ? content : null,
+      caption: caption instanceof HTMLElement ? caption : null,
+      counter: counter instanceof HTMLElement ? counter : null,
+      prevButton: prevButton instanceof HTMLButtonElement ? prevButton : null,
+      nextButton: nextButton instanceof HTMLButtonElement ? nextButton : null,
+      zoomOutButton: zoomOutButton instanceof HTMLButtonElement ? zoomOutButton : null,
+      zoomResetButton: zoomResetButton instanceof HTMLButtonElement ? zoomResetButton : null,
+      zoomInButton: zoomInButton instanceof HTMLButtonElement ? zoomInButton : null,
+      closeButton: closeButton instanceof HTMLButtonElement ? closeButton : null,
+    };
+  }
+
+  function getMarkdownImages() {
+    return [...document.querySelectorAll('.markdown-content img.markdown-image-previewable')];
+  }
+
+  function syncLightboxControls(lightbox) {
+    const {
+      counter,
+      prevButton,
+      nextButton,
+      zoomOutButton,
+      zoomResetButton,
+      zoomInButton,
+    } = getLightboxElements(lightbox);
+
+    if (counter) {
+      const total = lightboxState.currentImages.length;
+      counter.textContent = total > 0 && lightboxState.currentIndex >= 0
+        ? `${lightboxState.currentIndex + 1} / ${total}`
+        : '';
+    }
+
+    if (prevButton) {
+      prevButton.disabled = lightboxState.currentIndex <= 0;
+    }
+
+    if (nextButton) {
+      nextButton.disabled = lightboxState.currentIndex < 0 || lightboxState.currentIndex >= lightboxState.currentImages.length - 1;
+    }
+
+    if (zoomOutButton) {
+      zoomOutButton.disabled = lightboxState.scale <= LIGHTBOX_MIN_SCALE;
+    }
+
+    if (zoomInButton) {
+      zoomInButton.disabled = lightboxState.scale >= LIGHTBOX_MAX_SCALE;
+    }
+
+    if (zoomResetButton) {
+      zoomResetButton.disabled = lightboxState.scale === LIGHTBOX_MIN_SCALE;
+      zoomResetButton.textContent = `${Math.round(lightboxState.scale * 100)}%`;
+    }
+  }
+
+  function clampLightboxTranslation(lightbox) {
+    const { preview } = getLightboxElements(lightbox);
+    if (!preview) return;
+
+    const maxX = Math.max(0, (preview.offsetWidth * lightboxState.scale - preview.offsetWidth) / 2);
+    const maxY = Math.max(0, (preview.offsetHeight * lightboxState.scale - preview.offsetHeight) / 2);
+
+    lightboxState.translateX = clamp(lightboxState.translateX, -maxX, maxX);
+    lightboxState.translateY = clamp(lightboxState.translateY, -maxY, maxY);
+  }
+
+  function updateLightboxTransform(lightbox) {
+    const { preview, content } = getLightboxElements(lightbox);
+    if (!preview || !content) return;
+
+    clampLightboxTranslation(lightbox);
+
+    preview.style.transform = `translate3d(${lightboxState.translateX}px, ${lightboxState.translateY}px, 0) scale(${lightboxState.scale})`;
+    preview.classList.toggle('is-panning', lightboxState.isDragging);
+    preview.classList.toggle('is-zoomed', lightboxState.scale > 1);
+    preview.style.cursor = lightboxState.scale > 1
+      ? (lightboxState.isDragging ? 'grabbing' : 'grab')
+      : 'zoom-in';
+    content.classList.toggle('is-zoomed', lightboxState.scale > 1);
+    syncLightboxControls(lightbox);
+  }
+
+  function resetLightboxZoom(lightbox) {
+    lightboxState.scale = 1;
+    lightboxState.translateX = 0;
+    lightboxState.translateY = 0;
+    lightboxState.isDragging = false;
+    lightboxState.dragMoved = false;
+    lightboxState.dragStartX = 0;
+    lightboxState.dragStartY = 0;
+    lightboxState.dragOriginX = 0;
+    lightboxState.dragOriginY = 0;
+    lightboxState.pinchStartDistance = 0;
+    lightboxState.pinchStartScale = 1;
+    lightboxState.pointers.clear();
+    updateLightboxTransform(lightbox);
+  }
+
+  function setLightboxScale(lightbox, nextScale, { keepOffset = true } = {}) {
+    lightboxState.scale = clamp(nextScale, LIGHTBOX_MIN_SCALE, LIGHTBOX_MAX_SCALE);
+    if (lightboxState.scale === 1 || !keepOffset) {
+      lightboxState.translateX = 0;
+      lightboxState.translateY = 0;
+    }
+    updateLightboxTransform(lightbox);
+  }
+
+  function zoomLightboxToPoint(lightbox, nextScale, clientX, clientY) {
+    const { preview, content } = getLightboxElements(lightbox);
+    if (!preview || !content) return;
+
+    const boundedScale = clamp(nextScale, LIGHTBOX_MIN_SCALE, LIGHTBOX_MAX_SCALE);
+    if (boundedScale === LIGHTBOX_MIN_SCALE) {
+      setLightboxScale(lightbox, LIGHTBOX_MIN_SCALE, { keepOffset: false });
+      return;
+    }
+
+    const contentRect = content.getBoundingClientRect();
+    const centerX = contentRect.left + contentRect.width / 2;
+    const centerY = contentRect.top + contentRect.height / 2;
+    const pointX = (clientX - centerX - lightboxState.translateX) / lightboxState.scale;
+    const pointY = (clientY - centerY - lightboxState.translateY) / lightboxState.scale;
+
+    lightboxState.scale = boundedScale;
+    lightboxState.translateX = clientX - centerX - pointX * boundedScale;
+    lightboxState.translateY = clientY - centerY - pointY * boundedScale;
+    updateLightboxTransform(lightbox);
+  }
+
+  function getPointerDistance() {
+    const points = [...lightboxState.pointers.values()];
+    if (points.length < 2) return 0;
+
+    const [first, second] = points;
+    return Math.hypot(second.x - first.x, second.y - first.y);
+  }
+
+  function releasePointer(pointerId) {
+    lightboxState.pointers.delete(pointerId);
+    if (lightboxState.pointers.size < 2) {
+      lightboxState.pinchStartDistance = 0;
+    }
+    if (lightboxState.pointers.size === 0) {
+      lightboxState.isDragging = false;
+    }
+  }
+
+  function cleanupImageLightbox({ remove = false } = {}) {
+    const lightbox = document.getElementById(LIGHTBOX_ID);
+    if (!(lightbox instanceof HTMLElement)) return;
+
+    lightbox.classList.remove('is-open');
+    lightbox.setAttribute('aria-hidden', 'true');
+    lightbox.hidden = true;
+    lightboxState.activeImage = null;
+    lightboxState.currentImages = [];
+    lightboxState.currentIndex = -1;
+    lightboxState.scale = 1;
+    lightboxState.translateX = 0;
+    lightboxState.translateY = 0;
+    lightboxState.isDragging = false;
+    lightboxState.dragMoved = false;
+    lightboxState.pointers.clear();
+    document.documentElement.classList.remove('markdown-lightbox-open');
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.width = '';
+
+    if (remove) {
+      lightbox.remove();
+    }
+  }
+
+  function updateLightboxImage(lightbox, img, { resetZoom = true } = {}) {
+    const { preview, caption } = getLightboxElements(lightbox);
+    if (!preview || !img) return;
+
+    lightboxState.activeImage = img;
+    lightboxState.currentIndex = lightboxState.currentImages.indexOf(img);
+
+    preview.src = img.currentSrc || img.src;
+    preview.alt = img.getAttribute('alt') || '';
+    if (caption) {
+      caption.textContent = getImageCaption(img);
+    }
+
+    if (resetZoom) {
+      resetLightboxZoom(lightbox);
+    } else {
+      updateLightboxTransform(lightbox);
+    }
+
+    syncLightboxControls(lightbox);
+  }
+
+  function showAdjacentLightboxImage(step) {
+    const lightbox = document.getElementById(LIGHTBOX_ID);
+    if (!lightbox || !lightbox.classList.contains('is-open')) return;
+
+    const nextIndex = lightboxState.currentIndex + step;
+    if (nextIndex < 0 || nextIndex >= lightboxState.currentImages.length) return;
+
+    updateLightboxImage(lightbox, lightboxState.currentImages[nextIndex]);
+  }
+
+  function changeLightboxScale(step) {
+    const lightbox = document.getElementById(LIGHTBOX_ID);
+    if (!lightbox || !lightbox.classList.contains('is-open')) return;
+
+    const { content } = getLightboxElements(lightbox);
+    if (!content) return;
+
+    const rect = content.getBoundingClientRect();
+    zoomLightboxToPoint(
+      lightbox,
+      lightboxState.scale + step,
+      rect.left + rect.width / 2,
+      rect.top + rect.height / 2,
+    );
+  }
+
+  function bindImageSkeleton(img) {
+    const markLoaded = () => {
+      img.classList.remove('markdown-image-loading');
+      img.classList.add('markdown-image-loaded');
+    };
+
+    if (img.complete && img.naturalWidth > 0) {
+      markLoaded();
+      return;
+    }
+
+    img.classList.add('markdown-image-loading');
+    img.classList.remove('markdown-image-loaded');
+    img.addEventListener('load', markLoaded, { once: true });
+    img.addEventListener('error', markLoaded, { once: true });
+  }
+
+  function ensureImageLightbox() {
+    let lightbox = document.getElementById(LIGHTBOX_ID);
+    if (lightbox) return lightbox;
+
+    lightbox = document.createElement('div');
+    lightbox.id = LIGHTBOX_ID;
+    lightbox.className = 'markdown-image-lightbox';
+    lightbox.setAttribute('aria-hidden', 'true');
+    lightbox.hidden = true;
+    lightbox.innerHTML = `
+      <div class="markdown-image-lightbox__backdrop" data-lightbox-close></div>
+      <div class="markdown-image-lightbox__dialog" role="dialog" aria-modal="true" aria-label="图片预览">
+        <div class="markdown-image-lightbox__toolbar">
+          <div class="markdown-image-lightbox__counter"></div>
+          <div class="markdown-image-lightbox__toolbar-actions">
+            <button type="button" class="markdown-image-lightbox__action-btn" aria-label="缩小图片" data-lightbox-zoom-out>-</button>
+            <button type="button" class="markdown-image-lightbox__action-btn markdown-image-lightbox__zoom-label" aria-label="重置缩放" data-lightbox-zoom-reset>100%</button>
+            <button type="button" class="markdown-image-lightbox__action-btn" aria-label="放大图片" data-lightbox-zoom-in>+</button>
+            <button type="button" class="markdown-image-lightbox__close" aria-label="关闭预览" data-lightbox-close>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+            </button>
+          </div>
+        </div>
+        <div class="markdown-image-lightbox__content">
+          <button type="button" class="markdown-image-lightbox__nav markdown-image-lightbox__nav--prev" aria-label="上一张图片" data-lightbox-prev>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+          </button>
+          <img class="markdown-image-lightbox__image" alt="" tabindex="0" />
+          <button type="button" class="markdown-image-lightbox__nav markdown-image-lightbox__nav--next" aria-label="下一张图片" data-lightbox-next>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+          </button>
+        </div>
+      </div>
+    `;
+
+    const {
+      preview,
+      content,
+      closeButton,
+      prevButton,
+      nextButton,
+      zoomOutButton,
+      zoomResetButton,
+      zoomInButton,
+    } = getLightboxElements(lightbox);
+    const dialog = lightbox.querySelector('.markdown-image-lightbox__dialog');
+
+    const closeLightbox = () => {
+      resetLightboxZoom(lightbox);
+      lightbox.classList.remove('is-open');
+      lightbox.setAttribute('aria-hidden', 'true');
+      lightbox.hidden = true;
+      unlockLightboxScroll();
+      lightboxState.activeImage = null;
+      lightboxState.currentImages = [];
+      lightboxState.currentIndex = -1;
+      syncLightboxControls(lightbox);
+    };
+
+    closeButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeLightbox();
+    });
+
+    closeButton?.addEventListener('pointerup', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
+    prevButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      showAdjacentLightboxImage(-1);
+    });
+
+    nextButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      showAdjacentLightboxImage(1);
+    });
+
+    zoomOutButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      changeLightboxScale(-LIGHTBOX_ZOOM_STEP);
+    });
+
+    zoomInButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      changeLightboxScale(LIGHTBOX_ZOOM_STEP);
+    });
+
+    zoomResetButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setLightboxScale(lightbox, LIGHTBOX_MIN_SCALE, { keepOffset: false });
+    });
+
+    lightbox.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      if (target.closest('[data-lightbox-close]')) {
+        closeLightbox();
+        return;
+      }
+
+      if (target === lightbox || target.closest('.markdown-image-lightbox__backdrop')) {
+        closeLightbox();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!lightbox.classList.contains('is-open')) return;
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeLightbox();
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        showAdjacentLightboxImage(-1);
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        showAdjacentLightboxImage(1);
+      } else if (event.key === '+' || event.key === '=') {
+        event.preventDefault();
+        changeLightboxScale(LIGHTBOX_ZOOM_STEP);
+      } else if (event.key === '-' || event.key === '_') {
+        event.preventDefault();
+        changeLightboxScale(-LIGHTBOX_ZOOM_STEP);
+      } else if (event.key === 'Tab') {
+        trapFocus(lightbox, event);
+      }
+    });
+
+    preview?.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+
+    preview?.addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const nextScale = lightboxState.scale >= LIGHTBOX_MAX_SCALE
+        ? LIGHTBOX_MIN_SCALE
+        : lightboxState.scale + LIGHTBOX_ZOOM_STEP;
+
+      zoomLightboxToPoint(lightbox, nextScale, event.clientX, event.clientY);
+    });
+
+    preview?.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      const delta = event.deltaY < 0 ? 0.25 : -0.25;
+      zoomLightboxToPoint(lightbox, lightboxState.scale + delta, event.clientX, event.clientY);
+    }, { passive: false });
+
+    preview?.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+      preview.setPointerCapture?.(event.pointerId);
+      lightboxState.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (lightboxState.pointers.size === 2) {
+        lightboxState.pinchStartDistance = getPointerDistance();
+        lightboxState.pinchStartScale = lightboxState.scale;
+        lightboxState.isDragging = false;
+        return;
+      }
+
+      if (lightboxState.scale > 1) {
+        lightboxState.isDragging = true;
+        lightboxState.dragMoved = false;
+        lightboxState.dragStartX = event.clientX;
+        lightboxState.dragStartY = event.clientY;
+        lightboxState.dragOriginX = lightboxState.translateX;
+        lightboxState.dragOriginY = lightboxState.translateY;
+        updateLightboxTransform(lightbox);
+      }
+    });
+
+    preview?.addEventListener('pointermove', (event) => {
+      if (!lightboxState.pointers.has(event.pointerId)) return;
+
+      lightboxState.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (lightboxState.pointers.size === 2) {
+        event.preventDefault();
+        const distance = getPointerDistance();
+        if (lightboxState.pinchStartDistance > 0) {
+          const nextScale = lightboxState.pinchStartScale * (distance / lightboxState.pinchStartDistance);
+          setLightboxScale(lightbox, nextScale);
+        }
+        return;
+      }
+
+      if (!lightboxState.isDragging || lightboxState.scale <= 1) return;
+
+      event.preventDefault();
+      const deltaX = event.clientX - lightboxState.dragStartX;
+      const deltaY = event.clientY - lightboxState.dragStartY;
+
+      if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+        lightboxState.dragMoved = true;
+      }
+
+      lightboxState.translateX = lightboxState.dragOriginX + deltaX;
+      lightboxState.translateY = lightboxState.dragOriginY + deltaY;
+      updateLightboxTransform(lightbox);
+    });
+
+    const handlePointerRelease = (event) => {
+      preview?.releasePointerCapture?.(event.pointerId);
+      releasePointer(event.pointerId);
+      updateLightboxTransform(lightbox);
+    };
+
+    preview?.addEventListener('pointerup', handlePointerRelease);
+    preview?.addEventListener('pointercancel', handlePointerRelease);
+    preview?.addEventListener('pointerleave', handlePointerRelease);
+
+    content?.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+
+    dialog?.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+
+    document.body.appendChild(lightbox);
+    syncLightboxControls(lightbox);
+    return lightbox;
+  }
+
+  function getImageCaption(img) {
+    const figure = img.closest('figure');
+    const figcaption = figure?.querySelector('figcaption');
+    return figcaption?.textContent?.trim() || img.getAttribute('alt') || img.getAttribute('title') || '';
+  }
+
+  function openImageLightbox(img) {
+    const lightbox = ensureImageLightbox();
+    lightboxState.currentImages = getMarkdownImages();
+    if (!lightboxState.currentImages.length) {
+      lightboxState.currentImages = [img];
+    }
+
+    updateLightboxImage(lightbox, img);
+    lightbox.hidden = false;
+    lightbox.classList.add('is-open');
+    lightbox.setAttribute('aria-hidden', 'false');
+    lockLightboxScroll();
+  }
+
+  function bindImagePreview(img) {
+    if (img.dataset.previewBound === 'true') return;
+
+    img.dataset.previewBound = 'true';
+    img.classList.add('markdown-image-previewable');
+    img.setAttribute('tabindex', '0');
+    img.setAttribute('role', 'button');
+    img.setAttribute('aria-label', `${img.getAttribute('alt') || '图片'}，点击放大查看`);
+
+    const handleOpen = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openImageLightbox(img);
+    };
+
+    img.addEventListener('click', handleOpen);
+    img.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        handleOpen(event);
+      }
+    });
+  }
+
+  async function copyCodeText(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const helper = document.createElement('textarea');
+    helper.value = text;
+    helper.setAttribute('readonly', 'true');
+    helper.style.position = 'fixed';
+    helper.style.top = '0';
+    helper.style.left = '0';
+    helper.style.opacity = '0';
+    document.body.appendChild(helper);
+    helper.focus();
+    helper.select();
+
+    const succeeded = document.execCommand('copy');
+    helper.remove();
+
+    if (!succeeded) {
+      throw new Error('Copy command failed');
+    }
+  }
+
+  function updateCopyButtonState(button, state) {
+    if (!(button instanceof HTMLButtonElement)) return;
+
+    button.dataset.copyState = state;
+    button.textContent = state === 'copied' ? copyDoneLabel : copyButtonLabel;
+    button.setAttribute('aria-label', state === 'copied' ? copyDoneLabel : copyButtonLabel);
+  }
+
+  function initCodeCopyButtons() {
+    const codeBlocks = Array.from(document.querySelectorAll('.markdown-content pre'));
+    if (codeBlocks.length === 0) return;
+
+    codeBlocks.forEach((pre) => {
+      if (!(pre instanceof HTMLElement) || pre.dataset.copyBound === 'true') return;
+
+      const codeElement = pre.querySelector('code');
+      const codeText = (codeElement?.textContent || '').replace(/\n$/, '');
+      if (!codeText.trim()) return;
+
+      pre.dataset.copyBound = 'true';
+
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.className = 'markdown-code-copy-button';
+      copyButton.textContent = copyButtonLabel;
+      copyButton.setAttribute('aria-label', copyButtonLabel);
+      copyButton.setAttribute('title', copyButtonLabel);
+
+      let resetTimer = null;
+
+      copyButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        try {
+          await copyCodeText(codeText);
+          updateCopyButtonState(copyButton, 'copied');
+        } catch (_error) {
+          updateCopyButtonState(copyButton, 'error');
+          copyButton.textContent = copyErrorLabel;
+        }
+
+        if (resetTimer) {
+          clearTimeout(resetTimer);
+        }
+
+        resetTimer = window.setTimeout(() => {
+          updateCopyButtonState(copyButton, 'idle');
+          copyButton.setAttribute('title', copyButtonLabel);
+        }, 1400);
+      });
+
+      pre.appendChild(copyButton);
+      updateCopyButtonState(copyButton, 'idle');
+    });
+  }
+
+  function stabilizeMarkdownImages() {
+    ensureImageLightbox();
+    const images = document.querySelectorAll('.markdown-content img');
+    images.forEach((img) => {
+      img.setAttribute('loading', 'eager');
+      img.setAttribute('decoding', 'sync');
+      img.setAttribute('fetchpriority', 'high');
+      img.style.imageRendering = 'auto';
+      bindImageSkeleton(img);
+      bindImagePreview(img);
+    });
+  }
+
+  function setupSpoilers() {
+    const spoilers = document.querySelectorAll('.spoiler');
+    
+    spoilers.forEach(el => {
+      let timeoutId = null;
+      let clickTime = 0;
+
+      el.addEventListener('click', () => {
+        el.classList.add('revealed');
+        clickTime = Date.now();
+
+        if (timeoutId) clearTimeout(timeoutId);
+
+        const isMobile = window.innerWidth < 776;
+
+        if (!isMobile) {
+          // --- 桌面端逻辑：保持原样，3秒后自动模糊 ---
+          timeoutId = setTimeout(() => {
+            el.classList.remove('revealed');
+          }, 3000);
+        } else {
+          // --- 移动端逻辑 (< 776px) ---
+          // 只有满足两个条件：1. 发生滚动 2. 距离点击已过3秒
+          const handleScroll = () => {
+            const timeElapsed = Date.now() - clickTime;
+            
+            if (timeElapsed >= 3000) {
+              el.classList.remove('revealed');
+              window.removeEventListener('scroll', handleScroll);
+            }
+          };
+
+          window.addEventListener('scroll', handleScroll, { passive: true });
+        }
+      });
+    });
+  }
+
+  stabilizeMarkdownImages();
+  initCodeCopyButtons();
+  setupSpoilers();
+  cleanupImageLightbox();
+  document.addEventListener('astro:page-load', stabilizeMarkdownImages);
+  document.addEventListener('astro:page-load', initCodeCopyButtons);
+  document.addEventListener('astro:page-load', setupSpoilers);
+  document.addEventListener('astro:before-preparation', () => cleanupImageLightbox());
+  document.addEventListener('astro:after-swap', () => {
+    if (!document.querySelector('.markdown-content img')) {
+      cleanupImageLightbox({ remove: true });
+    } else {
+      cleanupImageLightbox();
+    }
+  });
+  document.addEventListener('astro:after-swap', initCodeCopyButtons);
+</script>
+
+<style is:global>
+  .markdown-content img {
+    transition: opacity .25s ease;
+  }
+
+  .markdown-content img.markdown-image-previewable {
+    cursor: zoom-in;
+  }
+
+  html.markdown-lightbox-open,
+  html.markdown-lightbox-open body {
+    overflow: hidden;
+  }
+
+  .markdown-image-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-lightbox);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .markdown-image-lightbox[hidden] {
+    display: none !important;
+  }
+
+  .markdown-image-lightbox.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .markdown-image-lightbox__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(8px);
+  }
+
+  .markdown-image-lightbox__dialog {
+    position: relative;
+    z-index: 1;
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .markdown-image-lightbox__toolbar {
+    position: absolute;
+    top: calc(0.75rem + env(safe-area-inset-top));
+    left: max(0.75rem, env(safe-area-inset-left));
+    right: max(0.75rem, env(safe-area-inset-right));
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .markdown-image-lightbox__toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .markdown-image-lightbox__counter {
+    min-width: 4.5rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(17, 17, 17, 0.45);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0.88rem;
+    text-align: center;
+  }
+
+  .markdown-image-lightbox__action-btn,
+  .markdown-image-lightbox__close,
+  .markdown-image-lightbox__nav {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(17, 17, 17, 0.52);
+    color: #fff;
+    transition: transform 0.2s ease, background 0.2s ease, opacity 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  }
+
+  .markdown-image-lightbox__action-btn {
+    min-width: 2.75rem;
+    height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .markdown-image-lightbox__zoom-label {
+    min-width: 4.5rem;
+    padding: 0 0.75rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+
+  .markdown-image-lightbox__content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    overflow: hidden;
+    padding:
+      calc(4.75rem + env(safe-area-inset-top))
+      max(0.9rem, env(safe-area-inset-right))
+      calc(0.9rem + env(safe-area-inset-bottom))
+      max(0.9rem, env(safe-area-inset-left));
+  }
+
+  .markdown-image-lightbox__content.is-zoomed {
+    cursor: grab;
+  }
+
+  .markdown-image-lightbox__nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3rem;
+    height: 3rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 12;
+    pointer-events: auto;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  }
+
+  .markdown-image-lightbox__nav--prev {
+    left: 1rem;
+  }
+
+  .markdown-image-lightbox__nav--next {
+    right: 1rem;
+  }
+
+  .markdown-image-lightbox__nav:disabled,
+  .markdown-image-lightbox__action-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .markdown-image-lightbox__nav:disabled {
+    transform: translateY(-50%);
+  }
+
+  .markdown-image-lightbox__image {
+    position: relative;
+    z-index: 1;
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    border-radius: 0.25rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    background: rgba(255, 255, 255, 0.04);
+    transform-origin: center center;
+    transition: transform 0.18s ease;
+    will-change: transform;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .markdown-image-lightbox__image.is-panning {
+    transition: none;
+  }
+
+  .markdown-image-lightbox__image.is-zoomed {
+    cursor: grab;
+  }
+
+  .markdown-image-lightbox__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 999px;
+    cursor: pointer;
+    position: relative;
+    z-index: 5;
+    pointer-events: auto;
+  }
+
+  .markdown-image-lightbox__close:hover,
+  .markdown-image-lightbox__action-btn:hover:not(:disabled),
+  .markdown-image-lightbox__nav:hover:not(:disabled) {
+    transform: translateY(-50%) scale(1.06);
+    background: rgba(34, 34, 34, 0.92);
+    border-color: rgba(255, 255, 255, 0.68);
+    color: #ffffff;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 14px 34px rgba(0, 0, 0, 0.38), 0 0 22px rgba(255, 255, 255, 0.14);
+  }
+
+  .markdown-image-lightbox__action-btn:hover:not(:disabled),
+  .markdown-image-lightbox__close:hover {
+    transform: scale(1.06);
+  }
+
+  .markdown-image-lightbox__close svg,
+  .markdown-image-lightbox__action-btn,
+  .markdown-image-lightbox__nav svg {
+    transition: filter 0.2s ease, transform 0.2s ease;
+  }
+
+  .markdown-image-lightbox__close:hover svg,
+  .markdown-image-lightbox__nav:hover:not(:disabled) svg,
+  .markdown-image-lightbox__action-btn:hover:not(:disabled) {
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.35));
+  }
+
+  @media (max-width: 768px) {
+    .markdown-image-lightbox__toolbar {
+      top: calc(0.5rem + env(safe-area-inset-top));
+      left: max(0.5rem, env(safe-area-inset-left));
+      right: max(0.5rem, env(safe-area-inset-right));
+      gap: 0.5rem;
+    }
+
+    .markdown-image-lightbox__toolbar-actions {
+      gap: 0.35rem;
+    }
+
+    .markdown-image-lightbox__action-btn,
+    .markdown-image-lightbox__close {
+      min-width: 2.35rem;
+      width: 2.35rem;
+      height: 2.35rem;
+      font-size: 0.92rem;
+    }
+
+    .markdown-image-lightbox__zoom-label {
+      min-width: 3.8rem;
+      width: auto;
+      padding: 0 0.6rem;
+      font-size: 0.78rem;
+    }
+
+    .markdown-image-lightbox__content {
+      padding:
+        calc(3.8rem + env(safe-area-inset-top))
+        max(0.35rem, env(safe-area-inset-right))
+        calc(0.35rem + env(safe-area-inset-bottom))
+        max(0.35rem, env(safe-area-inset-left));
+    }
+
+    .markdown-image-lightbox__nav {
+      width: 2.3rem;
+      height: 2.3rem;
+    }
+
+    .markdown-image-lightbox__nav--prev {
+      left: 0.25rem;
+    }
+
+    .markdown-image-lightbox__nav--next {
+      right: 0.25rem;
+    }
+  }
+
+  .markdown-content img.markdown-image-loading {
+    opacity: 0;
+    background: linear-gradient(90deg,
+      var(--hover-bg-color) 25%,
+      color-mix(in srgb, var(--hover-bg-color) 70%, white) 37%,
+      var(--hover-bg-color) 63%
+    );
+    background-size: 300% 100%;
+    animation: markdown-image-skeleton 1.2s ease-in-out infinite;
+  }
+
+  .markdown-content img.markdown-image-loaded {
+    opacity: 1;
+    animation: none;
+  }
+
+  @keyframes markdown-image-skeleton {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+  }
+
+</style>

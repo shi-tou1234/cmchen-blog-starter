@@ -1,0 +1,101 @@
+---
+import { externalUrlsConfig } from "../../config";
+// Giscus 评论系统组件（基于 GitHub Discussions，无需后端）
+// 使用官方原生 <script> 标签写法，最大限度排除 Astro 脚本处理带来的干扰。
+// data-astro-rerun 保证 Astro View Transitions 切换页面后该脚本会重新执行。
+---
+
+<section id="comments" class="giscus-comments mt-12 pt-8 border-t border-[var(--border-color)] scroll-mt-24" aria-label="评论">
+  <h2 class="giscus-title text-2xl font-bold text-[var(--text-color)] mb-4 flex items-center gap-2">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+    </svg>
+    <span>评论</span>
+  </h2>
+  <div class="giscus"></div>
+</section>
+
+<script
+  src="https://giscus.app/client.js"
+  data-repo={externalUrlsConfig.githubRepo}
+  data-repo-id={externalUrlsConfig.giscusRepoId}
+  data-category="General"
+  data-category-id="DIC_kwDORRKvYM4DAamD"
+  data-mapping="pathname"
+  data-strict="0"
+  data-reactions-enabled="1"
+  data-emit-metadata="0"
+  data-input-position="top"
+  data-theme="light"
+  data-lang="zh-CN"
+  crossorigin="anonymous"
+  async
+  is:inline
+  data-astro-rerun
+></script>
+
+<script is:inline>
+(function() {
+  function getGiscusTheme() {
+    var theme = document.documentElement.getAttribute('data-theme');
+    if (theme === 'dark') return 'dark';
+    if (theme) return 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function getGiscusThemeName() {
+    var theme = document.documentElement.getAttribute('data-theme');
+    if (theme === 'dark') return 'dark_dimmed';
+    return 'light';
+  }
+
+  function setGiscusTheme(theme) {
+    var iframe = document.querySelector('iframe.giscus-frame');
+    if (!iframe) return;
+    iframe.contentWindow.postMessage({
+      giscus: { setConfig: { theme: theme } }
+    }, 'https://giscus.app');
+  }
+
+  function initGiscusThemeSync() {
+    // Set initial theme on the script tag before Giscus loads
+    var script = document.querySelector('script[src="https://giscus.app/client.js"]');
+    if (script) {
+      script.setAttribute('data-theme', getGiscusThemeName());
+    }
+
+    // Observe theme changes
+    var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        if (m.attributeName === 'data-theme') {
+          setGiscusTheme(getGiscusThemeName());
+        }
+      });
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+
+  document.addEventListener('astro:page-load', initGiscusThemeSync);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGiscusThemeSync);
+  } else {
+    initGiscusThemeSync();
+  }
+})();
+</script>
+
+<style is:global>
+  .giscus-comments {
+    max-width: 100%;
+  }
+
+  .giscus {
+    min-height: 12rem;
+  }
+
+  .giscus iframe.giscus-frame {
+    width: 100%;
+    border: none;
+    color-scheme: light dark;
+  }
+</style>

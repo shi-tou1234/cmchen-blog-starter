@@ -1,0 +1,51 @@
+---
+import { Icon } from "astro-icon/components";
+---
+
+<div id="backTop" title="回到顶部" class="flex items-center justify-center cursor-pointer">
+  <button aria-label="返回顶部" class="relative w-10 h-10 rounded-full bg-[--bg-color] flex items-center justify-center transition-all duration-300 border-0 hover:scale-110 active:scale-90 hover:shadow-[0_4px_15px_rgba(139,69,19,0.4)]">
+    <svg class="absolute top-0 left-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
+      <circle id="circle" cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="2"></circle>
+      <circle id="progress-circle" cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="0 125.6" stroke-linecap="round"></circle>
+    </svg>
+    <Icon name="fa6-solid:arrow-up" class="relative z-10 text-sm text-[var(--text-color)]" />
+  </button>
+</div>
+
+<script>
+  import { initBackToTop } from "../../utils/back-to-top";
+
+  function initBackTop() {
+    initBackToTop(
+      document.getElementById('backTop'),
+      document.getElementById('progress-circle')
+    );
+  }
+
+  document.addEventListener('astro:page-load', initBackTop);
+  document.addEventListener('astro:after-swap', initBackTop);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBackTop);
+  } else {
+    initBackTop();
+  }
+</script>
+
+<style is:global>
+  #backTop {
+    margin-top: 1rem;
+  }
+
+  #backTop button {
+    box-shadow: 0 2px 10px var(--shadow-color);
+  }
+
+  #progress-circle {
+    stroke: var(--text-color);
+  }
+
+  #circle {
+    stroke: var(--border-color);
+  }
+</style>

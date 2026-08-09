@@ -1,0 +1,137 @@
+---
+import { Icon } from "astro-icon/components";
+import { hashString } from "@utils/hash";
+
+export interface NavCardItem {
+  name: string;
+  url: string;
+  icon: string;
+  description: string;
+  color?: string;
+}
+
+interface Props {
+  item: NavCardItem;
+}
+
+function generateGradient(url: string): string {
+  const h = hashString(url);
+  const hue1 = h % 360;
+  const hue2 = (hue1 + 40 + (h % 60)) % 360;
+  const sat = 35 + (h % 25);
+  const light1 = 40 + (h % 15);
+  const light2 = 35 + ((h >> 4) % 15);
+  return `linear-gradient(-45deg, hsl(${hue1}, ${sat}%, ${light1}%) 0%, hsl(${hue2}, ${sat}%, ${light2}%) 100%)`;
+}
+
+const { item } = Astro.props;
+const gradient = item.color || generateGradient(item.url);
+---
+
+<a
+  href={item.url}
+  target="_blank"
+  rel="noopener noreferrer"
+  class="nav-card"
+  style={`background: ${gradient}`}
+>
+  <span class="nav-card-icon">
+    <Icon name={item.icon} size={48} />
+  </span>
+  <span class="nav-card-label">{item.name}</span>
+  <div class="nav-card__content">
+    <p class="nav-card__title">{item.name}</p>
+    <p class="nav-card__description">{item.description}</p>
+  </div>
+</a>
+
+<style is:global>
+  .nav-card {
+    position: relative;
+    width: 300px;
+    height: 200px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    overflow: hidden;
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.320, 1);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .nav-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.320, 1);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  }
+
+  .nav-card-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.320, 1);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  .nav-card:hover {
+    transform: rotate(-5deg) scale(1.1);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .nav-card:hover .nav-card-icon,
+  .nav-card:hover .nav-card-label {
+    scale: 0;
+    opacity: 0;
+  }
+
+  .nav-card__content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: var(--bg-color);
+    opacity: 0;
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.320, 1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .nav-card:hover .nav-card__content {
+    transform: translate(-50%, -50%) rotate(0deg);
+    opacity: 1;
+  }
+
+  .nav-card__title {
+    margin: 0;
+    font-size: 24px;
+    color: var(--text-color);
+    font-weight: 700;
+  }
+
+  .nav-card__description {
+    margin: 10px 0 0;
+    font-size: 14px;
+    color: var(--text-color);
+    opacity: 0.7;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 640px) {
+    .nav-card {
+      width: 100%;
+      max-width: 300px;
+      height: 180px;
+    }
+  }
+</style>

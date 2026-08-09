@@ -1,0 +1,87 @@
+---
+import MainPageLayout from '@layouts/MainPageLayout.astro';
+import AdminLayout from '@/components/admin/AdminLayout.astro';
+import AdminLogin from '@/components/admin/AdminLogin.astro';
+import AdminSecurity from '@/components/admin/AdminSecurity.astro';
+import AdminGitHubConnection from '@/components/admin/AdminGitHubConnection.astro';
+import AdminPostManager from '@/components/admin/AdminPostManager.astro';
+import AdminExport from '@/components/admin/AdminExport.astro';
+import AdminSiteSettings from '@/components/admin/AdminSiteSettings.astro';
+import { siteConfig } from '@/config';
+
+const pageTitle = `后台管理 - ${siteConfig.title}`;
+---
+
+<MainPageLayout title={pageTitle} lang="zh-cn">
+  <AdminLayout pageTitle={pageTitle}>
+    <AdminLogin slot="login" />
+
+    <AdminPostManager slot="posts" />
+    <AdminSiteSettings slot="settings" />
+    <AdminSecurity slot="security" />
+    <AdminExport slot="export" />
+    <AdminGitHubConnection slot="github" />
+  </AdminLayout>
+</MainPageLayout>
+
+<script>
+  import {
+    initLoginHandlers,
+    initGitHubConnectionHandlers,
+    initPostHandlers,
+    initExportHandlers,
+    initSiteSettingsHandlers,
+    loadGitHubDraft,
+    loadPostList,
+    loadAllSiteSettings,
+    setMsg,
+  } from "@/utils/admin";
+
+  // Initialize all handlers
+  initLoginHandlers(loadPostList);
+  initGitHubConnectionHandlers();
+  initPostHandlers();
+  initExportHandlers();
+  initSiteSettingsHandlers();
+
+  // Load saved state
+  loadGitHubDraft();
+
+  // Auto-load post list + site settings if already logged in
+  if (sessionStorage.getItem("cmchen_admin_ok") === "1") {
+    loadPostList().catch((error) => {
+      setMsg(document.getElementById("post-msg"), String(error), true);
+    });
+    loadAllSiteSettings();
+  }
+
+  // 登录成功后也自动加载设置模块
+  document.addEventListener("admin:login-success", () => {
+    loadAllSiteSettings();
+  });
+</script>
+
+<style is:global>
+  /* 后台 select 下拉用主题色，防止过曝 */
+  #admin-panel select,
+  #login-section select {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+
+  #admin-panel select option,
+  #login-section select option {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+
+  [data-theme="light"] #admin-panel select,
+  [data-theme="light"] #login-section select {
+    color-scheme: light;
+  }
+
+  [data-theme="dark"] #admin-panel select,
+  [data-theme="dark"] #login-section select {
+    color-scheme: dark;
+  }
+</style>
