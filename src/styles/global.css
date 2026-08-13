@@ -79,3 +79,57 @@
   }
 
 }
+
+/* ===== 主题切换圆形揭示动画（配合 ThemeIcon.astro 的 View Transitions 逻辑）===== */
+
+/* 新旧快照正常叠放：旧主题静止在下，新主题以圆形裁剪在上扩散 */
+html.theme-vt::view-transition-old(root),
+html.theme-vt::view-transition-new(root) {
+  mix-blend-mode: normal;
+}
+
+html.theme-vt::view-transition-old(root) {
+  animation: none;
+  opacity: 1;
+  z-index: 1;
+}
+
+html.theme-vt::view-transition-new(root) {
+  /* 关键帧 theme-reveal 由脚本按按钮位置动态注入；
+     用 linear 避免缓动尾段与快照移除叠加出"停顿后跳变"的观感 */
+  animation: theme-reveal 0.52s linear both;
+  opacity: 1;
+  z-index: 2;
+}
+
+/* 揭示期间冻结元素级颜色过渡：它们与 clip-path 同跑在主线程上，
+   会抢占揭示动画的帧；快照本身已呈现新主题，DOM 直接跳到最终色无感知 */
+html.theme-vt *,
+html.theme-vt *::before,
+html.theme-vt *::after {
+  transition: none !important;
+}
+
+/* 降级方案（不支持 View Transitions 的浏览器）：整体轻微沉降提示变化 */
+html.theme-anim body {
+  animation: theme-settle 0.36s ease-out both;
+}
+
+@keyframes theme-settle {
+  from {
+    opacity: 0.72;
+    filter: saturate(0.82);
+  }
+  to {
+    opacity: 1;
+    filter: saturate(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
