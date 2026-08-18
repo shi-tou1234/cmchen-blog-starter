@@ -1,9 +1,13 @@
 ---
-title: "博客功能详细介绍及使用方法"
-pubDate: 2026-08-18
-description: "全面介绍本博客的所有功能模块、后台管理系统的使用方法，以及各种交互特性的操作指南。"
-categories: ["使用指南"]
-slugId: "blog-features-guide"
+title: 博客功能详细介绍及使用方法
+pubDate: 2026-08-18T00:00:00.000Z
+updatedDate: 2026-08-18T08:05:07.324Z
+draft: false
+description: 全面介绍本博客的所有功能模块、后台管理系统的使用方法，以及各种交互特性的操作指南。
+category: 使用指南
+categories:
+  - 使用指南
+slugId: 博客功能详细介绍及使用方法
 ---
 
 这是一份详尽的博客功能说明文档，涵盖前台阅读体验、后台管理系统、以及各类特色功能的使用方法。
@@ -219,4 +223,4 @@ slugId: "blog-features-guide"
 
 ## 五、自定义 Markdown 语法
 
-本博客在标准 Markdown 基础上扩展了多种自定义语法，详见 [Markdown 格式展示](/blog/Markdown格式展示/) 一文。
+本博客在标准 Markdown 基础上扩展了多种自定义语法，详见 [Markdown 格式展示](https://shi-tou1234.github.io/cmchen-blog-starter/blog/markdown%E6%A0%BC%E5%BC%8F%E5%B1%95%E7%A4%BA/) 一文。
