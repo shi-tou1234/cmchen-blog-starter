@@ -1,8 +1,9 @@
 ---
 title: 博客功能详细介绍及使用方法
 pubDate: 2026-08-18T00:00:00.000Z
-updatedDate: 2026-08-18T08:13:24.028Z
+updatedDate: 2026-08-18T12:54:23.748Z
 draft: false
+pinned: true
 description: 全面介绍本博客的所有功能模块、后台管理系统的使用方法，以及各种交互特性的操作指南。
 category: 使用指南
 categories:
