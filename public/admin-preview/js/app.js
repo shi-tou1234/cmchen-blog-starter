@@ -223,6 +223,8 @@ function updatePreview() {
     try {
         var html = renderMarkdown(editor.value);
         preview.innerHTML = html;
+        applyFootnotes(preview);
+        applyInlineCustomStyles(preview);
         processTipCards();
         renderMath();
         highlightCode();
@@ -508,6 +510,164 @@ function processTipCards() {
     });
 }
 
+// ===== 自定义样式支持 =====
+// 与博客正文渲染保持一致：对应 src/plugins/remark-combined.mjs（下划线/模糊/彩虹/拼音）、
+// rehype 指令组件（:::quote/:::tip 等容器、::music/::github 卡片）与 GFM 脚注。
+
+function escText(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+// :::容器块与行内指令卡片 → HTML（在 marked 解析前预处理）
+function preprocessCustomSyntax(markdown) {
+    var text = String(markdown || '');
+
+    // :::type[自定义标题] ... ::: 容器（quote 做成与 Momo/正文一致的引用卡片）
+    text = text.replace(/^:::(note|tip|important|warning|caution|quote|derivation)(?:\[([^\]]+)\])?[ \t]*\r?\n([\s\S]*?)\r?\n?:::[ \t]*$/gm,
+        function (match, type, customTitle, inner) {
+            if (type === 'quote') {
+                var quoteInner = inner
+                    .replace(/<right>/g, '<span class="quote-right">')
+                    .replace(/<\/right>/g, '</span>');
+                return '<div class="quote">' + marked.parse(quoteInner) + '</div>';
+            }
+            if (type === 'derivation') {
+                return '<div class="card-placeholder">📐 推导容器 —— 发布到博客后以悬浮浮层展示推导过程</div>';
+            }
+            var title = customTitle || type.toUpperCase();
+            return '<div class="' + type + '"><span class="admonition-title">' + escText(title) + '</span>' + marked.parse(inner) + '</div>';
+        });
+
+    // ::music{id="..."} / ::github{repo="..."} 卡片占位
+    text = text.replace(/^::music\{id="([^"]*)"\}[ \t]*$/gm,
+        '<div class="card-placeholder">🎵 音乐卡片（歌曲 ID: $1）—— 发布到博客后显示播放器</div>');
+    text = text.replace(/^::github\{repo="([^"]*)"\}[ \t]*$/gm,
+        '<div class="card-placeholder">📦 GitHub 卡片（$1）—— 发布到博客后显示仓库信息</div>');
+
+    return text;
+}
+
+// 行内自定义样式：与 remark-combined 相同的正则，递归支持嵌套
+function transformInlineText(text) {
+    if (!text) return '';
+    var regex = /\{(.+?)\}\((.+?)\)|!!(.+?)!!|==(.+?)==|\+\+(.+?)\+\+/g;
+    var out = '';
+    var lastIndex = 0;
+    var match;
+    while ((match = regex.exec(text)) !== null) {
+        if (match.index > lastIndex) out += escText(text.slice(lastIndex, match.index));
+        if (match[1] !== undefined && match[2] !== undefined) {
+            var base = match[1];
+            var reading = match[2];
+            var inner = '';
+            if (reading.indexOf('|') >= 0) {
+                var baseChars = Array.from(base);
+                var readings = reading.split('|');
+                var maxLen = Math.max(baseChars.length, readings.length);
+                for (var i = 0; i < maxLen; i++) {
+                    inner += escText(baseChars[i] || '') + '<rt>' + escText(readings[i] || '') + '</rt>';
+                }
+            } else {
+                inner = escText(base) + '<rt>' + escText(reading) + '</rt>';
+            }
+            out += '<ruby>' + inner + '</ruby>';
+        } else if (match[3] !== undefined) {
+            out += '<span class="spoiler">' + transformInlineText(match[3]) + '</span>';
+        } else if (match[4] !== undefined) {
+            out += '<span class="rainbow-text">' + transformInlineText(match[4]) + '</span>';
+        } else if (match[5] !== undefined) {
+            out += '<span class="underline-text">' + transformInlineText(match[5]) + '</span>';
+        }
+        lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < text.length) out += escText(text.slice(lastIndex));
+    return out;
+}
+
+// 对已渲染的预览 DOM 应用行内自定义样式（跳过代码块与公式）
+function applyInlineCustomStyles(root) {
+    if (!root) return;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var targets = [];
+    var node;
+    while ((node = walker.nextNode())) {
+        if (!/\{.+?\}\(.+?\)|!![\s\S]+?!!|==[\s\S]+?==|\+\+[\s\S]+?\+\+/.test(node.nodeValue)) continue;
+        var el = node.parentElement;
+        if (!el) continue;
+        if (el.closest('pre, code, .katex, script, style, .footnotes')) continue;
+        targets.push(node);
+    }
+    targets.forEach(function (textNode) {
+        var tpl = document.createElement('template');
+        tpl.innerHTML = transformInlineText(textNode.nodeValue);
+        textNode.replaceWith(tpl.content);
+    });
+}
+
+// GFM 脚注：收集 [^n]: 定义、替换 [^n] 引用、在文末生成脚注列表
+function applyFootnotes(root) {
+    if (!root) return;
+    var defs = {};
+    var order = [];
+
+    var paras = Array.prototype.slice.call(root.querySelectorAll('p'));
+    paras.forEach(function (p) {
+        var m = (p.textContent || '').trim().match(/^\[\^(\d+)\]:\s*([\s\S]*)$/);
+        if (m) {
+            defs[m[1]] = p.innerHTML.replace(/^\s*\[\^\d+\]:\s*/, '');
+            if (order.indexOf(m[1]) < 0) order.push(m[1]);
+            p.remove();
+        }
+    });
+    if (!order.length) return;
+
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var refNodes = [];
+    var n;
+    while ((n = walker.nextNode())) {
+        if (/\[\^\d+\]/.test(n.nodeValue)) refNodes.push(n);
+    }
+    var counters = {};
+    refNodes.forEach(function (textNode) {
+        var value = textNode.nodeValue;
+        var regex = /\[\^(\d+)\]/g;
+        var out = '';
+        var last = 0;
+        var m2;
+        while ((m2 = regex.exec(value)) !== null) {
+            out += escText(value.slice(last, m2.index));
+            var num = m2[1];
+            counters[num] = (counters[num] || 0) + 1;
+            out += '<sup class="footnote-ref"><a href="#pv-fn-' + num + '" id="pv-fnref-' + num + '-' + counters[num] + '" data-footnote-ref>[' + num + ']</a></sup>';
+            last = regex.lastIndex;
+        }
+        out += escText(value.slice(last));
+        var tpl = document.createElement('template');
+        tpl.innerHTML = out;
+        textNode.replaceWith(tpl.content);
+    });
+
+    var section = document.createElement('section');
+    section.setAttribute('data-footnotes', '');
+    section.className = 'footnotes';
+    var heading = document.createElement('h2');
+    heading.className = 'sr-only';
+    heading.textContent = 'Footnotes';
+    section.appendChild(heading);
+    var ol = document.createElement('ol');
+    order.forEach(function (num) {
+        var li = document.createElement('li');
+        li.id = 'pv-fn-' + num;
+        li.innerHTML = '<p>' + (defs[num] || '') + ' <a href="#pv-fnref-' + num + '-1" data-footnote-backref aria-label="Back to reference ' + num + '" class="data-footnote-backref">↩</a></p>';
+        ol.appendChild(li);
+    });
+    section.appendChild(ol);
+    root.appendChild(section);
+}
+
 function renderMarkdown(markdown) {
     if (!markdown) return '';
     
@@ -536,7 +696,7 @@ function renderMarkdown(markdown) {
         
         marked.use({ renderer: renderer });
         
-        var html = marked.parse(markdown);
+        var html = marked.parse(preprocessCustomSyntax(markdown));
         
         if (typeof DOMPurify !== 'undefined') {
             html = DOMPurify.sanitize(html, {
@@ -544,7 +704,8 @@ function renderMarkdown(markdown) {
                     'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
                     'strong', 'em', 'del', 'a', 'img', 'blockquote',
                     'ul', 'ol', 'li', 'code', 'pre', 'table', 'thead',
-                    'tbody', 'tr', 'th', 'td', 'div', 'span', 'input'
+                    'tbody', 'tr', 'th', 'td', 'div', 'span', 'input',
+                    'sup', 'sub', 'section', 'ruby', 'rt', 'rp'
                 ],
                 ALLOWED_ATTR: [
                     'href', 'src', 'alt', 'title', 'class', 'id',
@@ -552,7 +713,14 @@ function renderMarkdown(markdown) {
                 ],
                 ALLOWED_CLASSES: {
                     'div': ['tip', 'katex-display'],
-                    '*': ['hljs', 'language-*', 'task-list-item']
+                    '*': [
+                        'hljs', 'language-*', 'task-list-item',
+                        'underline-text', 'spoiler', 'rainbow-text',
+                        'quote', 'quote-right',
+                        'note', 'important', 'warning', 'caution', 'admonition-title',
+                        'card-placeholder', 'footnotes', 'footnote-ref',
+                        'sr-only', 'data-footnote-backref'
+                    ]
                 }
             });
         }

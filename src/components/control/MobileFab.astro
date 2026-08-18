@@ -1,0 +1,446 @@
+---
+// 移动端收拢式浮动按钮（FAB）
+// 替代顶部栏汉堡按钮 + 博文页右侧浮动按钮簇：
+// 平时收拢为一个圆钮（带阅读进度环），点击展开菜单/目录/返回/评论/回顶。
+// 参考 Momo FabMenu 的交互模式，位置保持原浮动簇的右上角。
+---
+
+<div id="mobile-fab">
+  <div id="mobile-fab-items" class="mobile-fab-items" aria-label="快捷操作">
+    <button type="button" class="mobile-fab-item" data-fab-action="menu" title="打开菜单">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <span>菜单</span>
+    </button>
+    <button type="button" class="mobile-fab-item" data-fab-action="toc" title="打开目录" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>
+      <span>目录</span>
+    </button>
+    <button type="button" class="mobile-fab-item" data-fab-action="back" title="返回上一页" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <span>返回</span>
+    </button>
+    <button type="button" class="mobile-fab-item" data-fab-action="comment" title="跳转到评论" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      <span>评论</span>
+    </button>
+    <button type="button" class="mobile-fab-item" data-fab-action="top" title="回到顶部">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      <span>回顶</span>
+    </button>
+  </div>
+
+  <button id="mobile-fab-trigger" type="button" aria-expanded="false" aria-label="展开快捷操作">
+    <svg class="mobile-fab-ring" viewBox="0 0 48 48" aria-hidden="true">
+      <circle class="mobile-fab-ring__track" cx="24" cy="24" r="20" fill="none" stroke-width="2"></circle>
+      <circle id="mobile-fab-progress" cx="24" cy="24" r="20" fill="none" stroke-width="2" stroke-dasharray="0 125.7" stroke-linecap="round"></circle>
+    </svg>
+    <svg class="mobile-fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+  </button>
+
+  <div id="mobile-fab-toc" class="mobile-fab-toc" aria-label="文章目录">
+    <div class="mobile-fab-toc__head">
+      <span class="mobile-fab-toc__title">目录</span>
+      <button id="mobile-fab-toc-close" type="button" class="mobile-fab-toc__close" aria-label="关闭目录">&times;</button>
+    </div>
+    <ol id="mobile-fab-toc-list" class="mobile-fab-toc__list"></ol>
+  </div>
+</div>
+
+<script>
+function initMobileFab() {
+  const fab = document.getElementById('mobile-fab');
+  const trigger = document.getElementById('mobile-fab-trigger');
+  if (!(fab instanceof HTMLElement) || !(trigger instanceof HTMLButtonElement)) return;
+
+  // 同一页面重复初始化时跳过，避免 fab click 监听器累积导致目录点击后被立即反向关闭
+  if (fab.dataset.mobileFabBound === 'true') return;
+  fab.dataset.mobileFabBound = 'true';
+
+  // 博文页才有的条目：按页面内实际元素决定是否显示
+  const setVisible = (action, visible) => {
+    const item = fab.querySelector(`[data-fab-action="${action}"]`);
+    if (item instanceof HTMLElement) item.hidden = !visible;
+  };
+
+  // 目录：直接读取文章内的 h2/h3 标题，构建 MobileFab 自有的目录面板
+  const tocPanel = document.getElementById('mobile-fab-toc');
+  const tocList = document.getElementById('mobile-fab-toc-list');
+  const tocClose = document.getElementById('mobile-fab-toc-close');
+  let tocHeadings = [];
+
+  const buildToc = () => {
+    const markdown = document.querySelector('.markdown-content');
+    if (!(markdown instanceof HTMLElement) || !(tocList instanceof HTMLElement)) return [];
+    const headings = Array.from(markdown.querySelectorAll('h2, h3')).filter((h) => (h.textContent || '').trim());
+    tocList.innerHTML = '';
+    headings.forEach((heading, index) => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `mobile-fab-toc__item mobile-fab-toc__item--${heading.tagName === 'H3' ? 'sub' : 'main'}`;
+      btn.textContent = (heading.textContent || '').trim();
+      btn.addEventListener('click', () => {
+        heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTocOpen(false);
+        setOpen(false);
+      });
+      li.appendChild(btn);
+      tocList.appendChild(li);
+    });
+    return headings;
+  };
+
+  const setTocOpen = (open) => {
+    if (!(tocPanel instanceof HTMLElement)) return;
+    tocPanel.classList.toggle('is-open', open);
+  };
+
+  tocHeadings = buildToc();
+  setVisible('toc', tocHeadings.length > 0);
+  setVisible('back', Boolean(document.getElementById('post-back-button')));
+  setVisible('comment', Boolean(document.getElementById('post-comment-button')));
+
+  if (tocClose instanceof HTMLButtonElement) {
+    tocClose.addEventListener('click', () => setTocOpen(false));
+  }
+
+  const setOpen = (open) => {
+    fab.classList.toggle('is-active', open);
+    trigger.setAttribute('aria-expanded', String(open));
+    trigger.setAttribute('aria-label', open ? '收起快捷操作' : '展开快捷操作');
+  };
+
+  trigger.onclick = (event) => {
+    event.stopPropagation();
+    setTocOpen(false);
+    setOpen(!fab.classList.contains('is-active'));
+  };
+
+  fab.addEventListener('click', (event) => {
+    const item = event.target instanceof Element ? event.target.closest('[data-fab-action]') : null;
+    if (!(item instanceof HTMLElement)) return;
+    event.stopPropagation();
+
+    const action = item.dataset.fabAction;
+    if (action === 'menu') {
+      // 复用 MobileMenu 已有的开合逻辑（按钮被 FAB 替代，但保留在 DOM 中）
+      document.getElementById('mobile-menu-button')?.click();
+    } else if (action === 'toc') {
+      // 切换 MobileFab 自有的目录面板（不再依赖 PostToc 的隐藏按钮）
+      if (tocPanel instanceof HTMLElement) {
+        const willOpen = !tocPanel.classList.contains('is-open');
+        setTocOpen(willOpen);
+        if (willOpen) setOpen(false);
+      }
+      return;
+    } else if (action === 'back') {
+      document.getElementById('post-back-button')?.click();
+    } else if (action === 'comment') {
+      document.getElementById('post-comment-button')?.click();
+    } else if (action === 'top') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    setOpen(false);
+  });
+
+  // 点击外部关闭（避免 Astro 路由切换后监听叠加）
+  const oldDocClick = window.__mobileFabDocClickHandler;
+  if (oldDocClick) document.removeEventListener('click', oldDocClick);
+  const handleDocClick = (event) => {
+    if (!fab.contains(event.target)) setOpen(false);
+    if (tocPanel instanceof HTMLElement && !tocPanel.contains(event.target)) setTocOpen(false);
+  };
+  document.addEventListener('click', handleDocClick);
+  window.__mobileFabDocClickHandler = handleDocClick;
+
+  const oldKeydown = window.__mobileFabKeydownHandler;
+  if (oldKeydown) document.removeEventListener('keydown', oldKeydown);
+  const handleKeydown = (event) => {
+    if (event.key === 'Escape') {
+      setOpen(false);
+      setTocOpen(false);
+    }
+  };
+  document.addEventListener('keydown', handleKeydown);
+  window.__mobileFabKeydownHandler = handleKeydown;
+
+  // 阅读进度环
+  const progress = document.getElementById('mobile-fab-progress');
+  const updateProgress = () => {
+    if (!(progress instanceof SVGCircleElement)) return;
+    const doc = document.documentElement;
+    const max = doc.scrollHeight - window.innerHeight;
+    const ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+    const circumference = 2 * Math.PI * 20;
+    progress.style.strokeDasharray = `${circumference * ratio} ${circumference}`;
+  };
+
+  const oldScroll = window.__mobileFabScrollHandler;
+  if (oldScroll) window.removeEventListener('scroll', oldScroll);
+  window.addEventListener('scroll', updateProgress, { passive: true });
+  window.__mobileFabScrollHandler = updateProgress;
+  updateProgress();
+
+  setOpen(false);
+}
+
+document.addEventListener('astro:page-load', initMobileFab);
+document.addEventListener('astro:after-swap', initMobileFab);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMobileFab);
+} else {
+  initMobileFab();
+}
+</script>
+
+<style>
+  #mobile-fab {
+    display: none;
+  }
+
+  @media (max-width: 767px) {
+    #mobile-fab {
+      display: block;
+      position: fixed;
+      top: calc(var(--header-height) + 0.5rem);
+      right: 0.75rem;
+      /* 比抽屉低一档，抽屉打开时自然覆盖 FAB */
+      z-index: calc(var(--z-modal) - 1);
+    }
+  }
+
+  #mobile-fab-trigger {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+    color: var(--text-color);
+    cursor: pointer;
+    box-shadow: 0 8px 24px var(--shadow-color);
+    backdrop-filter: blur(8px);
+    transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #mobile-fab-trigger:active {
+    transform: scale(0.92);
+  }
+
+  #mobile-fab-trigger:hover {
+    background: var(--hover-bg-color);
+    border-color: color-mix(in srgb, var(--link-color) 40%, var(--border-color));
+  }
+
+  .mobile-fab-ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+
+  .mobile-fab-ring__track {
+    stroke: var(--border-color);
+  }
+
+  #mobile-fab-progress {
+    stroke: var(--link-color);
+    transition: stroke-dasharray 0.1s linear;
+  }
+
+  .mobile-fab-icon {
+    position: relative;
+    z-index: 1;
+    width: 1.05rem;
+    height: 1.05rem;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* 展开时加号旋转成 × */
+  #mobile-fab.is-active .mobile-fab-icon {
+    transform: rotate(135deg);
+  }
+
+  .mobile-fab-items {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    pointer-events: none;
+  }
+
+  .mobile-fab-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+    color: var(--text-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 6px 18px var(--shadow-color);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    transform: translateY(-0.4rem) scale(0.9);
+    transition: opacity 0.22s ease, transform 0.22s ease, background 0.2s ease, border-color 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-fab-item svg {
+    width: 0.9rem;
+    height: 0.9rem;
+    flex-shrink: 0;
+  }
+
+  .mobile-fab-item:active {
+    transform: scale(0.94);
+  }
+
+  .mobile-fab-item:hover {
+    background: var(--hover-bg-color);
+    border-color: color-mix(in srgb, var(--link-color) 40%, var(--border-color));
+  }
+
+  #mobile-fab.is-active .mobile-fab-items {
+    pointer-events: auto;
+  }
+
+  #mobile-fab.is-active .mobile-fab-item {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* 逐个展开的轻微层次感 */
+  #mobile-fab.is-active .mobile-fab-item:nth-child(1) { transition-delay: 0s; }
+  #mobile-fab.is-active .mobile-fab-item:nth-child(2) { transition-delay: 0.03s; }
+  #mobile-fab.is-active .mobile-fab-item:nth-child(3) { transition-delay: 0.06s; }
+  #mobile-fab.is-active .mobile-fab-item:nth-child(4) { transition-delay: 0.09s; }
+  #mobile-fab.is-active .mobile-fab-item:nth-child(5) { transition-delay: 0.12s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-fab-item,
+    .mobile-fab-icon,
+    #mobile-fab-trigger {
+      transition: none;
+    }
+  }
+
+  /* ===== MobileFab 自有目录面板 ===== */
+  .mobile-fab-toc {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: min(78vw, 300px);
+    max-height: 55vh;
+    max-height: 55dvh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-color) 96%, transparent);
+    box-shadow: 0 8px 24px var(--shadow-color);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-0.4rem) scale(0.96);
+    transform-origin: top right;
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+  }
+
+  .mobile-fab-toc.is-open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  .mobile-fab-toc__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .mobile-fab-toc__title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-color);
+  }
+
+  .mobile-fab-toc__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-color);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-fab-toc__list {
+    list-style: none;
+    margin: 0;
+    padding: 0.4rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .mobile-fab-toc__item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.45rem 0.6rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-fab-toc__item:hover,
+  .mobile-fab-toc__item:active {
+    background: var(--hover-bg-color);
+  }
+
+  .mobile-fab-toc__item--sub {
+    padding-left: 1.4rem;
+    font-size: 0.78rem;
+    color: color-mix(in srgb, var(--text-color) 78%, transparent);
+  }
+</style>
+
+<style is:global>
+  /* 沉浸全屏阅读时隐藏 FAB（与顶栏一致） */
+  html.post-reading-fullscreen #mobile-fab {
+    display: none !important;
+  }
+</style>

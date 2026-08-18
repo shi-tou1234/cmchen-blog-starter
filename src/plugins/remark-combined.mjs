@@ -7,7 +7,8 @@ export function remarkCombined() {
     if (!text) return [];
 
     // 关键修复：每个层级使用独立的正则实例，避免 lastIndex 冲突
-    const regex = /\{(.+?)\}\((.+?)\)|!!(.+?)!!|==(.+?)==/g;
+    // 分组索引：{1}(2) = Ruby, 3 = Spoiler, 4 = Rainbow, 5 = Underline（++...++，参考 Momo v26.5.6）
+    const regex = /\{(.+?)\}\((.+?)\)|!!(.+?)!!|==(.+?)==|\+\+(.+?)\+\+/g;
     const nodes = [];
     let lastIndex = 0;
     let match;
@@ -49,6 +50,12 @@ export function remarkCombined() {
         // --- Rainbow (==...==) 逻辑 ---
         nodes.push({ type: 'html', value: '<span class="rainbow-text">' });
         nodes.push(...processText(match[4])); // 递归处理
+        nodes.push({ type: 'html', value: '</span>' });
+
+      } else if (match[5]) {
+        // --- Underline (++...++) 逻辑 ---
+        nodes.push({ type: 'html', value: '<span class="underline-text">' });
+        nodes.push(...processText(match[5])); // 递归处理，支持嵌套
         nodes.push({ type: 'html', value: '</span>' });
       }
 

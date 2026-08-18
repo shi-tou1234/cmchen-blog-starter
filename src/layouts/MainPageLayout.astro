@@ -4,6 +4,7 @@ import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
 import Search from '@components/misc/Search.astro';
 import KeyboardShortcuts from '@components/control/KeyboardShortcuts.astro';
+import MobileFab from '@components/control/MobileFab.astro';
 import blogGuideContent from '@/data/blog-guide-content';
 import { getRelativeLocaleUrl } from '@utils/url-utils';
 
@@ -120,6 +121,7 @@ const navToolsLabel = '工具栏';
     <Footer />
     <Search />
     <KeyboardShortcuts />
+    <MobileFab />
 
     <button id="backtop-global" title="回到顶部" class="fixed bottom-[8vh] right-6 w-10 h-10 rounded-full bg-[--bg-color] cursor-pointer items-center justify-center z-[var(--z-backtop)] transition-all duration-300 opacity-90 border-0 hover:scale-110 active:scale-90 hover:shadow-[0_4px_15px_rgba(139,69,19,0.4)]" style="display:none">
       <svg class="absolute top-0 left-0 w-full h-full -rotate-90" viewBox="0 0 48 48">

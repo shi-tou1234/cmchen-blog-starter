@@ -61,6 +61,7 @@ const resolvedCovers = await Promise.all(
                         externalImage={resolved.source !== 'user' ? resolved.imageUrl : ''}
                         photographer={resolved.photographer}
                         photographerUrl={resolved.photographerUrl}
+                        pinned={entry.data.pinned}
                     />
                 );
             })

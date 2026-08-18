@@ -675,6 +675,22 @@ function insertMarkdownSnippet(type: string) {
     task: () => insertAtCursor(textarea, "- [ ] 待办事项\n- [x] 已完成事项\n"),
     strike: () => insertAtCursor(textarea, "~~", "~~", "删除线文本"),
     hr: () => insertAtCursor(textarea, "\n---\n"),
+    // ===== 自定义样式（对照 Momo special 演示文章，一键插入语法模板） =====
+    underline: () => insertAtCursor(textarea, "++", "++", "下划线文本"),
+    spoiler: () => insertAtCursor(textarea, "!!", "!!", "模糊文本，悬停或点击后清晰"),
+    rainbow: () => insertAtCursor(textarea, "==", "==", "彩虹文字"),
+    ruby: () => insertAtCursor(textarea, "{汉字}(hàn|zì)"),
+    "quote-card": () => insertAtCursor(textarea, "\n:::quote\n在此填写引用内容\n\n<br><right>—— 出处</right>\n:::\n"),
+    footnote: () => {
+      // 自动选取正文中未占用的脚注编号：光标处插入引用，文末追加定义
+      const used = Array.from(textarea.value.matchAll(/\[\^(\d+)\]/g)).map((m) => parseInt(m[1], 10));
+      const next = (used.length ? Math.max(...used) : 0) + 1;
+      insertAtCursor(textarea, `[^${next}]`);
+      textarea.setRangeText(`\n\n[^${next}]: 在此填写脚注内容\n`, textarea.value.length, textarea.value.length, "end");
+      textarea.focus();
+    },
+    "music-card": () => insertAtCursor(textarea, "\n::music{id=\"网易云歌曲ID\"}\n"),
+    "github-card": () => insertAtCursor(textarea, "\n::github{repo=\"用户名/仓库名\"}\n"),
   };
 
   const handler = snippets[type];

@@ -742,3 +742,234 @@ body.embed-mode .source-view {
     min-height: 0;
 }
 
+
+
+/* ===== 自定义样式预览（与博客正文渲染保持一致） ===== */
+
+/* 下划线 ++文本++ */
+#preview .underline-text {
+    text-decoration: underline;
+    text-decoration-color: var(--accent-color);
+    text-underline-offset: 4px;
+    text-decoration-thickness: 2px;
+}
+
+/* 模糊/剧透 !!文本!! */
+#preview .spoiler {
+    filter: blur(5px);
+    background-color: rgba(128, 128, 128, 0.2);
+    border-radius: 3px;
+    transition: filter 0.4s ease, background-color 0.4s ease;
+    cursor: pointer;
+    padding: 0 2px;
+}
+@media (hover: hover) {
+    #preview .spoiler:hover {
+        filter: blur(0);
+        background-color: transparent;
+    }
+}
+
+/* 彩虹文字 ==文本== */
+#preview .rainbow-text {
+    background: linear-gradient(to right, #ef5350, #f48fb1, #7e57c2, #2196f3, #26c6da, #43a047, #eeff41, #f9a825, #ef5350);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    background-size: 200% auto;
+    font-weight: bold;
+    animation: preview-rainbow 3s linear infinite;
+    display: inline-block;
+}
+@keyframes preview-rainbow {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+}
+[data-theme="dark"] #preview .rainbow-text {
+    filter: brightness(1.2);
+}
+
+/* 拼音注音 {汉字}(han|zi) */
+#preview ruby {
+    ruby-align: center;
+    margin: 0 2px;
+    ruby-position: over;
+}
+
+/* 引用卡片 :::quote（与 Momo/博客正文同款） */
+#preview .quote {
+    font-family: "LXGW Bright Medium", "KaiTi", "STKaiti", serif;
+    position: relative;
+    padding: 0 3rem;
+    margin: 3.5rem 0;
+    line-height: 1.6;
+    text-align: center;
+}
+#preview div.quote::before,
+#preview div.quote::after {
+    position: absolute;
+    display: block;
+    height: 3em;
+    width: 100%;
+    margin: 0 -3rem;
+    background-repeat: no-repeat;
+    background-size: 22px 22px;
+    content: "";
+}
+#preview .quote::before {
+    top: -1.25em;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' aria-hidden='true' height='16' viewBox='0 0 24 24' version='1.1' width='16'%3E%3Cpath fill='%23666666' d='M6.5 10c-.223 0-.437.034-.65.065c.069-.232.14-.468.254-.68c.114-.308.292-.575.469-.844c.148-.291.409-.488.601-.737c.201-.242.475-.403.692-.604c.213-.21.492-.315.714-.463c.232-.133.434-.28.65-.35l.539-.222l.474-.197l-.485-1.938l-.597.144c-.191.048-.424.104-.689.171c-.271.05-.56.187-.882.312c-.318.142-.686.238-1.028.466c-.344.218-.741.4-1.091.692c-.339.301-.748.562-1.05.945c-.33.358-.656.734-.909 1.162c-.293.408-.492.856-.702 1.299c-.19.443-.343.896-.468 1.336c-.237.882-.343 1.72-.384 2.437c-.034.718-.014 1.315.028 1.747c.015.204.043.402.063.539l.025.168l.026-.006A4.5 4.5 0 1 0 6.5 10m11 0c-.223 0-.437.034-.65.065c.069-.232.14-.468.254-.68c.114-.308.292-.575.469-.844c.148-.291.409-.488.601-.737c.201-.242.475-.403.692-.604c.213-.21.492-.315.714-.463c.232-.133.434-.28.65-.35l.539-.222l.474-.197l-.485-1.938l-.597.144c-.191.048-.424.104-.689.171c-.271.05-.56.187-.882.312c-.317.143-.686.238-1.028.467c-.344.218-.741.4-1.091.692c-.339.301-.748.562-1.05.944c-.33.358-.656.734-.909 1.162c-.293.408-.492.856-.702 1.299c-.19.443-.343.896-.468 1.336c-.237.882-.343 1.72-.384 2.437c-.034.718-.014 1.315.028 1.747c.015.204.043.402.063.539l.025.168l.026-.006A4.5 4.5 0 1 0 17.5 10'%3E%3C/path%3E%3C/svg%3E");
+    background-position: 0 -4px;
+}
+#preview .quote::after {
+    bottom: -1.25em;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' aria-hidden='true' height='16' viewBox='0 0 24 24' version='1.1' width='16'%3E%3Cpath fill='%23666666' d='m21.95 8.721l-.025-.168l-.026.006A4.5 4.5 0 1 0 17.5 14c.223 0 .437-.034.65-.065c-.069.232-.14.468-.254.68c-.114.308-.292.575-.469.844c-.148.291-.409.488-.601.737c-.201.242-.475.403-.692.604c-.213.21-.492.315-.714.463c-.232.133-.434.28-.65.35l-.539.222l-.474.197l.484 1.939l.597-.144c.191-.048.424-.104.689-.171c.271-.05.56-.187.882-.312c.317-.143.686-.238 1.028-.467c.344-.218.741-.4 1.091-.692c.339-.301.748-.562 1.05-.944c.33-.358.656-.734.909-1.162c.293-.408.492-.856.702-1.299c.19-.443.343-.896.468-1.336c.237-.882.343-1.72.384-2.437c.034-.718.014-1.315-.028-1.747a7 7 0 0 0-.063-.539m-11 0l-.025-.168l-.026.006A4.5 4.5 0 1 0 6.5 14c.223 0 .437-.034.65-.065c-.069.232-.14.468-.254.68c-.114.308-.292.575-.469.844c-.148.291-.409.488-.601.737c-.201.242-.475.403-.692.604c-.213.21-.492.315-.714.463c-.232.133-.434.28-.65.35l-.539.222c-.301.123-.473.195-.473.195l.484 1.939l.597-.144c.191-.048.424-.104.689-.171c.271-.05.56-.187.882-.312c.317-.143.686-.238 1.028-.467c.344-.218.741-.4 1.091-.692c.339-.301.748-.562 1.05-.944c.33-.358.656-.734.909-1.162c.293-.408.492-.856.702-1.299c.19-.443.343-.896.468-1.336c.237-.882.343-1.72.384-2.437c.034-.718.014-1.315-.028-1.747a8 8 0 0 0-.064-.537'%3E%3C/path%3E%3C/svg%3E");
+    background-position: 100% 30px;
+}
+#preview .quote .quote-right,
+#preview .quote right {
+    text-align: right;
+    display: block;
+}
+#preview .quote .quote-left,
+#preview .quote left {
+    text-align: left;
+    display: block;
+}
+
+/* 提示框 :::note/tip/important/warning/caution（配色与博客正文一致） */
+#preview .note, #preview .tip, #preview .warning, #preview .important, #preview .caution {
+    padding: 0.8rem 1rem;
+    border-radius: 0.6rem;
+    margin: 1rem 0;
+    border: 1px solid var(--border-color);
+}
+#preview .note      { border-color: var(--pv-note-border);      background: var(--pv-note-bg); }
+#preview .tip       { border-color: var(--pv-tip-border);       background: var(--pv-tip-bg); }
+#preview .important { border-color: var(--pv-important-border); background: var(--pv-important-bg); }
+#preview .warning   { border-color: var(--pv-warning-border);   background: var(--pv-warning-bg); }
+#preview .caution   { border-color: var(--pv-caution-border);   background: var(--pv-caution-bg); }
+#preview .admonition-title {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+#preview .note .admonition-title      { color: var(--pv-note-title); }
+#preview .tip .admonition-title       { color: var(--pv-tip-title); }
+#preview .important .admonition-title { color: var(--pv-important-title); }
+#preview .warning .admonition-title   { color: var(--pv-warning-title); }
+#preview .caution .admonition-title   { color: var(--pv-caution-title); }
+#preview .admonition-title::before {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    content: "";
+}
+#preview .note .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23757575'%3E%3Cpath d='M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'%3E%3C/path%3E%3C/svg%3E");
+}
+#preview .tip .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23009400'%3E%3Cpath d='M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z'%3E%3C/path%3E%3C/svg%3E");
+}
+#preview .important .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%234cb3d4'%3E%3Cpath d='M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z'%3E%3C/path%3E%3C/svg%3E");
+}
+#preview .warning .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23e6a700'%3E%3Cpath d='M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z'%3E%3C/path%3E%3C/svg%3E");
+}
+#preview .caution .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23e13238'%3E%3Cpath d='M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+:root {
+    --pv-note-bg: #eeeeee;      --pv-note-border: #757575;      --pv-note-title: #474747;
+    --pv-tip-bg: #e6f6e6;       --pv-tip-border: #009400;       --pv-tip-title: #003100;
+    --pv-important-bg: #eef9fd; --pv-important-border: #4cb3d4; --pv-important-title: #193c47;
+    --pv-warning-bg: #fff7ed;   --pv-warning-border: #e6a700;   --pv-warning-title: #4d3800;
+    --pv-caution-bg: #ffebec;   --pv-caution-border: #e13238;   --pv-caution-title: #4b1113;
+}
+[data-theme="dark"] {
+    --pv-note-bg: #2d2d2d;      --pv-note-border: #757575;      --pv-note-title: #c7c7c7;
+    --pv-tip-bg: #1a2e1a;       --pv-tip-border: #009400;       --pv-tip-title: #a8e6a8;
+    --pv-important-bg: #14282e; --pv-important-border: #4cb3d4; --pv-important-title: #a8d8e8;
+    --pv-warning-bg: #332a00;   --pv-warning-border: #ad8002;   --pv-warning-title: #f2d680;
+    --pv-caution-bg: #3a1517;   --pv-caution-border: #e13238;   --pv-caution-title: #f0a8ab;
+}
+
+/* 脚注 [^1] */
+#preview section[data-footnotes] {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px dashed var(--border-color);
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+}
+#preview section[data-footnotes] ol {
+    list-style: none;
+    counter-reset: pv-footnote-counter;
+    padding-left: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+#preview section[data-footnotes] li {
+    counter-increment: pv-footnote-counter;
+    line-height: 1.6;
+    display: flex;
+    align-items: flex-start;
+}
+#preview section[data-footnotes] li::before {
+    content: "[" counter(pv-footnote-counter) "]";
+    display: inline-block;
+    font-weight: 600;
+    color: var(--accent-color);
+    width: 2rem;
+    flex-shrink: 0;
+    text-align: left;
+}
+#preview section[data-footnotes] li p {
+    display: inline;
+    margin: 0;
+}
+#preview section[data-footnotes] a[data-footnote-backref] {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+#preview sup a[data-footnote-ref] {
+    color: var(--accent-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0 1px;
+    text-decoration: none;
+}
+#preview sup a[data-footnote-ref]::before { content: "["; }
+#preview sup a[data-footnote-ref]::after  { content: "]"; }
+
+/* 卡片占位（音乐/GitHub/推导，发布后以真实组件渲染） */
+#preview .card-placeholder {
+    display: flex;
+    align-items: center;
+    margin: 1rem 0;
+    padding: 0.9rem 1rem;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+#preview .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
