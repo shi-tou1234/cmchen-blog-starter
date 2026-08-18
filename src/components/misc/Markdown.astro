@@ -7,17 +7,17 @@ interface Props {
   class?: string
 }
 const className = Astro.props.class
-const currentLang = (Astro.currentLocale || 'zh-cn').toLowerCase()
-const copyButtonLabel = '复制代码'
-const copyDoneLabel = '已复制'
-const copyErrorLabel = '复制失败'
 ---
 <div data-pagefind-body class=`markdown-content ${className}`>
     <slot/>
 </div>
 
-<script define:vars={{ copyButtonLabel, copyDoneLabel, copyErrorLabel }}>
+<script>
   import { trapFocus } from "../../utils/modal";
+
+  const copyButtonLabel = '复制代码';
+  const copyDoneLabel = '已复制';
+  const copyErrorLabel = '复制失败';
 
   const LIGHTBOX_ID = 'markdown-image-lightbox';
   const LIGHTBOX_MIN_SCALE = 1;
