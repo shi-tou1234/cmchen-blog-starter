@@ -186,10 +186,6 @@ export default defineConfig({
 3. 在仓库 Settings → Pages 中，将 Source 设置为 **GitHub Actions**（构建方式选择 GitHub Actions，而不是 Deploy from a branch）。
 4. 推送 `main` 分支后，工作流会自动构建并部署。
 
-## 与 cmchen-blog 的关系
-
-- **[cmchen-blog](https://github.com/shi-tou1234/cmchen-blog)**：包含完整文章与个人内容的完整博客，是作者的日常博客。
-- **cmchen-blog-starter（本仓库）**：由 cmchen-blog 初始化而来，内容为空、功能齐全，作为通用博客模板供新用户快速开始。
 
 ## 致谢
 
