@@ -18,10 +18,11 @@ if (profileConfig.indexPage) {
         © {profileConfig.startYear} - {new Date().getFullYear()} <a class="link-line" target="_self" href={introPage}>{profileConfig.name}</a>. 
     </div>
     <div class="right">
-        <p>Powered by 
-        <a target="_blank" href="https://astro.build" title="Astro" class="tooltip-wrapper"><Icon name="simple-icons:astro" class="inline-block" /></a> 
+        <p>Powered by
+        <a target="_blank" href="https://astro.build" title="Astro" class="tooltip-wrapper"><Icon name="simple-icons:astro" class="inline-block" /></a>
         <a target="_blank" href="https://tailwindcss.com/" title="tailwindcss" class="tooltip-wrapper"><Icon name="simple-icons:tailwindcss" class="inline-block"/></a>
-        <a target="_blank" href="https://github.com/Motues/Momo" title="Momo" class="tooltip-wrapper"><Icon name="simple-icons:github" class="inline-block"/></a> 
+        <a target="_blank" href="https://github.com/Motues/Momo" title="Momo" class="tooltip-wrapper"><Icon name="simple-icons:github" class="inline-block"/></a>
+        <a target="_blank" href={baseUrl('/rss.xml')} title="RSS 订阅" class="tooltip-wrapper"><Icon name="fa6-solid:rss" class="inline-block"/></a>
         </p>
     </div>
 </footer>

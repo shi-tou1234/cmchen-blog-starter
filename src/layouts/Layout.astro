@@ -1,5 +1,7 @@
 ---
 import { siteConfig } from '@/config';
+import { baseUrl } from '@utils/url-utils';
+import { resolveAssetUrl } from '@utils/asset-url';
 import "@styles/global.css"
 import 'katex/dist/katex.min.css';
 import 'aos/dist/aos.css';
@@ -9,11 +11,24 @@ interface Props {
   title: string;
   lang?: string;
   description?: string;
+  image?: string;
+  type?: string;
 }
-const { title, lang, description } = Astro.props;
+const { title, lang, description, image, type = 'website' } = Astro.props;
 
 const pageTitle = title;
 const pageLang = lang || "zh-cn";
+
+// OG 图片：优先使用页面传入的图片（外部 URL 或构建后资源路径），缺省回退到头像
+const rawOgImage = image || resolveAssetUrl('assets/Motues.jpg');
+const basePrefix = import.meta.env.BASE_URL;
+const ogImage = /^https?:\/\//i.test(rawOgImage)
+    ? rawOgImage
+    : new URL(
+          basePrefix !== '/' && rawOgImage.startsWith(basePrefix) ? rawOgImage : baseUrl(rawOgImage),
+          Astro.site
+      ).href;
+const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
 ---
 
 <!DOCTYPE html>
@@ -46,6 +61,17 @@ const pageLang = lang || "zh-cn";
     <link rel="stylesheet" href="https://fonts.font.im/css2?family=ZCOOL+KuaiLe&family=Ma+Shan+Zheng&family=ZCOOL+QingKe+HuangYou&display=swap">
     <title>{pageTitle}</title>
     {description && <meta name="description" content={description} />}
+    <meta property="og:site_name" content={siteConfig.title} />
+    <meta property="og:title" content={pageTitle} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    {description && <meta name="twitter:description" content={description} />}
+    <meta name="twitter:image" content={ogImage} />
+    <link rel="alternate" type="application/rss+xml" title={`RSS - ${siteConfig.title}`} href={baseUrl('/rss.xml')} />
     <ClientRouter />
 </head>
 <body class="min-h-full bg-[var(--bg-color)]">

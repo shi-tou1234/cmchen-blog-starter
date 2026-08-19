@@ -22,6 +22,7 @@ import { getBlogEntrySort } from '@utils/content-utils'
 import { estimateReadingMinutes, estimateWordCount } from '@utils/reading-time'
 import { getPostCategories, encodeCategoryParam } from '@utils/blog-taxonomy'
 import { resolveCoverImage } from '@utils/cover-image-api'
+import { resolveAssetUrl } from '@utils/asset-url'
 
 
 const currentLang = 'zh-cn';
@@ -80,9 +81,11 @@ const categoryPageUrl = activeCategory ? getRelativeLocaleUrl(currentLang, `/cat
 const homeLabel = '首页';
 const updatedLabel = '最后更新于';
 const showUpdatedDate = entry.data.updatedDate && entry.data.updatedDate.valueOf() > entry.data.pubDate.valueOf();
+// 分享卡片（OG）封面：用户封面为本地资源需解析为构建后路径，外部图直接使用
+const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) : (resolvedCover.imageUrl || '');
 
 ---
-<MainPageLayout title={pageTitle} lang={currentLang} description={entry.data.description}>
+<MainPageLayout title={pageTitle} lang={currentLang} description={entry.data.description} image={ogImageSrc} type="article">
     <div class="post-layout-wrapper">
         <aside class="post-left-sidebar" aria-label="同分类文章导航">
             {sameCategoryPosts.length > 0 && activeCategory && (
@@ -121,7 +124,21 @@ const showUpdatedDate = entry.data.updatedDate && entry.data.updatedDate.valueOf
                 <div class="pt-2">
                     <ReadingTime minutes={readingMinutes} words={wordCount} language={currentLang} />
                 </div>
-                <p class="font-bold text-[var(--text-color)]/60 pt-4 pb-2">{ formatFullDate(entry.data.pubDate, currentLang) }</p>
+                <div class="flex flex-wrap items-center justify-center gap-3 pt-4 pb-2">
+                    <p class="font-bold text-[var(--text-color)]/60">{ formatFullDate(entry.data.pubDate, currentLang) }</p>
+                    <button
+                        id="post-share-button"
+                        class="post-share-button"
+                        type="button"
+                        title="复制友情链接"
+                        aria-label="复制友情链接"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        </svg>
+                        <span id="post-share-label">复制链接</span>
+                    </button>
+                </div>
                 {showUpdatedDate && entry.data.updatedDate && (
                     <p class="font-medium text-sm text-[var(--text-color)]/55 pb-10">{updatedLabel} {formatFullDate(entry.data.updatedDate, currentLang)}</p>
                 )}
@@ -219,6 +236,44 @@ const showUpdatedDate = entry.data.updatedDate && entry.data.updatedDate.valueOf
         });
     }
 
+    function initPostShareButton() {
+        const shareButton = document.getElementById('post-share-button');
+        if (!(shareButton instanceof HTMLButtonElement)) return;
+        if (shareButton.dataset.bound === 'true') return;
+
+        shareButton.dataset.bound = 'true';
+        shareButton.addEventListener('click', async () => {
+            const url = window.location.href;
+            let copied = false;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                try { await navigator.clipboard.writeText(url); copied = true; } catch (_e) { /* fallback */ }
+            }
+
+            if (!copied) {
+                const textarea = document.createElement('textarea');
+                textarea.value = url;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try { copied = document.execCommand('copy'); } catch (_e) { /* ignore */ }
+                textarea.remove();
+            }
+
+            const label = document.getElementById('post-share-label');
+            if (label) {
+                const original = label.textContent;
+                label.textContent = copied ? '已复制' : '复制失败';
+                shareButton.classList.toggle('is-copied', copied);
+                setTimeout(() => {
+                    label.textContent = original;
+                    shareButton.classList.remove('is-copied');
+                }, 1600);
+            }
+        });
+    }
+
     function initPostReadingFullscreen() {
         const shell = document.getElementById('post-reading-shell');
         if (!(shell instanceof HTMLElement)) return;
@@ -292,11 +347,43 @@ const showUpdatedDate = entry.data.updatedDate && entry.data.updatedDate.valueOf
     document.addEventListener('astro:after-swap', initPostBackButton);
     document.addEventListener('astro:page-load', initPostCommentButton);
     document.addEventListener('astro:after-swap', initPostCommentButton);
+    document.addEventListener('astro:page-load', initPostShareButton);
+    document.addEventListener('astro:after-swap', initPostShareButton);
     document.addEventListener('astro:page-load', initPostReadingFullscreen);
     document.addEventListener('astro:after-swap', initPostReadingFullscreen);
 </script>
 
 <style is:global>
+    .post-share-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+        color: var(--text-color);
+        padding: 0.2rem 0.7rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .post-share-button:hover {
+        border-color: color-mix(in srgb, var(--link-color) 45%, var(--border-color));
+        color: var(--link-color);
+        background: var(--hover-bg-color);
+    }
+
+    .post-share-button:active {
+        transform: scale(0.94);
+    }
+
+    .post-share-button.is-copied {
+        border-color: var(--link-color);
+        color: var(--link-color);
+    }
+
     .post-layout-wrapper {
         --page-width: min(800px, 88vw);
         --toc-width: 230px;

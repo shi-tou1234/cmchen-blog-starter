@@ -1,6 +1,6 @@
 ---
 import type { SearchResult } from "@/global"
-import { baseUrl } from "@utils/url-utils";
+import { baseUrl, getRelativeLocaleUrl } from "@utils/url-utils";
 import { getEntry, render } from 'astro:content'
 import i18nit from "@i18n/translation";
 
@@ -13,8 +13,12 @@ const translations = {
   placeholder: t("search.placeholder"),
   searching: t("search.searching"),
   error: t("search.error"),
-  noresult: t("search.noresult")
+  noresult: t("search.noresult"),
+  noresultHint: '换个关键词试试，或减少一些字词',
+  browseArchives: '浏览全部归档'
 };
+
+const archivesUrl = getRelativeLocaleUrl(currentLang, '/archives/');
 
 const searchHistoryKey = 'cmchen_search_history_v1';
 const searchRecommendationsTitle = '推荐搜索';
@@ -142,6 +146,7 @@ function initSearchModal() {
 
   searchButton.addEventListener('click', openModal);
   closeSearch?.addEventListener('click', closeModal);
+  window.__closeSearchModal = closeModal;
   searchModal.addEventListener('click', (e) => {
     if (!modalContent?.contains(e.target)) closeModal();
   });
@@ -258,7 +263,7 @@ document.addEventListener('astro:after-swap', initSearchModal);
   }
 </style>
 
-<script define:vars={{ fakeResult, translations, searchHistoryKey, searchRecommendationsTitle, searchRecentLabel, searchHotLabel, searchClearLabel, searchEmptyHistoryLabel, hotSearches }}>
+<script define:vars={{ fakeResult, translations, archivesUrl, searchHistoryKey, searchRecommendationsTitle, searchRecentLabel, searchHotLabel, searchClearLabel, searchEmptyHistoryLabel, hotSearches }}>
 let searchRequestId = 0;
 
 function renderSearchStatus(message, extraClass = '') {
@@ -448,7 +453,11 @@ function displayResults(results) {
   if (results.length === 0) {
     searchResults.innerHTML = `
       <div class="p-8 text-center text-[var(--cover-subtitle-color)]">
-        <p>${translations.noresult}</p>
+        <p class="text-base font-semibold text-[var(--text-color)]/85 mb-2">${translations.noresult}</p>
+        <p class="text-sm mb-4">${translations.noresultHint}</p>
+        <div class="flex items-center justify-center gap-2">
+          <a href="${archivesUrl}" class="search-suggestion-chip no-underline" data-search-close>${translations.browseArchives}</a>
+        </div>
       </div>
     `;
     return;
@@ -476,6 +485,17 @@ document.addEventListener('DOMContentLoaded', initPagefindSearch);
 document.addEventListener('astro:after-swap', initPagefindSearch);
 document.addEventListener('DOMContentLoaded', renderSearchRecommendations);
 document.addEventListener('astro:after-swap', renderSearchRecommendations);
+
+// 空状态里的引导链接：先关闭搜索弹窗再跟随导航
+if (!window.__searchCloseLinkBound) {
+  window.__searchCloseLinkBound = true;
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLElement && target.closest('[data-search-close]')) {
+      window.__closeSearchModal?.();
+    }
+  });
+}
 </script>
 
 

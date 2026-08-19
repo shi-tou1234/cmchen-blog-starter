@@ -12,7 +12,19 @@ import { externalUrlsConfig } from "../../config";
     </svg>
     <span>评论</span>
   </h2>
-  <div class="giscus"></div>
+  <div class="giscus-wrap">
+    <div class="giscus"></div>
+    <div class="giscus-status" data-giscus-status aria-live="polite">
+      <div class="giscus-status__loading">
+        <span class="giscus-status__spinner" aria-hidden="true"></span>
+        <span>评论加载中…</span>
+      </div>
+      <div class="giscus-status__error">
+        <p>评论加载失败，可能是网络原因。</p>
+        <button type="button" class="giscus-status__retry" data-giscus-retry>重新加载</button>
+      </div>
+    </div>
+  </div>
 </section>
 
 <script
@@ -36,6 +48,8 @@ import { externalUrlsConfig } from "../../config";
 
 <script is:inline>
 (function() {
+  var GISCUS_TIMEOUT = 15000;
+
   function getGiscusTheme() {
     var theme = document.documentElement.getAttribute('data-theme');
     if (theme === 'dark') return 'dark';
@@ -75,11 +89,91 @@ import { externalUrlsConfig } from "../../config";
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
+  // ========== 评论加载状态：加载中提示 / 失败提示与重试 ==========
+  function clearGiscusStatusTimer() {
+    if (window.__giscusStatusTimer) {
+      clearTimeout(window.__giscusStatusTimer);
+      window.__giscusStatusTimer = null;
+    }
+  }
+
+  function initGiscusStatus() {
+    var wrap = document.querySelector('.giscus-comments');
+    if (!wrap) return;
+    var container = wrap.querySelector('.giscus');
+    var status = wrap.querySelector('[data-giscus-status]');
+    var retryBtn = wrap.querySelector('[data-giscus-retry]');
+    if (!container || !status) return;
+
+    clearGiscusStatusTimer();
+    if (window.__giscusStatusObserver) {
+      window.__giscusStatusObserver.disconnect();
+      window.__giscusStatusObserver = null;
+    }
+
+    var markLoaded = function() {
+      clearGiscusStatusTimer();
+      if (window.__giscusStatusObserver) {
+        window.__giscusStatusObserver.disconnect();
+        window.__giscusStatusObserver = null;
+      }
+      status.classList.add('is-loaded');
+      status.classList.remove('is-error');
+    };
+
+    status.classList.remove('is-loaded', 'is-error');
+
+    var watchIframe = function(iframe) {
+      if (!iframe || iframe.dataset.giscusLoaded === 'true') {
+        if (iframe) markLoaded();
+        return;
+      }
+      iframe.addEventListener('load', function() {
+        iframe.dataset.giscusLoaded = 'true';
+        markLoaded();
+      });
+    };
+
+    var iframe = container.querySelector('iframe.giscus-frame');
+    watchIframe(iframe);
+
+    var observer = new MutationObserver(function() {
+      var next = container.querySelector('iframe.giscus-frame');
+      if (next) watchIframe(next);
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    window.__giscusStatusObserver = observer;
+
+    window.__giscusStatusTimer = setTimeout(function() {
+      var current = container.querySelector('iframe.giscus-frame');
+      if (!current || current.dataset.giscusLoaded !== 'true') {
+        status.classList.add('is-error');
+      }
+    }, GISCUS_TIMEOUT);
+
+    if (retryBtn && retryBtn.dataset.bound !== 'true') {
+      retryBtn.dataset.bound = 'true';
+      retryBtn.addEventListener('click', function() {
+        container.innerHTML = '';
+        var script = document.querySelector('script[src="https://giscus.app/client.js"]');
+        if (script) {
+          var clone = script.cloneNode(true);
+          script.remove();
+          document.body.appendChild(clone);
+        }
+        initGiscusStatus();
+      });
+    }
+  }
+
   document.addEventListener('astro:page-load', initGiscusThemeSync);
+  document.addEventListener('astro:page-load', initGiscusStatus);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGiscusThemeSync);
+    document.addEventListener('DOMContentLoaded', initGiscusStatus);
   } else {
     initGiscusThemeSync();
+    initGiscusStatus();
   }
 })();
 </script>
@@ -87,6 +181,10 @@ import { externalUrlsConfig } from "../../config";
 <style is:global>
   .giscus-comments {
     max-width: 100%;
+  }
+
+  .giscus-wrap {
+    position: relative;
   }
 
   .giscus {
@@ -97,5 +195,83 @@ import { externalUrlsConfig } from "../../config";
     width: 100%;
     border: none;
     color-scheme: light dark;
+  }
+
+  .giscus-status {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 3rem;
+    background: var(--bg-color);
+    transition: opacity 0.3s ease;
+  }
+
+  .giscus-status.is-loaded {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .giscus-status__loading {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--muted-text-color);
+    font-size: 0.9rem;
+  }
+
+  .giscus-status__spinner {
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 50%;
+    border: 2px solid color-mix(in srgb, var(--link-color) 35%, transparent);
+    border-top-color: var(--link-color);
+    animation: giscus-status-spin 0.8s linear infinite;
+  }
+
+  @keyframes giscus-status-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .giscus-status__error {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--muted-text-color);
+    font-size: 0.9rem;
+    text-align: center;
+  }
+
+  .giscus-status.is-error .giscus-status__loading {
+    display: none;
+  }
+
+  .giscus-status.is-error .giscus-status__error {
+    display: flex;
+  }
+
+  .giscus-status__retry {
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--hover-bg-color);
+    color: var(--text-color);
+    padding: 0.35rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+
+  .giscus-status__retry:hover {
+    border-color: color-mix(in srgb, var(--link-color) 45%, var(--border-color));
+    color: var(--link-color);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .giscus-status__spinner {
+      animation: none;
+    }
   }
 </style>

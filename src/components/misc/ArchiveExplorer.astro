@@ -81,10 +81,10 @@ for (const [year, months] of Object.entries(postsByYearMonth)) {
 }
 
 const allLabel = language.toLowerCase().startsWith('zh') ? '全部文章' : 'All posts';
-const filterTitle = language.toLowerCase().startsWith('zh') ? '标签筛选' : 'Filter by tags';
-const filterHint = language.toLowerCase().startsWith('zh') ? '点击标签可筛选对应分类文章' : 'Use tags to filter posts by category';
+const filterTitle = language.toLowerCase().startsWith('zh') ? '归档' : 'Archives';
+const filterHint = language.toLowerCase().startsWith('zh') ? '点击归档可筛选对应文章' : 'Use archives to filter posts';
 const emptyLabel = language.toLowerCase().startsWith('zh') ? '当前筛选下暂无文章' : 'No posts match this filter';
-const categoryLabel = language.toLowerCase().startsWith('zh') ? '分类' : 'Category';
+const categoryLabel = language.toLowerCase().startsWith('zh') ? '归档' : 'Archives';
 const backLabel = language.toLowerCase().startsWith('zh') ? '← 返回' : '← Back';
 const minLabel = language.toLowerCase().startsWith('zh') ? '分钟' : 'min';
 const postsLabel = language.toLowerCase().startsWith('zh') ? '篇' : 'posts';
@@ -203,7 +203,7 @@ const serializedCategoryCounts = JSON.stringify(
 
   <aside class="archive-explorer__sidebar lg:sticky lg:top-24 lg:self-start">
     <div class="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-color)]/72 p-4 shadow-sm backdrop-blur">
-      <h2 class="archive-explorer__title text-xl font-bold text-[var(--text-color)]"># {filterTitle.replace(/^标签筛选$|^Filter by tags$/,'分类')}</h2>
+      <h2 class="archive-explorer__title text-xl font-bold text-[var(--text-color)]"># {filterTitle}</h2>
 
       <div class="archive-explorer__view-container mt-4">
         <div class="archive-explorer__top-view" data-view-state="active">
@@ -694,7 +694,7 @@ const serializedCategoryCounts = JSON.stringify(
         syncUrlCategories();
 
         if (viewTitle) {
-          viewTitle.textContent = `# ${pageLang.startsWith('zh') ? '分类' : 'Category'}`;
+          viewTitle.textContent = `# ${pageLang.startsWith('zh') ? '归档' : 'Archives'}`;
         }
 
         animateViewSwitch(subView, topView, 'backward');

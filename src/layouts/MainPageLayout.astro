@@ -13,6 +13,8 @@ interface Props {
   title: string;
   lang: string;
   description?: string;
+  image?: string;
+  type?: string;
   updateNotice?: {
     title: string;
     url: string;
@@ -20,7 +22,7 @@ interface Props {
     version: string;
   } | null;
 }
-const { title, lang, description, updateNotice = null } = Astro.props;
+const { title, lang, description, image, type, updateNotice = null } = Astro.props;
 const guideText = blogGuideContent['zh-cn'];
 const baseUrl = import.meta.env.BASE_URL || '/';
 
@@ -34,7 +36,7 @@ const navAboutLabel = '关于';
 const navToolsLabel = '工具栏';
 ---
 
-<Layout title={title} lang={lang} description={description}>
+<Layout title={title} lang={lang} description={description} image={image} type={type}>
   <div class="flex flex-col min-h-screen">
     <div id="global-page-particles" class="pointer-events-none fixed inset-0 z-0"></div>
     <div>
