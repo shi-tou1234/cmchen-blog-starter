@@ -6,7 +6,6 @@
 
 后台在线预览：<https://shi-tou1234.github.io/cmchen-blog-starter/admin/>
 
-本项目基于 [cmchen-blog](https://github.com/shi-tou1234/cmchen-blog) 的源码初始化而来，删除了全部个人内容（文章、关于、工具栏链接、旅行地图城市标记、音乐等），只保留完整的功能框架与工程配置。你可以把它当作一个开箱即用的博客模板，填入自己的内容后即可发布。
 
 ## 功能特性
 
