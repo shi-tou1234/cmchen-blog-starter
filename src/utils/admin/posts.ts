@@ -94,7 +94,7 @@ function renderPostListItem(entry: { path: string; slug: string; lang: string },
 }
 
 function updatePostListItem(path: string, meta: PostListItemMeta) {
-  const container = document.getElementById("post-select");
+  const container = (document.getElementById("post-select") as HTMLElement | null);
   if (!container) return;
   const item = container.querySelector<HTMLElement>(`[data-path="${CSS.escape(path)}"]`);
   if (!item) return;
@@ -111,7 +111,7 @@ function updatePostListItem(path: string, meta: PostListItemMeta) {
 }
 
 function setSelectedPostPath(path: string) {
-  const container = document.getElementById("post-select");
+  const container = (document.getElementById("post-select") as HTMLElement | null);
   if (!container) return;
   container.querySelectorAll<HTMLElement>(".post-list-item").forEach((el) => {
     el.classList.toggle("is-selected", el.dataset.path === path);
@@ -119,7 +119,7 @@ function setSelectedPostPath(path: string) {
 }
 
 function getSelectedPostPath(): string {
-  const container = document.getElementById("post-select");
+  const container = (document.getElementById("post-select") as HTMLElement | null);
   return container?.querySelector<HTMLElement>(".post-list-item.is-selected")?.dataset.path || "";
 }
 
@@ -127,7 +127,7 @@ function getSelectedPostPath(): string {
 
 function collectPostDraft() {
   const get = (id: string) => (document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null)?.value || "";
-  const pinnedEl = document.getElementById("post-pinned") as HTMLInputElement | null;
+  const pinnedEl = (document.getElementById("post-pinned") as HTMLInputElement | null) as HTMLInputElement | null;
   return {
     title: get("post-title"),
     slug: get("post-slug"),
@@ -147,7 +147,7 @@ function savePostDraftLocally() {
   try {
     const draft = collectPostDraft();
     localStorage.setItem(POST_DRAFT_KEY, JSON.stringify(draft));
-    const statusEl = document.getElementById("post-autosave-status");
+    const statusEl = (document.getElementById("post-autosave-status") as HTMLElement | null);
     if (statusEl) {
       const d = new Date();
       const hh = String(d.getHours()).padStart(2, "0");
@@ -177,7 +177,7 @@ function loadPostDraftLocally(): boolean {
     setVal("post-category", draft.category || "");
     setVal("post-subcategory", draft.subcategory || "");
     setVal("post-content", draft.content || "");
-    const pinnedEl = document.getElementById("post-pinned") as HTMLInputElement | null;
+    const pinnedEl = (document.getElementById("post-pinned") as HTMLInputElement | null) as HTMLInputElement | null;
     if (pinnedEl) pinnedEl.checked = !!draft.pinned;
     return true;
   } catch {
@@ -188,7 +188,7 @@ function loadPostDraftLocally(): boolean {
 
 function clearPostDraftLocally() {
   localStorage.removeItem(POST_DRAFT_KEY);
-  const statusEl = document.getElementById("post-autosave-status");
+  const statusEl = (document.getElementById("post-autosave-status") as HTMLElement | null);
   if (statusEl) statusEl.textContent = "";
 }
 
@@ -203,8 +203,8 @@ function getAdminPageTheme() {
 }
 
 function pushContentToPreview() {
-  const iframe = document.getElementById("post-preview-iframe") as HTMLIFrameElement | null;
-  let content = (document.getElementById("post-content") as HTMLTextAreaElement | null)?.value || "";
+  const iframe = (document.getElementById("post-preview-iframe") as HTMLIFrameElement | null) as HTMLIFrameElement | null;
+  let content = ((document.getElementById("post-content") as HTMLTextAreaElement | null) as HTMLTextAreaElement | null)?.value || "";
   if (content.includes("./assets/")) {
     content = rewritePreviewAssetPaths(content);
   }
@@ -219,7 +219,7 @@ function pushContentToPreview() {
 // raw.githubusercontent 在部分网络（如国内）不可达，改用项目已使用的 jsDelivr CDN 兜底。
 // 仅用于预览推送，不改变保存在文章里的 markdown（发布照常走 ./assets/ 相对路径）。
 function rewritePreviewAssetPaths(content: string): string {
-  const slug = (document.getElementById("post-slug") as HTMLInputElement | null)?.value.trim() || "";
+  const slug = ((document.getElementById("post-slug") as HTMLInputElement | null) as HTMLInputElement | null)?.value.trim() || "";
   if (!slug) return content;
   const branch = getBranch();
   const base = `https://cdn.jsdelivr.net/gh/${encodeURIComponent(REPO_OWNER)}/${encodeURIComponent(REPO_NAME)}@${encodeURIComponent(branch)}/src/content/blog/${encodeURIComponent(slug)}/assets/`;
@@ -261,7 +261,7 @@ function insertSnippetAtCaret(textarea: HTMLTextAreaElement, insertion: string) 
 
 // 在上传区旁的缩略图容器里展示一张图片预览（本地 objectURL，与预览 iframe 无关）。
 function addUploadThumb(name: string, url: string) {
-  const container = document.getElementById("post-upload-thumbs");
+  const container = (document.getElementById("post-upload-thumbs") as HTMLElement | null);
   if (!container) return;
   const item = document.createElement("div");
   item.className = "post-upload-thumb";
@@ -289,7 +289,7 @@ function addUploadThumb(name: string, url: string) {
 // ===== Post helper functions =====
 
 function initPostDateDefault() {
-  const input = document.getElementById("post-date");
+  const input = (document.getElementById("post-date") as HTMLInputElement | null);
   if (input && !input.value) {
     input.value = getNowDateTimeLocal();
   }
@@ -310,7 +310,7 @@ function normalizeCategoryOptionList(categories: string[]) {
 }
 
 function renderSubcategoryOptions(rootCategory: string) {
-  const subcategoryDatalist = document.getElementById("post-subcategory-options");
+  const subcategoryDatalist = (document.getElementById("post-subcategory-options") as HTMLInputElement | null);
   if (!(subcategoryDatalist instanceof HTMLDataListElement)) return;
   const subcategories = normalizeCategoryOptionList(categoryOptionMeta.subcategoriesByRoot[rootCategory] || []);
   subcategoryDatalist.innerHTML = "";
@@ -322,13 +322,13 @@ function renderSubcategoryOptions(rootCategory: string) {
 }
 
 function syncSubcategoryOptions() {
-  const rootCategory = (document.getElementById("post-category")?.value || "").trim();
+  const rootCategory = (((document.getElementById("post-category") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
   renderSubcategoryOptions(rootCategory);
 }
 
 function renderCategoryOptions(meta: { topLevelCategories: string[]; subcategoriesByRoot: Record<string, string[]> }) {
-  const categoryDatalist = document.getElementById("post-category-options");
-  const categorySelect = document.getElementById("post-category-select");
+  const categoryDatalist = (document.getElementById("post-category-options") as HTMLInputElement | null);
+  const categorySelect = (document.getElementById("post-category-select") as HTMLSelectElement | null);
   const nextMeta = meta || { topLevelCategories: [], subcategoriesByRoot: {} };
   setCategoryOptionMeta(nextMeta);
   const unique = normalizeCategoryOptionList(nextMeta.topLevelCategories);
@@ -455,16 +455,16 @@ async function loadCategoryOptions(
 }
 
 function clearPostEditor() {
-  const titleInput = document.getElementById("post-title");
-  const slugInput = document.getElementById("post-slug");
-  const langInput = document.getElementById("post-lang");
-  const dateInput = document.getElementById("post-date");
-  const descInput = document.getElementById("post-desc");
-  const coverInput = document.getElementById("post-cover");
-  const categoryInput = document.getElementById("post-category");
-  const subcategoryInput = document.getElementById("post-subcategory");
-  const contentInput = document.getElementById("post-content");
-  const categorySelect = document.getElementById("post-category-select");
+  const titleInput = (document.getElementById("post-title") as HTMLInputElement | null);
+  const slugInput = (document.getElementById("post-slug") as HTMLInputElement | null);
+  const langInput = (document.getElementById("post-lang") as HTMLSelectElement | null);
+  const dateInput = (document.getElementById("post-date") as HTMLInputElement | null);
+  const descInput = (document.getElementById("post-desc") as HTMLInputElement | null);
+  const coverInput = (document.getElementById("post-cover") as HTMLInputElement | null);
+  const categoryInput = (document.getElementById("post-category") as HTMLInputElement | null);
+  const subcategoryInput = (document.getElementById("post-subcategory") as HTMLInputElement | null);
+  const contentInput = (document.getElementById("post-content") as HTMLTextAreaElement | null);
+  const categorySelect = (document.getElementById("post-category-select") as HTMLSelectElement | null);
 
   if (titleInput) titleInput.value = "";
   if (slugInput) slugInput.value = "";
@@ -476,7 +476,7 @@ function clearPostEditor() {
   if (subcategoryInput) subcategoryInput.value = "";
   if (categorySelect instanceof HTMLSelectElement) categorySelect.value = "";
   if (contentInput) contentInput.value = "";
-  const pinnedCheckbox = document.getElementById("post-pinned");
+  const pinnedCheckbox = (document.getElementById("post-pinned") as HTMLInputElement | null);
   if (pinnedCheckbox instanceof HTMLInputElement) pinnedCheckbox.checked = false;
   syncSubcategoryOptions();
 }
@@ -493,8 +493,8 @@ function isTimestampFallbackSlug(slug: string) {
 }
 
 function ensurePostSlug() {
-  const slugInput = document.getElementById("post-slug");
-  const title = (document.getElementById("post-title")?.value || "").trim();
+  const slugInput = (document.getElementById("post-slug") as HTMLInputElement | null);
+  const title = (((document.getElementById("post-title") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
   const titleSlug = normalizeSlug(title);
   const currentSlug = normalizeSlug(slugInput?.value || "");
   if (currentSlug && !(isTimestampFallbackSlug(currentSlug) && titleSlug)) {
@@ -514,8 +514,8 @@ function ensurePostSlug() {
 // ===== Core post functions =====
 
 export async function loadPostList() {
-  const msgEl = document.getElementById("post-msg");
-  const selectEl = document.getElementById("post-select");
+  const msgEl = (document.getElementById("post-msg") as HTMLElement | null);
+  const selectEl = (document.getElementById("post-select") as HTMLElement | null);
   const token = getToken();
   const branch = getBranch();
 
@@ -535,7 +535,7 @@ export async function loadPostList() {
     const status = err?.status || err?.response?.status;
     if (status === 401 || status === 403) {
       console.warn("[admin] token 已失效或无权限，请重新登录:", err);
-      setMsg(msgEl, "登录已失效，请重新登录", "error");
+      setMsg(msgEl, "登录已失效，请重新登录", "error" as any);
       if (selectEl) selectEl.innerHTML = "";
       return;
     }
@@ -567,7 +567,7 @@ export async function loadPostList() {
     updatePostListItem(entry.path, {
       title: fm.title,
       pubDate: fm.pubDate,
-      pinned: fm.pinned === "true" || fm.pinned === true,
+      pinned: (fm.pinned as any) === "true" || (fm.pinned as any) === true,
       category: extractCategoriesFromMarkdown(_markdown)[0] || "",
     });
   };
@@ -577,11 +577,11 @@ export async function loadPostList() {
 }
 
 async function loadSelectedPostToEditor() {
-  const msgEl = document.getElementById("post-msg");
+  const msgEl = (document.getElementById("post-msg") as HTMLElement | null);
   const selectedPath = getSelectedPostPath();
   const token = getToken();
   const branch = getBranch();
-  const categorySelect = document.getElementById("post-category-select");
+  const categorySelect = (document.getElementById("post-category-select") as HTMLSelectElement | null);
 
   if (!token) throw new Error("请先填写 GitHub Token");
   if (!selectedPath) throw new Error("请先选择文章");
@@ -596,15 +596,15 @@ async function loadSelectedPostToEditor() {
   const slug = slugMatched?.[1] || "";
   const lang = slugMatched?.[2] || "zh-cn";
 
-  const titleInput = document.getElementById("post-title");
-  const slugInput = document.getElementById("post-slug");
-  const langInput = document.getElementById("post-lang");
-  const dateInput = document.getElementById("post-date");
-  const descInput = document.getElementById("post-desc");
-  const coverInput = document.getElementById("post-cover");
-  const categoryInput = document.getElementById("post-category");
-  const subcategoryInput = document.getElementById("post-subcategory");
-  const contentInput = document.getElementById("post-content");
+  const titleInput = (document.getElementById("post-title") as HTMLInputElement | null);
+  const slugInput = (document.getElementById("post-slug") as HTMLInputElement | null);
+  const langInput = (document.getElementById("post-lang") as HTMLSelectElement | null);
+  const dateInput = (document.getElementById("post-date") as HTMLInputElement | null);
+  const descInput = (document.getElementById("post-desc") as HTMLInputElement | null);
+  const coverInput = (document.getElementById("post-cover") as HTMLInputElement | null);
+  const categoryInput = (document.getElementById("post-category") as HTMLInputElement | null);
+  const subcategoryInput = (document.getElementById("post-subcategory") as HTMLInputElement | null);
+  const contentInput = (document.getElementById("post-content") as HTMLTextAreaElement | null);
 
   if (titleInput) titleInput.value = frontmatter.title || "";
   if (slugInput) slugInput.value = slug;
@@ -626,9 +626,9 @@ async function loadSelectedPostToEditor() {
   }
   if (contentInput) contentInput.value = (content || "").trim();
 
-  const pinnedCheckbox = document.getElementById("post-pinned");
+  const pinnedCheckbox = (document.getElementById("post-pinned") as HTMLInputElement | null);
   if (pinnedCheckbox instanceof HTMLInputElement) {
-    pinnedCheckbox.checked = frontmatter.pinned === "true" || frontmatter.pinned === true;
+    pinnedCheckbox.checked = (frontmatter.pinned as any) === "true" || (frontmatter.pinned as any) === true;
   }
 
   // 载入新文章后清掉旧草稿，避免误覆盖；并推送到预览 iframe
@@ -652,7 +652,7 @@ function insertAtCursor(textarea: HTMLTextAreaElement | null, beforeText: string
 }
 
 function insertMarkdownSnippet(type: string) {
-  const textarea = document.getElementById("post-content") as HTMLTextAreaElement | null;
+  const textarea = (document.getElementById("post-content") as HTMLTextAreaElement | null) as HTMLTextAreaElement | null;
   if (!textarea || !type) return;
 
   const snippets: Record<string, () => void> = {
@@ -701,61 +701,61 @@ function insertMarkdownSnippet(type: string) {
 // ===== Event handler initialization =====
 
 export function initPostHandlers() {
-  const categorySelect = document.getElementById("post-category-select");
-  const postSelectEl = document.getElementById("post-select");
+  const categorySelect = (document.getElementById("post-category-select") as HTMLSelectElement | null);
+  const postSelectEl = (document.getElementById("post-select") as HTMLElement | null);
 
   initPostDateDefault();
 
   // 首次进入后台时尝试恢复本地草稿（仅在未选择文章时）
   const restored = loadPostDraftLocally();
   if (restored) {
-    setMsg(document.getElementById("post-msg"), "已恢复上次未保存的草稿");
+    setMsg((document.getElementById("post-msg") as HTMLElement | null), "已恢复上次未保存的草稿");
     setTimeout(pushContentToPreview, 100);
   }
 
-  document.getElementById("about-music-files")?.addEventListener("change", () => {
-    const files = document.getElementById("about-music-files")?.files;
-    const countEl = document.getElementById("about-music-files-count");
+  (document.getElementById("about-music-files") as HTMLInputElement | null)?.addEventListener("change", () => {
+    const files = ((document.getElementById("about-music-files") as HTMLInputElement | null) as HTMLInputElement | null)?.files;
+    const countEl = (document.getElementById("about-music-files-count") as HTMLInputElement | null);
     if (!countEl) return;
     const count = files?.length || 0;
     countEl.textContent = count > 0 ? `已选择 ${count} 个 MP3` : "未选择文件";
   });
 
-  document.getElementById("post-files")?.addEventListener("change", () => {
-    const files = document.getElementById("post-files")?.files;
-    const countEl = document.getElementById("post-files-count");
+  (document.getElementById("post-files") as HTMLInputElement | null)?.addEventListener("change", () => {
+    const files = ((document.getElementById("post-files") as HTMLInputElement | null) as HTMLInputElement | null)?.files;
+    const countEl = (document.getElementById("post-files-count") as HTMLElement | null);
     if (!countEl) return;
     const count = files?.length || 0;
     countEl.textContent = count > 0 ? `已选择 ${count} 个文件` : "未选择文件";
   });
 
-  document.getElementById("post-cover-file")?.addEventListener("change", () => {
-    const files = document.getElementById("post-cover-file")?.files;
-    const nameEl = document.getElementById("post-cover-filename");
+  (document.getElementById("post-cover-file") as HTMLInputElement | null)?.addEventListener("change", () => {
+    const files = ((document.getElementById("post-cover-file") as HTMLInputElement | null) as HTMLInputElement | null)?.files;
+    const nameEl = (document.getElementById("post-cover-filename") as HTMLElement | null);
     if (!nameEl) return;
     const name = files?.[0]?.name || "";
     nameEl.textContent = name || "未选择";
   });
 
-  document.getElementById("refresh-post-list-btn")?.addEventListener("click", loadPostList);
+  (document.getElementById("refresh-post-list-btn") as HTMLInputElement | null)?.addEventListener("click", loadPostList);
 
   categorySelect?.addEventListener("change", () => {
     const picked = (categorySelect.value || "").trim();
-    const inputEl = document.getElementById("post-category");
+    const inputEl = (document.getElementById("post-category") as HTMLInputElement | null);
     if (inputEl && picked) inputEl.value = picked;
     syncSubcategoryOptions();
   });
 
-  document.getElementById("post-category")?.addEventListener("input", () => {
+  (document.getElementById("post-category") as HTMLInputElement | null)?.addEventListener("input", () => {
     if (!(categorySelect instanceof HTMLSelectElement)) return;
-    const value = (document.getElementById("post-category")?.value || "").trim();
+    const value = (((document.getElementById("post-category") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
     categorySelect.value = value;
     if (categorySelect.value !== value) categorySelect.value = "";
     syncSubcategoryOptions();
   });
 
-  document.getElementById("load-selected-post-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("post-msg");
+  (document.getElementById("load-selected-post-btn") as HTMLInputElement | null)?.addEventListener("click", async () => {
+    const msgEl = (document.getElementById("post-msg") as HTMLElement | null);
     try {
       await loadSelectedPostToEditor();
     } catch (error) {
@@ -763,24 +763,24 @@ export function initPostHandlers() {
     }
   });
 
-  document.getElementById("new-post-btn")?.addEventListener("click", () => {
+  (document.getElementById("new-post-btn") as HTMLInputElement | null)?.addEventListener("click", () => {
     clearPostEditor();
     clearPostDraftLocally();
-    setMsg(document.getElementById("post-msg"), "已切换到新建文章模式");
+    setMsg((document.getElementById("post-msg") as HTMLElement | null), "已切换到新建文章模式");
     pushContentToPreview();
   });
 
-  document.getElementById("open-preview-editor-btn")?.addEventListener("click", () => {
+  (document.getElementById("open-preview-editor-btn") as HTMLInputElement | null)?.addEventListener("click", () => {
     savePreviewDraft();
     const previewUrl = getPreviewPageUrl();
     window.open(previewUrl, "_blank", "noopener,noreferrer");
-    setMsg(document.getElementById("post-msg"), "已打开预览编辑器，新内容可在返回后回填");
+    setMsg((document.getElementById("post-msg") as HTMLElement | null), "已打开预览编辑器，新内容可在返回后回填");
   });
 
-  document.getElementById("apply-preview-content-btn")?.addEventListener("click", () => {
+  (document.getElementById("apply-preview-content-btn") as HTMLInputElement | null)?.addEventListener("click", () => {
     const applied = applyPreviewResult();
     if (!applied) {
-      setMsg(document.getElementById("post-msg"), "未检测到预览回填内容，请先在预览页点击\u201C返回发布\u201D", true);
+      setMsg((document.getElementById("post-msg") as HTMLElement | null), "未检测到预览回填内容，请先在预览页点击\u201C返回发布\u201D", true);
     } else {
       pushContentToPreview();
     }
@@ -802,7 +802,7 @@ export function initPostHandlers() {
     if (!path) return;
     setSelectedPostPath(path);
     loadSelectedPostToEditor().catch((error) => {
-      setMsg(document.getElementById("post-msg"), String(error), true);
+      setMsg((document.getElementById("post-msg") as HTMLElement | null), String(error), true);
     });
   });
 
@@ -815,12 +815,12 @@ export function initPostHandlers() {
     if (!path) return;
     setSelectedPostPath(path);
     loadSelectedPostToEditor().catch((error) => {
-      setMsg(document.getElementById("post-msg"), String(error), true);
+      setMsg((document.getElementById("post-msg") as HTMLElement | null), String(error), true);
     });
   });
 
   // 搜索过滤
-  document.getElementById("post-search")?.addEventListener("input", (event: Event) => {
+  (document.getElementById("post-search") as HTMLInputElement | null)?.addEventListener("input", (event: Event) => {
     const keyword = ((event.target as HTMLInputElement)?.value || "").trim().toLowerCase();
     postSelectEl?.querySelectorAll<HTMLElement>(".post-list-item").forEach((item) => {
       if (!keyword) {
@@ -847,7 +847,7 @@ export function initPostHandlers() {
   });
 
   // 正文 textarea：实时推送预览 + 自动保存草稿
-  document.getElementById("post-content")?.addEventListener("input", () => {
+  (document.getElementById("post-content") as HTMLTextAreaElement | null)?.addEventListener("input", () => {
     pushPreviewDebounced();
     autoSaveDebounced();
   });
@@ -856,10 +856,10 @@ export function initPostHandlers() {
   ["post-title", "post-slug", "post-lang", "post-date", "post-desc", "post-cover", "post-category", "post-subcategory"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", autoSaveDebounced);
   });
-  document.getElementById("post-pinned")?.addEventListener("change", autoSaveDebounced);
+  (document.getElementById("post-pinned") as HTMLInputElement | null)?.addEventListener("change", autoSaveDebounced);
 
     // iframe 加载完成后推送初始内容
-  const previewIframe = document.getElementById("post-preview-iframe") as HTMLIFrameElement | null;
+  const previewIframe = (document.getElementById("post-preview-iframe") as HTMLIFrameElement | null) as HTMLIFrameElement | null;
   if (previewIframe) {
     previewIframe.addEventListener("load", () => {
       // iframe 每次加载（含 reload）都推送当前内容
@@ -876,8 +876,8 @@ export function initPostHandlers() {
     attributeFilter: ["data-theme"],
   });
 
-  document.getElementById("insert-iframe-btn")?.addEventListener("click", () => {
-    const textarea = document.getElementById("post-content") as HTMLTextAreaElement | null;
+  (document.getElementById("insert-iframe-btn") as HTMLInputElement | null)?.addEventListener("click", () => {
+    const textarea = (document.getElementById("post-content") as HTMLTextAreaElement | null) as HTMLTextAreaElement | null;
     if (!textarea) return;
     const iframeTpl = `\n<iframe src="https://www.youtube.com/embed/VIDEO_ID" title="Video" frameborder="0" allowfullscreen></iframe>\n`;
     insertSnippetAtCaret(textarea, iframeTpl);
@@ -886,14 +886,14 @@ export function initPostHandlers() {
   });
 
   // 上传 cover
-  document.getElementById("upload-cover-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("post-msg");
+  (document.getElementById("upload-cover-btn") as HTMLInputElement | null)?.addEventListener("click", async () => {
+    const msgEl = (document.getElementById("post-msg") as HTMLElement | null);
     try {
       const token = getToken();
       const branch = getBranch();
       const slug = ensurePostSlug();
-      const lang = (document.getElementById("post-lang")?.value || "zh-cn").trim();
-      const files = document.getElementById("post-cover-file")?.files;
+      const lang = (((document.getElementById("post-lang") as HTMLSelectElement | null) as HTMLSelectElement | null)?.value || "zh-cn").trim();
+      const files = ((document.getElementById("post-cover-file") as HTMLInputElement | null) as HTMLInputElement | null)?.files;
 
       if (!token) throw new Error("请先填写 GitHub Token");
       if (!files || files.length === 0) throw new Error("请先选择封面图片");
@@ -904,11 +904,11 @@ export function initPostHandlers() {
       setMsg(msgEl, "正在上传封面图片...");
       const result = await uploadBlogAssetFile({ slug, lang, file, token, branch });
       const coverPath = `./assets/${result.name}`;
-      const coverInput = document.getElementById("post-cover");
+      const coverInput = (document.getElementById("post-cover") as HTMLInputElement | null);
       if (coverInput) coverInput.value = coverPath;
-      const fileInput = document.getElementById("post-cover-file");
+      const fileInput = (document.getElementById("post-cover-file") as HTMLInputElement | null);
       if (fileInput) fileInput.value = "";
-      const nameEl = document.getElementById("post-cover-filename");
+      const nameEl = (document.getElementById("post-cover-filename") as HTMLElement | null);
       if (nameEl) nameEl.textContent = "未选择";
       setMsg(msgEl, `封面图片上传成功：${result.name}（已自动填入封面路径）`);
     } catch (error) {
@@ -917,14 +917,14 @@ export function initPostHandlers() {
   });
 
   // Upload files
-  document.getElementById("upload-files-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("post-msg");
+  (document.getElementById("upload-files-btn") as HTMLInputElement | null)?.addEventListener("click", async () => {
+    const msgEl = (document.getElementById("post-msg") as HTMLElement | null);
     try {
       const token = getToken();
       const branch = getBranch();
       const slug = ensurePostSlug();
-      const lang = (document.getElementById("post-lang")?.value || "zh-cn").trim();
-      const files = document.getElementById("post-files")?.files;
+      const lang = (((document.getElementById("post-lang") as HTMLSelectElement | null) as HTMLSelectElement | null)?.value || "zh-cn").trim();
+      const files = ((document.getElementById("post-files") as HTMLInputElement | null) as HTMLInputElement | null)?.files;
 
       if (!token) throw new Error("请先填写 GitHub Token");
       if (!files || files.length === 0) throw new Error("请先选择文件");
@@ -951,7 +951,7 @@ export function initPostHandlers() {
         }
       }
 
-      const textarea = document.getElementById("post-content") as HTMLTextAreaElement | null;
+      const textarea = (document.getElementById("post-content") as HTMLTextAreaElement | null) as HTMLTextAreaElement | null;
       const snippets = uploaded.map((f) => {
         if (f.type.startsWith("image/")) return `![](./assets/${f.name})`;
         if (f.type.startsWith("video/")) return `<video controls src="./assets/${f.name}"></video>`;
@@ -961,9 +961,9 @@ export function initPostHandlers() {
       if (snippets && textarea) {
         insertSnippetAtCaret(textarea, `\n\n${snippets}\n`);
       }
-      const fileInput = document.getElementById("post-files");
+      const fileInput = (document.getElementById("post-files") as HTMLInputElement | null);
       if (fileInput) fileInput.value = "";
-      const countEl = document.getElementById("post-files-count");
+      const countEl = (document.getElementById("post-files-count") as HTMLElement | null);
       if (countEl) countEl.textContent = "未选择文件";
       setMsg(msgEl, `上传成功：${uploaded.length} 个文件（目录：${slug}/assets）`);
       pushContentToPreview();
@@ -974,22 +974,22 @@ export function initPostHandlers() {
   });
 
   // Publish post
-  document.getElementById("publish-post-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("post-msg");
+  (document.getElementById("publish-post-btn") as HTMLInputElement | null)?.addEventListener("click", async () => {
+    const msgEl = (document.getElementById("post-msg") as HTMLElement | null);
     try {
       const token = getToken();
       const branch = getBranch();
-      const lang = (document.getElementById("post-lang")?.value || "zh-cn").trim();
-      const title = (document.getElementById("post-title")?.value || "").trim();
-      const dateInput = (document.getElementById("post-date")?.value || "").trim();
+      const lang = (((document.getElementById("post-lang") as HTMLSelectElement | null) as HTMLSelectElement | null)?.value || "zh-cn").trim();
+      const title = (((document.getElementById("post-title") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
+      const dateInput = (((document.getElementById("post-date") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
       const date = toIsoDateTime(dateInput) || new Date().toISOString();
-      const description = (document.getElementById("post-desc")?.value || "").trim();
-      const image = (document.getElementById("post-cover")?.value || "").trim();
-      const category = (document.getElementById("post-category")?.value || "").trim();
-      const subCategory = (document.getElementById("post-subcategory")?.value || "").trim();
-      const pinnedCheckbox = document.getElementById("post-pinned");
+      const description = (((document.getElementById("post-desc") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
+      const image = (((document.getElementById("post-cover") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
+      const category = (((document.getElementById("post-category") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
+      const subCategory = (((document.getElementById("post-subcategory") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
+      const pinnedCheckbox = (document.getElementById("post-pinned") as HTMLInputElement | null);
       const pinned = pinnedCheckbox instanceof HTMLInputElement ? pinnedCheckbox.checked : false;
-      const contentInput = document.getElementById("post-content") as HTMLTextAreaElement | null;
+      const contentInput = (document.getElementById("post-content") as HTMLTextAreaElement | null) as HTMLTextAreaElement | null;
       const content = sanitizeMarkdownImageAlt(contentInput?.value || "");
       if (contentInput) contentInput.value = content;
       const inputSlug = ensurePostSlug();
@@ -999,7 +999,7 @@ export function initPostHandlers() {
       if (!token) throw new Error("请先填写 GitHub Token");
       if (!title) throw new Error("请填写标题");
 
-      const slugInput = document.getElementById("post-slug");
+      const slugInput = (document.getElementById("post-slug") as HTMLInputElement | null);
       if (slugInput && !slugInput.value.trim()) slugInput.value = slug;
 
       const markdown = buildPostMarkdown({
@@ -1020,12 +1020,12 @@ export function initPostHandlers() {
   });
 
   // Delete single language
-  document.getElementById("delete-post-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("post-msg");
+  (document.getElementById("delete-post-btn") as HTMLInputElement | null)?.addEventListener("click", async () => {
+    const msgEl = (document.getElementById("post-msg") as HTMLElement | null);
     try {
       const token = getToken();
       const branch = getBranch();
-      const lang = (document.getElementById("post-lang")?.value || "zh-cn").trim();
+      const lang = (((document.getElementById("post-lang") as HTMLSelectElement | null) as HTMLSelectElement | null)?.value || "zh-cn").trim();
       const slug = ensurePostSlug();
       if (!token) throw new Error("请先填写 GitHub Token");
 
@@ -1045,8 +1045,8 @@ export function initPostHandlers() {
   });
 
   // Delete entire blog directory
-  document.getElementById("delete-post-all-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("post-msg");
+  (document.getElementById("delete-post-all-btn") as HTMLInputElement | null)?.addEventListener("click", async () => {
+    const msgEl = (document.getElementById("post-msg") as HTMLElement | null);
     try {
       const token = getToken();
       const branch = getBranch();

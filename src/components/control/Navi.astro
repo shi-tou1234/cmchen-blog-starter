@@ -13,7 +13,7 @@ const showNext = currentPage < totalPages;
 const normalizedBase = basePath.startsWith('/') ? basePath : `/${basePath}`;
 const baseWithSlash = normalizedBase.endsWith('/') ? normalizedBase : `${normalizedBase}/`;
 
-const getPagePath = (targetPage) => {
+const getPagePath = (targetPage: number) => {
   if (targetPage <= 1) return baseWithSlash;
   return `${baseWithSlash}${targetPage}/`;
 };
@@ -21,7 +21,7 @@ const getPagePath = (targetPage) => {
 const previousPageUrl = getPagePath(currentPage - 1);
 const nextPageUrl = getPagePath(currentPage + 1);
 
-const buildPageItems = (current, total) => {
+const buildPageItems = (current: number, total: number) => {
   if (total <= 7) {
     return Array.from({ length: total }, (_, index) => index + 1);
   }
@@ -69,7 +69,7 @@ const t = i18nit(currentLang);
           <span class="page-number-link is-active" aria-current="page">{item}</span>
         ) : (
           <a
-            href={getRelativeLocaleUrl(currentLang, getPagePath(item))}
+            href={getRelativeLocaleUrl(currentLang, getPagePath(item as number))}
             class="page-number-link"
           >
             {item}

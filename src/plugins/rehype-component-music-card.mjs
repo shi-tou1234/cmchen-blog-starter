@@ -29,9 +29,10 @@ export function MusicCardComponent(properties, children) {
     const safeSongId = escapeJsString(songId);
     const cardUuid = `MC${Math.random().toString(36).slice(-6)}`;
 
+    // 构建时渲染降级静态卡片（API 不可达时展示）；成功时由客户端脚本填充真实数据
     const nCover = h(`div#${cardUuid}-cover`, { class: "music-cover" });
-    const nTitle = h(`div#${cardUuid}-title`, { class: "music-title" }, "Waiting for API...");
-    const nArtist = h(`div#${cardUuid}-artist`, { class: "music-artist" }, "Waiting...");
+    const nTitle = h(`div#${cardUuid}-title`, { class: "music-title" }, "网易云音乐");
+    const nArtist = h(`div#${cardUuid}-artist`, { class: "music-artist" }, "加载失败，点击前往网易云收听");
 
     const nScript = h(
         `script#${cardUuid}-script`,
@@ -39,6 +40,7 @@ export function MusicCardComponent(properties, children) {
         generateCardFetcherScript({
             cardUuid,
             url: `https://163api.qijieya.cn/song/detail?ids=${safeSongId}`,
+            timeout: 5000,
             errorTag: 'MUSIC-CARD',
             errorCtx: safeSongId,
             onSuccessBody: `
@@ -70,7 +72,7 @@ export function MusicCardComponent(properties, children) {
         {
             class: "card-music fetch-waiting no-styling",
             "data-song-id": songId,
-            href: `https://music.163.com/#/song?id=${songId}`, 
+            href: `https://music.163.com/song?id=${songId}`,
             target: "_blank", 
             rel: "noopener noreferrer" 
         },

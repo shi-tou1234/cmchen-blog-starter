@@ -7,7 +7,9 @@ function initHeaderScroll() {
 
   function updateHeader() {
     const currentScrollY = window.scrollY;
-    header.classList.toggle('header-scrolled', currentScrollY > 4);
+    if (header) {
+      header.classList.toggle('header-scrolled', currentScrollY > 4);
+    }
     ticking = false;
   }
 
@@ -18,12 +20,12 @@ function initHeaderScroll() {
     }
   }
 
-  const oldHeaderScrollHandler = window.__headerScrollHandler;
+  const oldHeaderScrollHandler = (window as any).__headerScrollHandler;
   if (oldHeaderScrollHandler) {
     window.removeEventListener('scroll', oldHeaderScrollHandler);
   }
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.__headerScrollHandler = onScroll;
+  (window as any).__headerScrollHandler = onScroll;
   onScroll();
 }
 

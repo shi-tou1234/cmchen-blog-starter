@@ -59,7 +59,7 @@ function initMobileFab() {
   fab.dataset.mobileFabBound = 'true';
 
   // 博文页才有的条目：按页面内实际元素决定是否显示
-  const setVisible = (action, visible) => {
+  const setVisible = (action: string, visible: boolean) => {
     const item = fab.querySelector(`[data-fab-action="${action}"]`);
     if (item instanceof HTMLElement) item.hidden = !visible;
   };
@@ -92,7 +92,7 @@ function initMobileFab() {
     return headings;
   };
 
-  const setTocOpen = (open) => {
+  const setTocOpen = (open: boolean) => {
     if (!(tocPanel instanceof HTMLElement)) return;
     tocPanel.classList.toggle('is-open', open);
   };
@@ -106,7 +106,7 @@ function initMobileFab() {
     tocClose.addEventListener('click', () => setTocOpen(false));
   }
 
-  const setOpen = (open) => {
+  const setOpen = (open: boolean) => {
     fab.classList.toggle('is-active', open);
     trigger.setAttribute('aria-expanded', String(open));
     trigger.setAttribute('aria-label', open ? '收起快捷操作' : '展开快捷操作');
@@ -146,25 +146,25 @@ function initMobileFab() {
   });
 
   // 点击外部关闭（避免 Astro 路由切换后监听叠加）
-  const oldDocClick = window.__mobileFabDocClickHandler;
+  const oldDocClick = (window as any).__mobileFabDocClickHandler;
   if (oldDocClick) document.removeEventListener('click', oldDocClick);
-  const handleDocClick = (event) => {
-    if (!fab.contains(event.target)) setOpen(false);
-    if (tocPanel instanceof HTMLElement && !tocPanel.contains(event.target)) setTocOpen(false);
+  const handleDocClick = (event: Event) => {
+    if (!fab.contains(event.target as Node)) setOpen(false);
+    if (tocPanel instanceof HTMLElement && !tocPanel.contains(event.target as Node)) setTocOpen(false);
   };
   document.addEventListener('click', handleDocClick);
-  window.__mobileFabDocClickHandler = handleDocClick;
+  (window as any).__mobileFabDocClickHandler = handleDocClick;
 
-  const oldKeydown = window.__mobileFabKeydownHandler;
+  const oldKeydown = (window as any).__mobileFabKeydownHandler;
   if (oldKeydown) document.removeEventListener('keydown', oldKeydown);
-  const handleKeydown = (event) => {
+  const handleKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       setOpen(false);
       setTocOpen(false);
     }
   };
   document.addEventListener('keydown', handleKeydown);
-  window.__mobileFabKeydownHandler = handleKeydown;
+  (window as any).__mobileFabKeydownHandler = handleKeydown;
 
   // 阅读进度环
   const progress = document.getElementById('mobile-fab-progress');
@@ -177,10 +177,10 @@ function initMobileFab() {
     progress.style.strokeDasharray = `${circumference * ratio} ${circumference}`;
   };
 
-  const oldScroll = window.__mobileFabScrollHandler;
+  const oldScroll = (window as any).__mobileFabScrollHandler;
   if (oldScroll) window.removeEventListener('scroll', oldScroll);
   window.addEventListener('scroll', updateProgress, { passive: true });
-  window.__mobileFabScrollHandler = updateProgress;
+  (window as any).__mobileFabScrollHandler = updateProgress;
   updateProgress();
 
   setOpen(false);

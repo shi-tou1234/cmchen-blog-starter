@@ -6,9 +6,9 @@
 <script>
   function initDerivationPopup() {
     // 换页/重复初始化时先摘掉上一次挂的全局监听，避免越积越多
-    if (window.__derivationPopupCleanup) {
-      window.__derivationPopupCleanup();
-      window.__derivationPopupCleanup = null;
+    if ((window as any).__derivationPopupCleanup) {
+      (window as any).__derivationPopupCleanup();
+      (window as any).__derivationPopupCleanup = null;
     }
 
     const blocks = document.querySelectorAll<HTMLElement>('.markdown-content .derivation-block');
@@ -168,13 +168,13 @@
     });
 
     // 点击外部 / ESC 关闭（具名函数，换页时能摘掉）
-    const handleDocClick = (e) => {
+    const handleDocClick = (e: Event) => {
       if (!popup?.classList.contains('is-visible')) return;
       if (!(e.target instanceof Node)) return;
       if (popup.contains(e.target) || currentFormula?.contains(e.target)) return;
       hidePopup();
     };
-    const handleKeydown = (e) => {
+    const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') hidePopup();
     };
     // 滚动时隐藏（避免浮层位置错乱）
@@ -187,7 +187,7 @@
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     // 下次换页/重新初始化时调用：摘掉本页挂的全局监听并移除浮层
-    window.__derivationPopupCleanup = () => {
+    (window as any).__derivationPopupCleanup = () => {
       document.removeEventListener('click', handleDocClick);
       document.removeEventListener('keydown', handleKeydown);
       window.removeEventListener('scroll', handleScroll);

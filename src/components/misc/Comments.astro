@@ -72,11 +72,19 @@ import { externalUrlsConfig } from "../../config";
   }
 
   function initGiscusThemeSync() {
+    if (window.__giscusThemeSyncObserver) {
+      window.__giscusThemeSyncObserver.disconnect();
+      window.__giscusThemeSyncObserver = null;
+    }
+
     // Set initial theme on the script tag before Giscus loads
     var script = document.querySelector('script[src="https://giscus.app/client.js"]');
     if (script) {
       script.setAttribute('data-theme', getGiscusThemeName());
     }
+
+    // Immediately push current theme to iframe if it already exists (e.g. after view transition rebuild)
+    setGiscusTheme(getGiscusThemeName());
 
     // Observe theme changes
     var observer = new MutationObserver(function(mutations) {
@@ -87,6 +95,7 @@ import { externalUrlsConfig } from "../../config";
       });
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    window.__giscusThemeSyncObserver = observer;
   }
 
   // ========== 评论加载状态：加载中提示 / 失败提示与重试 ==========
@@ -168,6 +177,8 @@ import { externalUrlsConfig } from "../../config";
 
   document.addEventListener('astro:page-load', initGiscusThemeSync);
   document.addEventListener('astro:page-load', initGiscusStatus);
+  document.addEventListener('astro:after-swap', initGiscusThemeSync);
+  document.addEventListener('astro:after-swap', initGiscusStatus);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGiscusThemeSync);
     document.addEventListener('DOMContentLoaded', initGiscusStatus);

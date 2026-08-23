@@ -30,7 +30,13 @@ interface CacheData {
 function readCache(config: CoverImageConfig): CacheData {
   if (!config.cacheEnabled) return {}
   try {
+    const root = path.resolve('.')
     const cachePath = path.resolve(config.cacheFilePath)
+    // 与 writeCache 相同的越界校验：缓存文件必须位于项目根目录内
+    if (!cachePath.startsWith(root + path.sep) && cachePath !== root) {
+      console.warn('[cover-image] 缓存路径越界，拒绝读取')
+      return {}
+    }
     if (fs.existsSync(cachePath)) {
       const raw = fs.readFileSync(cachePath, 'utf-8')
       return JSON.parse(raw)
@@ -266,7 +272,9 @@ export async function resolveCoverImage(
 ): Promise<ResolvedCover> {
   if (userImage) {
     // 用户指定的封面文件不存在时，当作「没填封面」继续走 API 兜底，避免页面显示破图
-    const localPath = path.resolve(process.cwd(), 'src', userImage)
+    // 去掉 userImage 前导 / 或 \，防止 Windows 下 path.resolve 跳转到盘符根目录
+    const safeUserImage = userImage.replace(/^[\\/]+/, '');
+    const localPath = path.resolve(process.cwd(), 'src', safeUserImage)
     if (fs.existsSync(localPath)) {
       return {
         imageUrl: userImage,

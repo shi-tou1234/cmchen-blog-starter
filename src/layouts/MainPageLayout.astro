@@ -136,8 +136,9 @@ const navToolsLabel = '工具栏';
 </Layout>
 
 <script>
-  import { tsParticles } from "@tsparticles/engine";
-  import { loadSlim } from "@tsparticles/slim";
+  // tsparticles 改为按需动态加载，避免 3.6MB 进入全局 chunk
+  let tsParticles: any = null;
+  let loadSlim: any = null;
 
   const containerId = "global-page-particles";
 
@@ -250,9 +251,23 @@ const navToolsLabel = '工具栏';
   async function mountParticles() {
     if (!shouldMountParticles()) return;
 
+    if (!tsParticles) {
+      try {
+        const [engine, slim] = await Promise.all([
+          import("@tsparticles/engine"),
+          import("@tsparticles/slim"),
+        ]);
+        tsParticles = engine.tsParticles;
+        loadSlim = slim.loadSlim;
+      } catch (error) {
+        console.error("[particle] load failed", error);
+        return;
+      }
+    }
+
     await loadSlim(tsParticles);
 
-    const mounted = tsParticles.dom().find((item) => item.id === containerId);
+    const mounted = tsParticles.dom().find((item: any) => item.id === containerId);
     if (mounted) {
       await mounted.destroy();
     }
@@ -319,8 +334,10 @@ const navToolsLabel = '工具栏';
     if (oldObserver) oldObserver.disconnect();
 
     const observer = new MutationObserver(() => {
+      // 粒子库动态加载失败时保持 null，主题切换直接跳过
+      if (!tsParticles) return;
       // 主题切换时仅更新粒子颜色，不销毁重建
-      const container = tsParticles.dom().find((item) => item.id === containerId);
+      const container = tsParticles.dom().find((item: any) => item.id === containerId);
       if (container) {
         container.options.particles.color.value = getParticleColor();
         container.refresh();

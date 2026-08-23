@@ -9,4 +9,9 @@ export {
   saveGitHubDraft,
   syncApiBase,
   setMsg,
+  hasValidSession,
+  setSessionProof,
+  clearSessionProof,
+  isSafeApiUrl,
+  ensureApiEndpointTrusted,
 } from "./core";

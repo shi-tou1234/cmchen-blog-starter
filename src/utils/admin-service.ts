@@ -114,7 +114,7 @@ async function hashPassword(
     {
       name: "PBKDF2",
       hash: "SHA-256",
-      salt: fromBase64(saltBase64),
+      salt: fromBase64(saltBase64) as BufferSource,
       iterations,
     },
     keyMaterial,
@@ -126,6 +126,40 @@ async function hashPassword(
 
 function utf8ToBase64(content: string): string {
   return toBase64(new TextEncoder().encode(content));
+}
+
+/**
+ * 派生会话凭据：与登录哈希使用不同的盐，派生结果不落在公开的
+ * admin-security.json 里——攻击者即便下载了公开哈希，也无法在
+ * 不知道密码的前提下伪造出合法的会话凭据。
+ */
+export async function deriveSessionProof(
+  password: string,
+  saltBase64: string,
+  iterations: number,
+): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      // 与登录哈希的盐隔离：直接拼接字符串盐，不复用其 base64 解码值
+      salt: encoder.encode(`cmchen-admin-session-v1:${saltBase64}`),
+      iterations,
+    },
+    keyMaterial,
+    256,
+  );
+
+  return toBase64(new Uint8Array(bits));
 }
 
 export function decodeFileContent(raw: string): string {
@@ -143,7 +177,7 @@ export function parseToolsLinksFromTs(content: string) {
   const raw = matched[1];
 
   const normalized = raw
-    .replace(/([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
+    .replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
     .replace(/,\s*([}\]])/g, '$1');
 
   return JSON.parse(normalized);
@@ -159,7 +193,7 @@ export function parseHeaderContactFromTs(content: string) {
   );
   if (!matched?.[1]) throw new Error("无法解析联系方式文件");
   const raw = matched[1]
-    .replace(/([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
+    .replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
     .replace(/,\s*([}\]])/g, '$1');
   return JSON.parse(raw);
 }
@@ -188,7 +222,7 @@ export function parseBlogGuideContentFromTs(content: string) {
   const normalized = rawBlock
     .replace(/\n\s*\/\/.*$/gm, "")
     // Quote unquoted object keys (e.g., title: -> "title":)
-    .replace(/([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
+    .replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
     // Remove trailing commas before } or ]
     .replace(/,\s*([}\]])/g, "$1");
 
@@ -212,7 +246,7 @@ export function parseSiteInfoFromTs(content: string) {
   );
   if (!matched?.[1]) throw new Error("无法解析站点信息文件");
   const raw = matched[1]
-    .replace(/([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
+    .replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
     .replace(/,\s*([}\]])/g, '$1');
   return JSON.parse(raw);
 }
@@ -231,7 +265,7 @@ export function parseHomeCoverSignaturesFromTs(content: string) {
   );
   if (!matched?.[1]) throw new Error("无法解析首页签名文件");
   const raw = matched[1]
-    .replace(/([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
+    .replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
     .replace(/,\s*([}\]])/g, '$1');
   try {
     return JSON.parse(raw);
@@ -257,7 +291,7 @@ export function parseAboutProfileFromTs(content: string) {
   );
   if (!matched?.[1]) throw new Error("无法解析关于特质文件");
   const raw = matched[1]
-    .replace(/([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
+    .replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
     .replace(/,\s*([}\]])/g, '$1');
   return JSON.parse(raw);
 }
@@ -288,7 +322,7 @@ export function parseAboutPersonalFromTs(content: string) {
   const rawBlock = content.slice(eq + 1, end).trim().replace(/;\s*$/, "");
   const normalized = rawBlock
     .replace(/\n\s*\/\/.*$/gm, "")
-    .replace(/([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
+    .replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
     .replace(/,\s*([}\]])/g, "$1");
 
   try {
@@ -314,7 +348,7 @@ export function normalizeSlug(input: string): string {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "-")
-    .replace(/[<>:"\\|?*#%{}\[\]^`~\/]/g, "")
+    .replace(/[<>:"\\|?*#%{}[\]^`~/]/g, "")
     .replace(/\.{2,}/g, ".")
     .replace(/^-+|-+$/g, "");
 }
@@ -326,7 +360,7 @@ export function normalizeSlug(input: string): string {
  */
 export function sanitizeFileName(input: string): string {
   return String(input || "")
-    .replace(/[\/\\]/g, "-")
+    .replace(/[/\\]/g, "-")
     .replace(/\.{2,}/g, ".")
     .replace(/[^\w.\-一-龥]/g, "-")
     .replace(/-{2,}/g, "-")
@@ -341,9 +375,11 @@ export function sanitizeFileName(input: string): string {
 function escapeFrontmatterValue(value: string): string {
   const str = String(value ?? "")
     .replace(/[\r\n\t]+/g, " ")
+    // 故意剔除控制字符：YAML 头字段不允许它们出现
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
   const needsQuote =
-    /[:#"']|\s$|^\s/.test(str) || /^[-?@`!&*%,\[\]{}|>]/.test(str);
+    /[:#"']|\s$|^\s/.test(str) || /^[-?@`!&*%,[\]{}|>]/.test(str);
   if (!needsQuote) return str;
   return `"${str.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
@@ -396,6 +432,7 @@ export class AdminService {
   private apiBase: string;
   private readonly fallbackSecurity: SecurityConfig;
   private security: SecurityConfig;
+  private securityOutdated = false;
 
   constructor(opts: ServiceOptions) {
     this.owner = opts.repoOwner;
@@ -523,6 +560,8 @@ export class AdminService {
       if (!json?.salt || !json?.hash || !json?.iterations)
         throw new Error("invalid config");
       this.security = json;
+      // 旧配置迭代次数偏低（如 180k < 600k），提示用户改密升级
+      this.securityOutdated = Number(json.iterations) < PBKDF2_ITERATIONS;
     } catch (err) {
       console.warn("[admin] 安全配置加载失败，登录已禁用（不会回退到任何默认密码）：", err);
       this.security = this.fallbackSecurity;
@@ -546,6 +585,17 @@ export class AdminService {
       this.security.iterations,
     );
     return hashed === this.security.hash;
+  }
+
+  /** 供会话凭据派生使用（SEC-2）：返回当前盐与迭代次数 */
+  getSecurityParams(): { salt: string; iterations: number } | null {
+    if (!this.security.salt || !this.security.hash) return null;
+    return { salt: this.security.salt, iterations: this.security.iterations };
+  }
+
+  /** 当前哈希迭代次数低于推荐值（旧配置），应提示用户改一次密码完成升级 */
+  isSecurityOutdated(): boolean {
+    return this.securityOutdated;
   }
 
   async changePassword(input: ChangePasswordInput): Promise<SecurityConfig> {

@@ -1,8 +1,15 @@
 ---
-import type { SearchResult } from "@/global"
 import { baseUrl, getRelativeLocaleUrl } from "@utils/url-utils";
 import { getEntry, render } from 'astro:content'
 import i18nit from "@i18n/translation";
+
+interface SearchResult {
+  url: string;
+  meta: {
+    title: string;
+  };
+  excerpt: string;
+}
 
 
 
@@ -96,7 +103,7 @@ function initSearchModal() {
   if (searchModal.dataset.bound === 'true') return;
   searchModal.dataset.bound = 'true';
 
-  let previousFocusedElement = null;
+  let previousFocusedElement: HTMLElement | null = null;
 
   const isModalOpen = () => !searchModal.classList.contains('opacity-0');
 
@@ -107,18 +114,20 @@ function initSearchModal() {
     );
   };
 
-  const shouldIgnoreShortcut = (target) => {
+  const shouldIgnoreShortcut = (target: EventTarget | null) => {
     if (!target) return false;
-    const tag = target.tagName;
-    return target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    const tag = (target as Element).tagName;
+    return (target as HTMLElement).isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   };
 
   const openModal = () => {
-    previousFocusedElement = document.activeElement;
+    // 用户首次打开搜索面板时按需加载 pagefind 索引
+    (window as any).__loadPagefindNow?.();
+    previousFocusedElement = document.activeElement as HTMLElement | null;
     lockBodyScroll(true);
     searchModal.classList.remove('opacity-0', 'pointer-events-none');
     searchModal.setAttribute('aria-hidden', 'false');
-    searchModal.offsetHeight;
+    void searchModal.offsetHeight; // 强制回流，确保过渡动画生效
     requestAnimationFrame(() => {
       modalBackdrop?.classList.remove('opacity-0');
       modalBackdrop?.classList.add('show');
@@ -126,7 +135,7 @@ function initSearchModal() {
       modalContent?.classList.add('scale-100');
     });
     setTimeout(() => searchInput?.focus(), 300);
-    window.__renderSearchRecommendations?.();
+    (window as any).__renderSearchRecommendations?.();
   };
 
   const closeModal = () => {
@@ -140,22 +149,24 @@ function initSearchModal() {
     setTimeout(() => {
       searchModal.classList.add('opacity-0', 'pointer-events-none');
       searchModal.setAttribute('aria-hidden', 'true');
-      previousFocusedElement?.focus?.();
+      if (previousFocusedElement instanceof HTMLElement) {
+        previousFocusedElement.focus();
+      }
     }, 300);
   };
 
   searchButton.addEventListener('click', openModal);
   closeSearch?.addEventListener('click', closeModal);
-  window.__closeSearchModal = closeModal;
+  (window as any).__closeSearchModal = closeModal;
   searchModal.addEventListener('click', (e) => {
-    if (!modalContent?.contains(e.target)) closeModal();
+    if (!modalContent?.contains(e.target as Node)) closeModal();
   });
-  const oldKeydownHandler = window.__searchModalKeydownHandler;
+  const oldKeydownHandler = (window as any).__searchModalKeydownHandler;
   if (oldKeydownHandler) {
     document.removeEventListener('keydown', oldKeydownHandler);
   }
 
-  const handleKeydown = (e) => {
+  const handleKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && isModalOpen()) {
       closeModal();
       return;
@@ -165,9 +176,9 @@ function initSearchModal() {
       const focusableElements = getFocusableElements();
       if (focusableElements.length === 0) return;
 
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-      const active = document.activeElement;
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+      const active = document.activeElement as HTMLElement | null;
 
       if (e.shiftKey && active === firstElement) {
         e.preventDefault();
@@ -193,7 +204,7 @@ function initSearchModal() {
   };
 
   document.addEventListener('keydown', handleKeydown);
-  window.__searchModalKeydownHandler = handleKeydown;
+  (window as any).__searchModalKeydownHandler = handleKeydown;
 }
 
 document.addEventListener('DOMContentLoaded', initSearchModal);
@@ -265,6 +276,7 @@ document.addEventListener('astro:after-swap', initSearchModal);
 
 <script define:vars={{ fakeResult, translations, archivesUrl, searchHistoryKey, searchRecommendationsTitle, searchRecentLabel, searchHotLabel, searchClearLabel, searchEmptyHistoryLabel, hotSearches }}>
 let searchRequestId = 0;
+window.__searchDebounceTimer = null;
 
 function renderSearchStatus(message, extraClass = '') {
   const searchResults = document.getElementById('search-results');
@@ -385,13 +397,24 @@ function initPagefindSearch() {
   if (searchInput.dataset.bound === 'true') return;
   searchInput.dataset.bound = 'true';
 
-  let searchTimeout;
+  // 清理上一页可能残留的防抖任务，并重置结果容器
+  if (window.__searchDebounceTimer) {
+    clearTimeout(window.__searchDebounceTimer);
+    window.__searchDebounceTimer = null;
+  }
+  searchResults.innerHTML = `
+    <div class="p-8 text-center text-[var(--cover-subtitle-color)]">
+      <p>${translations.placeholder}</p>
+    </div>
+  `;
 
   searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.trim();
-    clearTimeout(searchTimeout);
+    const target = e.target;
+    const query = target.value.trim();
+    clearTimeout(window.__searchDebounceTimer);
     
-    searchTimeout = setTimeout(() => {
+    window.__searchDebounceTimer = setTimeout(() => {
+      window.__searchDebounceTimer = null;
       if (query.length > 0) {
         performSearch(query);
       } else {
@@ -485,6 +508,13 @@ document.addEventListener('DOMContentLoaded', initPagefindSearch);
 document.addEventListener('astro:after-swap', initPagefindSearch);
 document.addEventListener('DOMContentLoaded', renderSearchRecommendations);
 document.addEventListener('astro:after-swap', renderSearchRecommendations);
+// 页面切换前先清掉待执行的防抖任务，避免旧关键词操作新页面 DOM
+document.addEventListener('astro:before-swap', () => {
+  if (window.__searchDebounceTimer) {
+    clearTimeout(window.__searchDebounceTimer);
+    window.__searchDebounceTimer = null;
+  }
+});
 
 // 空状态里的引导链接：先关闭搜索弹窗再跟随导航
 if (!window.__searchCloseLinkBound) {

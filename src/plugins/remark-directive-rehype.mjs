@@ -12,7 +12,9 @@ export function parseDirectiveNode() {
 				// biome-ignore lint/suspicious/noAssignInExpressions: <check later>
 				const data = node.data || (node.data = {});
 				node.attributes = node.attributes || {};
+				// leafDirective 等无 children 时 node.children 可能是 undefined
 				if (
+					Array.isArray(node.children) &&
 					node.children.length > 0 &&
 					node.children[0].data &&
 					node.children[0].data.directiveLabel

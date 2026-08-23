@@ -23,7 +23,26 @@ const className = Astro.props.class
   const LIGHTBOX_MIN_SCALE = 1;
   const LIGHTBOX_MAX_SCALE = 6;
   const LIGHTBOX_ZOOM_STEP = 1;
-  const lightboxState = {
+  interface LightboxState {
+    activeImage: HTMLImageElement | null;
+    currentImages: HTMLImageElement[];
+    currentIndex: number;
+    scrollY: number;
+    scale: number;
+    translateX: number;
+    translateY: number;
+    isDragging: boolean;
+    dragMoved: boolean;
+    dragStartX: number;
+    dragStartY: number;
+    dragOriginX: number;
+    dragOriginY: number;
+    pinchStartDistance: number;
+    pinchStartScale: number;
+    pointers: Map<number, { x: number; y: number }>;
+  }
+
+  const lightboxState: LightboxState = {
     activeImage: null,
     currentImages: [],
     currentIndex: -1,
@@ -42,7 +61,7 @@ const className = Astro.props.class
     pointers: new Map(),
   };
 
-  function clamp(value, min, max) {
+  function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
   }
 
@@ -74,7 +93,7 @@ const className = Astro.props.class
     });
   }
 
-  function getLightboxElements(lightbox) {
+  function getLightboxElements(lightbox: HTMLElement) {
     const preview = lightbox.querySelector('.markdown-image-lightbox__image');
     const content = lightbox.querySelector('.markdown-image-lightbox__content');
     const caption = lightbox.querySelector('.markdown-image-lightbox__caption');
@@ -99,11 +118,11 @@ const className = Astro.props.class
     };
   }
 
-  function getMarkdownImages() {
-    return [...document.querySelectorAll('.markdown-content img.markdown-image-previewable')];
+  function getMarkdownImages(): HTMLImageElement[] {
+    return [...document.querySelectorAll('.markdown-content img.markdown-image-previewable')] as HTMLImageElement[];
   }
 
-  function syncLightboxControls(lightbox) {
+  function syncLightboxControls(lightbox: HTMLElement) {
     const {
       counter,
       prevButton,
@@ -142,7 +161,7 @@ const className = Astro.props.class
     }
   }
 
-  function clampLightboxTranslation(lightbox) {
+  function clampLightboxTranslation(lightbox: HTMLElement) {
     const { preview } = getLightboxElements(lightbox);
     if (!preview) return;
 
@@ -153,7 +172,7 @@ const className = Astro.props.class
     lightboxState.translateY = clamp(lightboxState.translateY, -maxY, maxY);
   }
 
-  function updateLightboxTransform(lightbox) {
+  function updateLightboxTransform(lightbox: HTMLElement) {
     const { preview, content } = getLightboxElements(lightbox);
     if (!preview || !content) return;
 
@@ -169,7 +188,7 @@ const className = Astro.props.class
     syncLightboxControls(lightbox);
   }
 
-  function resetLightboxZoom(lightbox) {
+  function resetLightboxZoom(lightbox: HTMLElement) {
     lightboxState.scale = 1;
     lightboxState.translateX = 0;
     lightboxState.translateY = 0;
@@ -185,7 +204,7 @@ const className = Astro.props.class
     updateLightboxTransform(lightbox);
   }
 
-  function setLightboxScale(lightbox, nextScale, { keepOffset = true } = {}) {
+  function setLightboxScale(lightbox: HTMLElement, nextScale: number, { keepOffset = true } = {}) {
     lightboxState.scale = clamp(nextScale, LIGHTBOX_MIN_SCALE, LIGHTBOX_MAX_SCALE);
     if (lightboxState.scale === 1 || !keepOffset) {
       lightboxState.translateX = 0;
@@ -194,7 +213,7 @@ const className = Astro.props.class
     updateLightboxTransform(lightbox);
   }
 
-  function zoomLightboxToPoint(lightbox, nextScale, clientX, clientY) {
+  function zoomLightboxToPoint(lightbox: HTMLElement, nextScale: number, clientX: number, clientY: number) {
     const { preview, content } = getLightboxElements(lightbox);
     if (!preview || !content) return;
 
@@ -224,7 +243,7 @@ const className = Astro.props.class
     return Math.hypot(second.x - first.x, second.y - first.y);
   }
 
-  function releasePointer(pointerId) {
+  function releasePointer(pointerId: number) {
     lightboxState.pointers.delete(pointerId);
     if (lightboxState.pointers.size < 2) {
       lightboxState.pinchStartDistance = 0;
@@ -261,7 +280,7 @@ const className = Astro.props.class
     }
   }
 
-  function updateLightboxImage(lightbox, img, { resetZoom = true } = {}) {
+  function updateLightboxImage(lightbox: HTMLElement, img: HTMLImageElement | null, { resetZoom = true } = {}) {
     const { preview, caption } = getLightboxElements(lightbox);
     if (!preview || !img) return;
 
@@ -283,7 +302,7 @@ const className = Astro.props.class
     syncLightboxControls(lightbox);
   }
 
-  function showAdjacentLightboxImage(step) {
+  function showAdjacentLightboxImage(step: number) {
     const lightbox = document.getElementById(LIGHTBOX_ID);
     if (!lightbox || !lightbox.classList.contains('is-open')) return;
 
@@ -293,7 +312,7 @@ const className = Astro.props.class
     updateLightboxImage(lightbox, lightboxState.currentImages[nextIndex]);
   }
 
-  function changeLightboxScale(step) {
+  function changeLightboxScale(step: number) {
     const lightbox = document.getElementById(LIGHTBOX_ID);
     if (!lightbox || !lightbox.classList.contains('is-open')) return;
 
@@ -309,7 +328,7 @@ const className = Astro.props.class
     );
   }
 
-  function bindImageSkeleton(img) {
+  function bindImageSkeleton(img: HTMLImageElement) {
     const markLoaded = () => {
       img.classList.remove('markdown-image-loading');
       img.classList.add('markdown-image-loaded');
@@ -326,7 +345,7 @@ const className = Astro.props.class
     img.addEventListener('error', markLoaded, { once: true });
   }
 
-  function ensureImageLightbox() {
+  function ensureImageLightbox(): HTMLElement {
     let lightbox = document.getElementById(LIGHTBOX_ID);
     if (lightbox) return lightbox;
 
@@ -538,7 +557,7 @@ const className = Astro.props.class
       updateLightboxTransform(lightbox);
     });
 
-    const handlePointerRelease = (event) => {
+    const handlePointerRelease = (event: PointerEvent) => {
       preview?.releasePointerCapture?.(event.pointerId);
       releasePointer(event.pointerId);
       updateLightboxTransform(lightbox);
@@ -561,13 +580,13 @@ const className = Astro.props.class
     return lightbox;
   }
 
-  function getImageCaption(img) {
+  function getImageCaption(img: HTMLImageElement) {
     const figure = img.closest('figure');
     const figcaption = figure?.querySelector('figcaption');
     return figcaption?.textContent?.trim() || img.getAttribute('alt') || img.getAttribute('title') || '';
   }
 
-  function openImageLightbox(img) {
+  function openImageLightbox(img: HTMLImageElement) {
     const lightbox = ensureImageLightbox();
     lightboxState.currentImages = getMarkdownImages();
     if (!lightboxState.currentImages.length) {
@@ -581,7 +600,7 @@ const className = Astro.props.class
     lockLightboxScroll();
   }
 
-  function bindImagePreview(img) {
+  function bindImagePreview(img: HTMLImageElement) {
     if (img.dataset.previewBound === 'true') return;
 
     img.dataset.previewBound = 'true';
@@ -590,21 +609,21 @@ const className = Astro.props.class
     img.setAttribute('role', 'button');
     img.setAttribute('aria-label', `${img.getAttribute('alt') || '图片'}，点击放大查看`);
 
-    const handleOpen = (event) => {
+    const handleOpen = (event: Event) => {
       event.preventDefault();
       event.stopPropagation();
       openImageLightbox(img);
     };
 
     img.addEventListener('click', handleOpen);
-    img.addEventListener('keydown', (event) => {
+    img.addEventListener('keydown', (event: KeyboardEvent) => {
       if (event.key === 'Enter' || event.key === ' ') {
         handleOpen(event);
       }
     });
   }
 
-  async function copyCodeText(text) {
+  async function copyCodeText(text: string) {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       return;
@@ -629,7 +648,7 @@ const className = Astro.props.class
     }
   }
 
-  function updateCopyButtonState(button, state) {
+  function updateCopyButtonState(button: HTMLButtonElement, state: string) {
     if (!(button instanceof HTMLButtonElement)) return;
 
     button.dataset.copyState = state;
@@ -657,9 +676,9 @@ const className = Astro.props.class
       copyButton.setAttribute('aria-label', copyButtonLabel);
       copyButton.setAttribute('title', copyButtonLabel);
 
-      let resetTimer = null;
+      let resetTimer: number | null = null;
 
-      copyButton.addEventListener('click', async (event) => {
+      copyButton.addEventListener('click', async (event: Event) => {
         event.preventDefault();
         event.stopPropagation();
 
@@ -690,12 +709,13 @@ const className = Astro.props.class
     ensureImageLightbox();
     const images = document.querySelectorAll('.markdown-content img');
     images.forEach((img) => {
-      img.setAttribute('loading', 'eager');
-      img.setAttribute('decoding', 'sync');
-      img.setAttribute('fetchpriority', 'high');
-      img.style.imageRendering = 'auto';
-      bindImageSkeleton(img);
-      bindImagePreview(img);
+      const imageEl = img as HTMLImageElement;
+      imageEl.setAttribute('loading', 'eager');
+      imageEl.setAttribute('decoding', 'sync');
+      imageEl.setAttribute('fetchpriority', 'high');
+      imageEl.style.imageRendering = 'auto';
+      bindImageSkeleton(imageEl);
+      bindImagePreview(imageEl);
     });
   }
 
@@ -703,7 +723,7 @@ const className = Astro.props.class
     const spoilers = document.querySelectorAll('.spoiler');
     
     spoilers.forEach(el => {
-      let timeoutId = null;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
       let clickTime = 0;
 
       el.addEventListener('click', () => {
@@ -724,14 +744,20 @@ const className = Astro.props.class
           // 只有满足两个条件：1. 发生滚动 2. 距离点击已过3秒
           const handleScroll = () => {
             const timeElapsed = Date.now() - clickTime;
-            
+
             if (timeElapsed >= 3000) {
               el.classList.remove('revealed');
               window.removeEventListener('scroll', handleScroll);
+              el.__spoilerScrollHandler = null;
             }
           };
 
+          // 快速连点时先移除旧监听，避免叠加
+          if (el.__spoilerScrollHandler) {
+            window.removeEventListener('scroll', el.__spoilerScrollHandler);
+          }
           window.addEventListener('scroll', handleScroll, { passive: true });
+          el.__spoilerScrollHandler = handleScroll;
         }
       });
     });

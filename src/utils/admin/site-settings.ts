@@ -153,17 +153,19 @@ function storageToTravelCities(raw: string) {
 export function initSiteSettingsHandlers() {
   // About markdown
   document.getElementById("load-about-markdown-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("about-markdown-msg");
+    const msgEl = (document.getElementById("about-markdown-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
-      const lang = (document.getElementById("about-lang")?.value || "zh-cn").trim();
+      const lang = ((document.getElementById("about-lang") as HTMLInputElement | null)?.value || "zh-cn").trim();
       if (!token) throw new Error("请先填写 GitHub Token");
 
       const path = `${ABOUT_SPEC_PATH_PREFIX}/${lang}.md`;
       const meta = await getFileMeta(path, token, branch);
       const content = decodeFileContent(meta?.content || "");
-      const input = document.getElementById("about-markdown-content");
+      const input = (document.getElementById("about-markdown-content") as HTMLTextAreaElement | null);
+
       if (input) input.value = content;
       setMsg(msgEl, `已加载 ${lang} 文本`);
     } catch (error) {
@@ -172,14 +174,15 @@ export function initSiteSettingsHandlers() {
   });
 
   document.getElementById("save-about-markdown-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("about-markdown-msg");
+    const msgEl = (document.getElementById("about-markdown-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
-      const lang = (document.getElementById("about-lang")?.value || "zh-cn").trim();
+      const lang = ((document.getElementById("about-lang") as HTMLInputElement | null)?.value || "zh-cn").trim();
       if (!token) throw new Error("请先填写 GitHub Token");
 
-      const content = document.getElementById("about-markdown-content")?.value || "";
+      const content = (document.getElementById("about-markdown-content") as HTMLTextAreaElement | null)?.value || "";
       const path = `${ABOUT_SPEC_PATH_PREFIX}/${lang}.md`;
       await upsertFile(path, content, `about: update markdown ${lang}`, token, branch);
       setMsg(msgEl, `已保存 ${lang} 文本`);
@@ -190,7 +193,8 @@ export function initSiteSettingsHandlers() {
 
   // Timeline
   document.getElementById("load-about-timeline-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("about-timeline-msg");
+    const msgEl = (document.getElementById("about-timeline-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
@@ -200,7 +204,8 @@ export function initSiteSettingsHandlers() {
       const content = decodeFileContent(meta?.content || "");
       const parsed = parseAboutPersonalFromTs(content);
 
-      const timelineInput = document.getElementById("about-timeline-content");
+      const timelineInput = (document.getElementById("about-timeline-content") as HTMLTextAreaElement | null);
+
       if (timelineInput) timelineInput.value = timelineToTextarea(parsed?.siteTimeline || []);
       setMsg(msgEl, "网站记录加载成功");
     } catch (error) {
@@ -209,7 +214,8 @@ export function initSiteSettingsHandlers() {
   });
 
   document.getElementById("save-about-timeline-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("about-timeline-msg");
+    const msgEl = (document.getElementById("about-timeline-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
@@ -218,7 +224,7 @@ export function initSiteSettingsHandlers() {
       const meta = await getFileMeta(ABOUT_PERSONAL_PATH, token, branch);
       const content = decodeFileContent(meta?.content || "");
       const parsed = parseAboutPersonalFromTs(content);
-      parsed.siteTimeline = textareaToTimeline(document.getElementById("about-timeline-content")?.value || "");
+      parsed.siteTimeline = textareaToTimeline((document.getElementById("about-timeline-content") as HTMLTextAreaElement | null)?.value || "");
 
       const nextContent = buildAboutPersonalTs(parsed);
       await upsertFile(ABOUT_PERSONAL_PATH, nextContent, "about: update site timeline", token, branch);
@@ -230,7 +236,8 @@ export function initSiteSettingsHandlers() {
 
   // About personal
   document.getElementById("load-about-personal-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("about-personal-msg");
+    const msgEl = (document.getElementById("about-personal-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
@@ -240,9 +247,12 @@ export function initSiteSettingsHandlers() {
       const content = decodeFileContent(meta?.content || "");
       const parsed = parseAboutPersonalFromTs(content);
 
-      const introEl = document.getElementById("about-personal-intro");
-      const musicEl = document.getElementById("about-personal-music");
-      const travelEl = document.getElementById("about-personal-travel-cities");
+      const introEl = (document.getElementById("about-personal-intro") as HTMLTextAreaElement | null);
+
+      const musicEl = (document.getElementById("about-personal-music") as HTMLTextAreaElement | null);
+
+      const travelEl = (document.getElementById("about-personal-travel-cities") as HTMLTextAreaElement | null);
+
       if (introEl) introEl.value = parsed?.intro || "";
       if (musicEl) musicEl.value = musicToTextarea(parsed?.musicTracks || []);
       if (travelEl) {
@@ -258,7 +268,8 @@ export function initSiteSettingsHandlers() {
   });
 
   document.getElementById("save-about-personal-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("about-personal-msg");
+    const msgEl = (document.getElementById("about-personal-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
@@ -268,9 +279,9 @@ export function initSiteSettingsHandlers() {
       const content = decodeFileContent(meta?.content || "");
       const parsed = parseAboutPersonalFromTs(content);
 
-      parsed.intro = (document.getElementById("about-personal-intro")?.value || "").trim();
-      parsed.musicTracks = textareaToMusic(document.getElementById("about-personal-music")?.value || "");
-      parsed.travelCities = storageToTravelCities(document.getElementById("about-personal-travel-cities")?.value || "[]");
+      parsed.intro = ((document.getElementById("about-personal-intro") as HTMLTextAreaElement | null)?.value || "").trim();
+      parsed.musicTracks = textareaToMusic((document.getElementById("about-personal-music") as HTMLTextAreaElement | null)?.value || "");
+      parsed.travelCities = storageToTravelCities((document.getElementById("about-personal-travel-cities") as HTMLTextAreaElement | null)?.value || "[]");
 
       const nextContent = buildAboutPersonalTs(parsed);
       await upsertFile(ABOUT_PERSONAL_PATH, nextContent, "about: update personal block", token, branch);
@@ -282,15 +293,17 @@ export function initSiteSettingsHandlers() {
 
   // Upload about music
   document.getElementById("upload-about-music-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("about-personal-msg");
+    const msgEl = (document.getElementById("about-personal-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
-      const files = document.getElementById("about-music-files")?.files;
+      const files = (document.getElementById("about-music-files") as HTMLInputElement | null)?.files;
       if (!token) throw new Error("请先填写 GitHub Token");
       if (!files || files.length === 0) throw new Error("请先选择 MP3 文件");
 
-      const musicTextarea = document.getElementById("about-personal-music");
+      const musicTextarea = (document.getElementById("about-personal-music") as HTMLTextAreaElement | null);
+
       let appended = 0;
       for (const file of files) {
         const isMp3 = file.type === "audio/mpeg" || /\.mp3$/i.test(file.name);
@@ -305,8 +318,10 @@ export function initSiteSettingsHandlers() {
         appended += 1;
       }
 
-      const fileInput = document.getElementById("about-music-files");
-      const countEl = document.getElementById("about-music-files-count");
+      const fileInput = (document.getElementById("about-music-files") as HTMLInputElement | null);
+
+      const countEl = (document.getElementById("about-music-files-count") as HTMLInputElement | null);
+
       if (fileInput) fileInput.value = "";
       if (countEl) countEl.textContent = "未选择文件";
 
@@ -319,7 +334,8 @@ export function initSiteSettingsHandlers() {
 
   // About profile
   document.getElementById("load-about-profile-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("about-profile-msg");
+    const msgEl = (document.getElementById("about-profile-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
@@ -342,18 +358,19 @@ export function initSiteSettingsHandlers() {
   });
 
   document.getElementById("save-about-profile-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("about-profile-msg");
+    const msgEl = (document.getElementById("about-profile-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
       if (!token) throw new Error("请先填写 GitHub Token");
 
-      const mbti = (document.getElementById("about-mbti")?.value || "").trim();
-      const mbtiLink = (document.getElementById("about-mbti-link")?.value || "").trim();
-      const major = (document.getElementById("about-major")?.value || "").trim();
-      const majorLink = (document.getElementById("about-major-link")?.value || "").trim();
-      const recentDoing = (document.getElementById("about-recent-doing")?.value || "").trim();
-      const recentReading = (document.getElementById("about-recent-reading")?.value || "").trim();
+      const mbti = ((document.getElementById("about-mbti") as HTMLInputElement | null)?.value || "").trim();
+      const mbtiLink = ((document.getElementById("about-mbti-link") as HTMLInputElement | null)?.value || "").trim();
+      const major = ((document.getElementById("about-major") as HTMLInputElement | null)?.value || "").trim();
+      const majorLink = ((document.getElementById("about-major-link") as HTMLInputElement | null)?.value || "").trim();
+      const recentDoing = ((document.getElementById("about-recent-doing") as HTMLInputElement | null)?.value || "").trim();
+      const recentReading = ((document.getElementById("about-recent-reading") as HTMLInputElement | null)?.value || "").trim();
 
       if (!mbti) throw new Error("请填写 MBTI");
       if (!mbtiLink) throw new Error("请填写 MBTI 介绍链接");
@@ -372,7 +389,8 @@ export function initSiteSettingsHandlers() {
 
   // Tools links
   document.getElementById("load-tools-links-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("tools-links-msg");
+    const msgEl = (document.getElementById("tools-links-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
@@ -390,11 +408,12 @@ export function initSiteSettingsHandlers() {
   });
 
   document.getElementById("save-tools-links-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("tools-links-msg");
+    const msgEl = (document.getElementById("tools-links-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
-      const raw = document.getElementById("tools-links-content")?.value || "[]";
+      const raw = (document.getElementById("tools-links-content") as HTMLTextAreaElement | null)?.value || "[]";
       if (!token) throw new Error("请先填写 GitHub Token");
 
       const links = JSON.parse(raw);
@@ -420,7 +439,8 @@ export function initSiteSettingsHandlers() {
 
   // Insert tools link template
   document.getElementById("insert-tools-link-template-btn")?.addEventListener("click", () => {
-    const msgEl = document.getElementById("tools-links-msg");
+    const msgEl = (document.getElementById("tools-links-msg") as HTMLElement | null);
+
     try {
       const textarea = document.getElementById("tools-links-content") as HTMLTextAreaElement | null;
       const raw = (textarea?.value || "[]").trim();
@@ -455,8 +475,10 @@ export function initSiteSettingsHandlers() {
 
   function updateColorPreview() {
     const grad = getGradientFromSliders();
-    const preview = document.getElementById("color-preview");
-    const text = document.getElementById("color-preview-text");
+    const preview = (document.getElementById("color-preview") as HTMLElement | null);
+
+    const text = (document.getElementById("color-preview-text") as HTMLElement | null);
+
     if (preview) preview.style.background = grad;
     if (text) text.textContent = grad;
   }
@@ -469,8 +491,10 @@ export function initSiteSettingsHandlers() {
     btn.addEventListener("click", function() {
       const grad = (btn as HTMLElement).getAttribute("data-grad");
       if (!grad) return;
-      const preview = document.getElementById("color-preview");
-      const text = document.getElementById("color-preview-text");
+      const preview = (document.getElementById("color-preview") as HTMLElement | null);
+
+      const text = (document.getElementById("color-preview-text") as HTMLElement | null);
+
       if (preview) preview.style.background = grad;
       if (text) text.textContent = grad;
       document.querySelectorAll(".gradient-preset-btn").forEach(function(b) {
@@ -520,7 +544,8 @@ export function initSiteSettingsHandlers() {
 
   // Header contact
   document.getElementById("load-header-contact-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("header-contact-msg");
+    const msgEl = (document.getElementById("header-contact-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
@@ -539,12 +564,13 @@ export function initSiteSettingsHandlers() {
   });
 
   document.getElementById("save-header-contact-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("header-contact-msg");
+    const msgEl = (document.getElementById("header-contact-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
-      const githubUrl = (document.getElementById("header-github")?.value || "").trim();
-      const email = (document.getElementById("header-email")?.value || "").trim();
+      const githubUrl = ((document.getElementById("header-github") as HTMLInputElement | null)?.value || "").trim();
+      const email = ((document.getElementById("header-email") as HTMLInputElement | null)?.value || "").trim();
 
       if (!token) throw new Error("请先填写 GitHub Token");
       if (!githubUrl) throw new Error("请填写 GitHub 首页链接");
@@ -560,7 +586,8 @@ export function initSiteSettingsHandlers() {
 
   // Blog guide
   document.getElementById("load-blog-guide-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("blog-guide-msg");
+    const msgEl = (document.getElementById("blog-guide-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
@@ -584,19 +611,20 @@ export function initSiteSettingsHandlers() {
   });
 
   document.getElementById("save-blog-guide-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("blog-guide-msg");
+    const msgEl = (document.getElementById("blog-guide-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
       if (!token) throw new Error("请先填写 GitHub Token");
 
-      const zhTitle = (document.getElementById("blog-guide-zh-title")?.value || "").trim();
-      const zhSubtitle = (document.getElementById("blog-guide-zh-subtitle")?.value || "").trim();
-      const zhItems = (document.getElementById("blog-guide-zh-items")?.value || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const zhTitle = ((document.getElementById("blog-guide-zh-title") as HTMLInputElement | null)?.value || "").trim();
+      const zhSubtitle = ((document.getElementById("blog-guide-zh-subtitle") as HTMLInputElement | null)?.value || "").trim();
+      const zhItems = ((document.getElementById("blog-guide-zh-items") as HTMLTextAreaElement | null)?.value || "").split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
 
-      const enTitle = (document.getElementById("blog-guide-en-title")?.value || "").trim();
-      const enSubtitle = (document.getElementById("blog-guide-en-subtitle")?.value || "").trim();
-      const enItems = (document.getElementById("blog-guide-en-items")?.value || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const enTitle = ((document.getElementById("blog-guide-en-title") as HTMLInputElement | null)?.value || "").trim();
+      const enSubtitle = ((document.getElementById("blog-guide-en-subtitle") as HTMLInputElement | null)?.value || "").trim();
+      const enItems = ((document.getElementById("blog-guide-en-items") as HTMLTextAreaElement | null)?.value || "").split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
 
       if (!zhTitle || !zhSubtitle || zhItems.length === 0) throw new Error("请完整填写中文弹窗内容");
       if (!enTitle || !enSubtitle || enItems.length === 0) throw new Error("请完整填写英文弹窗内容");
@@ -615,7 +643,7 @@ export function initSiteSettingsHandlers() {
 
   // Site info
   document.getElementById("load-site-info-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("site-info-msg");
+    const msgEl = (document.getElementById("site-info-msg") as HTMLElement | null);
     try {
       const token = getToken();
       const branch = getBranch();
@@ -641,16 +669,16 @@ export function initSiteSettingsHandlers() {
   });
 
   document.getElementById("save-site-info-btn")?.addEventListener("click", async () => {
-    const msgEl = document.getElementById("site-info-msg");
+    const msgEl = (document.getElementById("site-info-msg") as HTMLElement | null);
     try {
       const token = getToken();
       const branch = getBranch();
-      const title = (document.getElementById("site-info-title")?.value || "").trim();
-      const slogan = (document.getElementById("site-info-slogan")?.value || "").trim();
-      const startDate = (document.getElementById("site-info-start-date")?.value || "").trim();
-      const signatures = (document.getElementById("site-info-signatures")?.value || "")
+      const title = ((document.getElementById("site-info-title") as HTMLInputElement | null)?.value || "").trim();
+      const slogan = ((document.getElementById("site-info-slogan") as HTMLInputElement | null)?.value || "").trim();
+      const startDate = ((document.getElementById("site-info-start-date") as HTMLInputElement | null)?.value || "").trim();
+      const signatures = ((document.getElementById("site-info-signatures") as HTMLTextAreaElement | null)?.value || "")
         .split(/\r?\n/)
-        .map((line) => line.trim())
+        .map((line: string) => line.trim())
         .filter(Boolean);
 
       if (!token) throw new Error("请先填写 GitHub Token");

@@ -1,5 +1,5 @@
 <script>
-let copyToastTimer = null;
+let copyToastTimer: any = null;
 
 function ensureCopyToast() {
   let toast = document.getElementById('copy-email-toast');
@@ -12,7 +12,7 @@ function ensureCopyToast() {
   return toast;
 }
 
-function showCopyToast(message) {
+function showCopyToast(message: string) {
   const toast = ensureCopyToast();
   toast.textContent = message;
   toast.classList.remove('opacity-0');
@@ -30,8 +30,8 @@ function initHeaderContactCopy() {
   const copyButtons = Array.from(document.querySelectorAll('[data-email].copy-email-action, #copy-email-btn'));
 
   copyButtons.forEach((button) => {
-    if (button.dataset.bound === 'true') return;
-    button.dataset.bound = 'true';
+    if ((button as HTMLElement).dataset.bound === 'true') return;
+    (button as HTMLElement).dataset.bound = 'true';
 
     button.addEventListener('click', async () => {
       const email = button.getAttribute('data-email') || '';
@@ -53,4 +53,3 @@ function initHeaderContactCopy() {
 document.addEventListener('DOMContentLoaded', initHeaderContactCopy);
 document.addEventListener('astro:page-load', initHeaderContactCopy);
 document.addEventListener('astro:after-swap', initHeaderContactCopy);
-</script>

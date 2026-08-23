@@ -22,10 +22,10 @@
 <script>
   (function () {
     const hint = document.getElementById('security-hint');
-    function update(detail) {
+    function update(detail: { hasPassword?: boolean } | undefined | null) {
       if (!hint) return;
       const hasPassword = detail && detail.hasPassword === true;
-      const oldPwd = document.getElementById('old-password');
+      const oldPwd = document.getElementById('old-password') as HTMLInputElement | null;
       if (hasPassword) {
         hint.textContent = '已设置后台密码。修改密码需先在「GitHub」页填入 Token，并填写当前密码。';
         if (oldPwd) oldPwd.disabled = false;
@@ -34,6 +34,6 @@
         if (oldPwd) oldPwd.disabled = true;
       }
     }
-    document.addEventListener('admin:security-ready', (e) => update(e.detail));
+    document.addEventListener('admin:security-ready', (e) => update((e as CustomEvent).detail));
   })();
 </script>

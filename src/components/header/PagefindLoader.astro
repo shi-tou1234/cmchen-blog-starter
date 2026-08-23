@@ -4,16 +4,15 @@ import { baseUrl } from "@utils/url-utils"
 
 {import.meta.env.PROD && 
 <script is:inline define:vars={{ scriptUrl: baseUrl('/pagefind/pagefind.js') }}>
-if (window.__headerPagefindBindingDone !== true) {
-function initPagefind() {
-  if (window.pagefind && typeof window.pagefind.search === 'function') {
+// 按需加载 pagefind：由搜索入口在用户首次打开搜索面板时调用
+window.__loadPagefindNow = function() {
+  if (window.__pagefindLoaded) {
     document.dispatchEvent(new CustomEvent('pagefindready'));
     return;
   }
   if (window.pagefindLoading) return;
   window.pagefindLoading = true;
 
-  // 加载 Pagefind
   fetch(scriptUrl, { method: 'HEAD' })
     .then((response) => {
       if (!response.ok) throw new Error(`Pagefind script not found: ${response.status}`);
@@ -22,29 +21,20 @@ function initPagefind() {
     .then(async (pagefind) => {
       await pagefind.options({ 
         excerptLength: 20
-     });
+      });
       window.pagefind = pagefind;
+      window.__pagefindLoaded = true;
+      window.pagefindLoading = false;
       document.dispatchEvent(new CustomEvent('pagefindready'));
-      // console.log('Pagefind initialized successfully');
     })
     .catch(() => {
-      window.pagefind = {
-        search: () => Promise.resolve({ results: [] }),
-        options: () => Promise.resolve(),
-      };
+      window.pagefindLoading = false;
+      window.__pagefindFailed = true;
       document.dispatchEvent(new CustomEvent('pagefindloaderror'));
     });
-    // console.log('Pagefind loading...');
-}
-document.addEventListener('astro:page-load', initPagefind);
+};
 
-document.addEventListener('astro:after-swap', initPagefind);
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initPagefind);
-} else {
-  initPagefind();
-}
+// 不再在页面加载时自动加载，等待用户首次触发搜索
 window.__headerPagefindBindingDone = true;
-}
 </script>
 }

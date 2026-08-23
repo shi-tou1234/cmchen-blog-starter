@@ -65,6 +65,7 @@ async function fetchCommitsFromGitHub() {
       if (commits.length < 100) break;
     }
   } catch {
+    // GitHub API 不可达/限流时热力图留空（已知问题，暂不做失败提示）
   }
 }
 
@@ -377,12 +378,12 @@ function getIntensityLevel(count: number, maxCount: number): number {
     subtitleEl.textContent = `过去 ${days} 天 · 共 ${total} 次提交`;
   }
 
-  function getCellStyle(level) {
+  function getCellStyle(level: number) {
     if (level <= 0) return 'background: var(--hover-bg-color);';
     return `background: color-mix(in srgb, var(--link-color) ${20 + level * 18}%, var(--hover-bg-color));`;
   }
 
-  function getClientIntensityLevel(count, maxCount) {
+  function getClientIntensityLevel(count: number, maxCount: number): number {
     if (count <= 0) return 0;
     const ratio = count / Math.max(maxCount, 1);
     if (ratio < 0.25) return 1;
@@ -450,6 +451,7 @@ function getIntensityLevel(count: number, maxCount: number): number {
         renderHeatmapSubtitle();
       }
     } catch {
+      // 数据异常时跳过副标题渲染
     }
   }
 
@@ -464,16 +466,15 @@ function getIntensityLevel(count: number, maxCount: number): number {
       oldCells.forEach((cell) => cell.removeEventListener('mouseenter', oldHandler));
     }
 
-    let hideTimeout = null;
+    let hideTimeout: any = null;
 
-    const showTooltip = (cell, event) => {
+    const showTooltip = (cell: HTMLElement, event: MouseEvent) => {
       if (hideTimeout) {
         clearTimeout(hideTimeout);
         hideTimeout = null;
       }
       const text = cell.getAttribute('title') || '';
       tooltip.textContent = text;
-      const rect = wrap.getBoundingClientRect();
       let left = event.clientX + 12;
       let top = event.clientY - 10;
       if (left + 160 > window.innerWidth) {
@@ -493,28 +494,48 @@ function getIntensityLevel(count: number, maxCount: number): number {
       }, 80);
     };
 
-    const boundHandler = (event) => {
+    const boundHandler = (event: MouseEvent) => {
       const cell = event.currentTarget;
       if (!(cell instanceof HTMLElement)) return;
       showTooltip(cell, event);
     };
 
+    const mousemoveHandler = (event: MouseEvent) => {
+      const rect = wrap.getBoundingClientRect();
+      let left = event.clientX + 12;
+      if (left + 160 > window.innerWidth) {
+        left = event.clientX - 160;
+      }
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${event.clientY - 10}px`;
+    };
+
+    const mouseleaveHandler = hideTooltip;
+
     const cells = wrap.querySelectorAll('[data-commit-cell]');
-    cells.forEach((cell) => {
-      cell.addEventListener('mouseenter', boundHandler);
-      cell.addEventListener('mousemove', (event) => {
-        const rect = wrap.getBoundingClientRect();
-        let left = event.clientX + 12;
-        if (left + 160 > window.innerWidth) {
-          left = event.clientX - 160;
-        }
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top = `${event.clientY - 10}px`;
+
+    // 重新初始化前，移除旧页面上绑定的三个监听器，避免累积
+    const oldHandlers = window.__heatmapTooltipHandlers;
+    if (oldHandlers) {
+      const oldCells = wrap.querySelectorAll('[data-commit-cell]');
+      oldCells.forEach((cell) => {
+        if (oldHandlers.enter) cell.removeEventListener('mouseenter', oldHandlers.enter);
+        if (oldHandlers.move) cell.removeEventListener('mousemove', oldHandlers.move);
+        if (oldHandlers.leave) cell.removeEventListener('mouseleave', oldHandlers.leave);
       });
-      cell.addEventListener('mouseleave', hideTooltip);
+    }
+
+    cells.forEach((cell) => {
+      cell.addEventListener('mouseenter', boundHandler as EventListener);
+      cell.addEventListener('mousemove', mousemoveHandler as EventListener);
+      cell.addEventListener('mouseleave', mouseleaveHandler as EventListener);
     });
 
-    window.__heatmapTooltipHandler = boundHandler;
+    window.__heatmapTooltipHandlers = {
+      enter: boundHandler as EventListener,
+      move: mousemoveHandler as EventListener,
+      leave: mouseleaveHandler as EventListener,
+    };
   }
 
   function initAboutPage() {

@@ -52,7 +52,7 @@ function initPostToc() {
     return;
   }
 
-  const slugify = (text) => {
+  const slugify = (text: string) => {
     return text
       .toLowerCase()
       .trim()
@@ -100,13 +100,13 @@ function initPostToc() {
   const links = Array.from(list.querySelectorAll('a[data-toc-target]'));
   let activeId = '';
   let tickingProgress = false;
-  let navigatingTimeout = null;
+  let navigatingTimeout: any = null;
   let isNavigating = false;
   let suspendAutoKeepVisibleUntil = 0;
 
   const SCROLL_OFFSET = 24;
 
-  const getScrollTarget = (heading) => {
+  const getScrollTarget = (heading: Element) => {
     if (!heading) return 0;
     const rect = heading.getBoundingClientRect();
     const header = document.getElementById('main-header');
@@ -164,13 +164,13 @@ function initPostToc() {
     }
   };
 
-  const setPanelOpen = (open) => {
+  const setPanelOpen = (open: boolean) => {
     panel.classList.toggle('is-open', open);
     backdrop.classList.toggle('is-open', open);
     fab.setAttribute('aria-expanded', open ? 'true' : 'false');
   };
 
-  const keepActiveLinkVisible = (link, force = false) => {
+  const keepActiveLinkVisible = (link: HTMLElement, force = false) => {
     if (!link) return;
     if (list.scrollHeight <= list.clientHeight) return;
     if (!force && Date.now() < suspendAutoKeepVisibleUntil) return;
@@ -189,26 +189,26 @@ function initPostToc() {
     }
   };
 
-  const updateActive = (id) => {
+  const updateActive = (id: string) => {
     if (!id || activeId === id) return;
     activeId = id;
     links.forEach((link) => {
       const isActive = link.getAttribute('data-toc-target') === id;
       link.classList.toggle('is-active', isActive);
       if (isActive) {
-        keepActiveLinkVisible(link, false);
+        keepActiveLinkVisible(link as HTMLElement, false);
       }
     });
   };
 
-  const forceActive = (id) => {
+  const forceActive = (id: string) => {
     if (!id) return;
     if (navigatingTimeout) {
       clearTimeout(navigatingTimeout);
       navigatingTimeout = null;
     }
-    if (window.__postTocScrollEndHandler) {
-      window.removeEventListener('scrollend', window.__postTocScrollEndHandler);
+    if ((window as any).__postTocScrollEndHandler) {
+      window.removeEventListener('scrollend', (window as any).__postTocScrollEndHandler);
     }
     isNavigating = true;
     activeId = id;
@@ -216,16 +216,16 @@ function initPostToc() {
       const isActive = link.getAttribute('data-toc-target') === id;
       link.classList.toggle('is-active', isActive);
       if (isActive) {
-        keepActiveLinkVisible(link, true);
+        keepActiveLinkVisible(link as HTMLElement, true);
       }
     });
 
     const endNavigation = () => {
       isNavigating = false;
       navigatingTimeout = null;
-      if (window.__postTocScrollEndHandler) {
-        window.removeEventListener('scrollend', window.__postTocScrollEndHandler);
-        window.__postTocScrollEndHandler = null;
+      if ((window as any).__postTocScrollEndHandler) {
+        window.removeEventListener('scrollend', (window as any).__postTocScrollEndHandler);
+        (window as any).__postTocScrollEndHandler = null;
       }
       const currentId = getActiveHeadingId();
       if (currentId) {
@@ -233,7 +233,7 @@ function initPostToc() {
       }
     };
 
-    window.__postTocScrollEndHandler = endNavigation;
+    (window as any).__postTocScrollEndHandler = endNavigation;
     window.addEventListener('scrollend', endNavigation, { once: true });
 
     navigatingTimeout = setTimeout(() => {
@@ -241,7 +241,7 @@ function initPostToc() {
     }, 1200);
   };
 
-  const scrollToHeading = (targetId) => {
+  const scrollToHeading = (targetId: string) => {
     const target = document.getElementById(targetId);
     if (!target) return;
 
@@ -254,7 +254,7 @@ function initPostToc() {
   };
 
   links.forEach((link) => {
-    link.addEventListener('click', (event) => {
+    link.addEventListener('click', (event: Event) => {
       event.preventDefault();
       const targetId = link.getAttribute('data-toc-target');
       if (!targetId) return;
@@ -269,7 +269,7 @@ function initPostToc() {
   });
 
   const observer = new IntersectionObserver(
-    (entries) => {
+    (entries: IntersectionObserverEntry[]) => {
       if (isNavigating) return;
       const visible = entries
         .filter((entry) => entry.isIntersecting)
@@ -296,11 +296,11 @@ function initPostToc() {
   closeBtn.onclick = () => setPanelOpen(false);
 
   // 点击目录外关闭（换页时先摘掉上一次的，避免累积）
-  const oldClickHandler = window.__postTocClickHandler;
+  const oldClickHandler = (window as any).__postTocClickHandler;
   if (oldClickHandler) {
     document.removeEventListener('click', oldClickHandler);
   }
-  const handleDocClick = (event) => {
+  const handleDocClick = (event: Event) => {
     if (!panel.classList.contains('is-open')) return;
     const target = event.target;
     if (target instanceof Node && !panel.contains(target) && target !== fab && !fab.contains(target)) {
@@ -308,7 +308,7 @@ function initPostToc() {
     }
   };
   document.addEventListener('click', handleDocClick);
-  window.__postTocClickHandler = handleDocClick;
+  (window as any).__postTocClickHandler = handleDocClick;
 
   let touchStartY = 0;
   let touchCurrentY = 0;
@@ -354,27 +354,27 @@ function initPostToc() {
     panel.style.opacity = '';
   });
 
-  const oldEscHandler = window.__postTocEscHandler;
+  const oldEscHandler = (window as any).__postTocEscHandler;
   if (oldEscHandler) {
     document.removeEventListener('keydown', oldEscHandler);
   }
 
-  const escHandler = (event) => {
+  const escHandler = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && panel.classList.contains('is-open')) {
       setPanelOpen(false);
     }
   };
 
   document.addEventListener('keydown', escHandler);
-  window.__postTocEscHandler = escHandler;
+  (window as any).__postTocEscHandler = escHandler;
 
-  const oldScrollHandler = window.__postTocScrollHandler;
+  const oldScrollHandler = (window as any).__postTocScrollHandler;
   if (oldScrollHandler) {
     document.removeEventListener('scroll', oldScrollHandler, true);
   }
 
   document.addEventListener('scroll', onScrollProgress, { passive: true, capture: true });
-  window.__postTocScrollHandler = onScrollProgress;
+  (window as any).__postTocScrollHandler = onScrollProgress;
 
   if (window.innerWidth >= 1024) {
     setPanelOpen(false);

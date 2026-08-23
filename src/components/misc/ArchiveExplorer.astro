@@ -1,6 +1,5 @@
 ---
 import { getRelativeLocaleUrl } from '@utils/url-utils';
-import type { BlogEntryWithLocaleStatus } from '@utils/content-utils';
 import {
   buildCategoriesMap,
   buildSubcategoriesByRoot,
@@ -9,6 +8,9 @@ import {
 } from '@utils/blog-taxonomy';
 import { buildPostPreview, truncateText } from '@utils/post-preview';
 import { estimateReadingMinutes } from '@utils/reading-time';
+import type { CollectionEntry } from 'astro:content';
+
+type BlogEntryWithLocaleStatus = CollectionEntry<'blog'>;
 
 interface Props {
   posts: BlogEntryWithLocaleStatus[];
@@ -77,7 +79,11 @@ const postsByYearMonth = visiblePosts.reduce((acc, post) => {
 // 每年总文章数
 const yearPostCounts: Record<string, number> = {};
 for (const [year, months] of Object.entries(postsByYearMonth)) {
-  yearPostCounts[year] = Object.values(months).reduce((sum, m) => sum + m.posts.length, 0);
+  let total = 0;
+  for (const m of Object.values(months as Record<string, { posts: BlogEntryWithLocaleStatus[] }>)) {
+    total += m.posts.length;
+  }
+  yearPostCounts[year] = total;
 }
 
 const allLabel = language.toLowerCase().startsWith('zh') ? '全部文章' : 'All posts';
@@ -137,7 +143,7 @@ const serializedCategoryCounts = JSON.stringify(
                 </button>
 
                 <div class="archive-explorer__month-content space-y-2" data-archive-month-content>
-                  {monthData.posts.map((post) => {
+                  {monthData.posts.map((post: BlogEntryWithLocaleStatus) => {
                     const postCategories = getPostCategories(post, language);
                     const postSummary = buildPostPreview(post.data.description || '', post.body || '', 80);
                     const shortSummary = truncateText(postSummary, 30);
@@ -308,7 +314,7 @@ const serializedCategoryCounts = JSON.stringify(
         });
       };
 
-      const stopAnimations = (element) => {
+      const stopAnimations = (element: HTMLElement) => {
         if (!(element instanceof HTMLElement)) return;
         element.getAnimations().forEach((animation) => animation.cancel());
         element.style.opacity = '';
@@ -316,7 +322,7 @@ const serializedCategoryCounts = JSON.stringify(
         element.style.filter = '';
       };
 
-      const captureRects = (elements) => {
+      const captureRects = (elements: HTMLElement[]) => {
         const rectMap = new Map();
         elements.forEach((element) => {
           if (!(element instanceof HTMLElement) || element.hidden) return;
@@ -327,7 +333,7 @@ const serializedCategoryCounts = JSON.stringify(
         return rectMap;
       };
 
-      const createGhost = (sourceElement, rect) => {
+      const createGhost = (sourceElement: HTMLElement, rect?: DOMRect) => {
         if (prefersReducedMotion || !(sourceElement instanceof HTMLElement)) return;
         const targetRect = rect || sourceElement.getBoundingClientRect();
         if (targetRect.width <= 0 || targetRect.height <= 0) return;
@@ -361,7 +367,7 @@ const serializedCategoryCounts = JSON.stringify(
           });
       };
 
-      const animateEnter = (element, index = 0, offset = 10) => {
+      const animateEnter = (element: HTMLElement, index = 0, offset = 10) => {
         if (prefersReducedMotion || !(element instanceof HTMLElement)) return;
         const delay = Math.min(index, 7) * STAGGER_STEP;
 
@@ -385,7 +391,7 @@ const serializedCategoryCounts = JSON.stringify(
           });
       };
 
-      const playFlip = (elements, firstRects) => {
+      const playFlip = (elements: HTMLElement[], firstRects: Map<HTMLElement, DOMRect>) => {
         if (prefersReducedMotion) return;
 
         elements.forEach((element) => {
@@ -412,25 +418,25 @@ const serializedCategoryCounts = JSON.stringify(
         });
       };
 
-      const applyFilter = (activeCategories, animate = true) => {
+      const applyFilter = (activeCategories: string[], animate = true) => {
         let visibleCount = 0;
         const activeSet = new Set(activeCategories);
 
         const firstRects = captureRects([
-          ...years.filter((year) => year instanceof HTMLElement && !year.hidden),
-          ...months.filter((month) => month instanceof HTMLElement && !month.hidden),
-          ...posts.filter((post) => post instanceof HTMLElement && !post.hidden),
+          ...years.filter((year): year is HTMLElement => year instanceof HTMLElement && !year.hidden),
+          ...months.filter((month): month is HTMLElement => month instanceof HTMLElement && !month.hidden),
+          ...posts.filter((post): post is HTMLElement => post instanceof HTMLElement && !post.hidden),
         ]);
 
         const nextPostVisibility = new Map();
         const nextMonthVisibility = new Map();
         const nextYearVisibility = new Map();
-        const enteringPosts = [];
-        const exitingPosts = [];
-        const enteringMonths = [];
-        const exitingMonths = [];
-        const enteringYears = [];
-        const exitingYears = [];
+        const enteringPosts: HTMLElement[] = [];
+        const exitingPosts: HTMLElement[] = [];
+        const enteringMonths: HTMLElement[] = [];
+        const exitingMonths: HTMLElement[] = [];
+        const enteringYears: HTMLElement[] = [];
+        const exitingYears: HTMLElement[] = [];
 
         buttons.forEach((button) => {
           if (!(button instanceof HTMLElement)) return;
@@ -526,11 +532,11 @@ const serializedCategoryCounts = JSON.stringify(
 
         if (animate) {
           const visibleElements = [
-            ...years.filter((year) => year instanceof HTMLElement && !year.hidden),
-            ...months.filter((month) => month instanceof HTMLElement && !month.hidden),
-            ...posts.filter((post) => post instanceof HTMLElement && !post.hidden),
-          ];
-          playFlip(visibleElements, firstRects);
+            ...years.filter((year): year is HTMLElement => year instanceof HTMLElement && !year.hidden),
+            ...months.filter((month): month is HTMLElement => month instanceof HTMLElement && !month.hidden),
+            ...posts.filter((post): post is HTMLElement => post instanceof HTMLElement && !post.hidden),
+          ] as HTMLElement[];
+          playFlip(visibleElements as HTMLElement[], firstRects);
 
           enteringYears.forEach((year, index) => {
             animateEnter(year, index, 8);
@@ -546,7 +552,7 @@ const serializedCategoryCounts = JSON.stringify(
         }
       };
 
-      const setSelectedCategories = (nextCategories, animate = true, syncUrl = true) => {
+      const setSelectedCategories = (nextCategories: string[], animate = true, syncUrl = true) => {
         selectedCategories.clear();
         nextCategories.forEach((category) => {
           const normalized = String(category || '').trim().toLowerCase();
@@ -555,13 +561,13 @@ const serializedCategoryCounts = JSON.stringify(
           }
         });
 
-        applyFilter([...selectedCategories], animate);
+        applyFilter([...selectedCategories] as string[], animate);
         if (syncUrl) {
           syncUrlCategories();
         }
       };
 
-      const toggleCategory = (category) => {
+      const toggleCategory = (category: string) => {
         const normalized = String(category || '').trim().toLowerCase();
 
         if (!normalized) {
@@ -572,12 +578,12 @@ const serializedCategoryCounts = JSON.stringify(
           selectedCategories.add(normalized);
         }
 
-        applyFilter([...selectedCategories], true);
+        applyFilter([...selectedCategories] as string[], true);
         syncUrlCategories();
         updateSubcategoryActiveStates();
       };
 
-      const renderSubcategoryButtons = (subcategories) => {
+      const renderSubcategoryButtons = (subcategories: string[]) => {
         if (!subChipsContainer) return;
         const backBtnEl = subChipsContainer.querySelector('.archive-explorer__back-btn');
         subChipsContainer.innerHTML = '';
@@ -627,7 +633,7 @@ const serializedCategoryCounts = JSON.stringify(
         });
       };
 
-      const animateViewSwitch = (fromView, toView, direction = 'forward') => {
+      const animateViewSwitch = (fromView: HTMLElement | null, toView: HTMLElement | null, direction = 'forward') => {
         if (!fromView || !toView) return;
 
         if (prefersReducedMotion) {
@@ -663,7 +669,7 @@ const serializedCategoryCounts = JSON.stringify(
           });
       };
 
-      const enterSubView = (rootCategory) => {
+      const enterSubView = (rootCategory: string) => {
         if (viewState === 'sub') return;
         viewState = 'sub';
         activeRootCategory = rootCategory;
@@ -676,12 +682,12 @@ const serializedCategoryCounts = JSON.stringify(
 
         if (viewTitle) {
           const displayName = topLevelCategoriesList.find(
-            (cat) => cat.toLowerCase() === rootCategory
+            (cat: string) => cat.toLowerCase() === rootCategory
           ) || rootCategory;
           viewTitle.textContent = `# ${displayName}`;
         }
 
-        animateViewSwitch(topView, subView, 'forward');
+        animateViewSwitch(topView as HTMLElement | null, subView as HTMLElement | null, 'forward');
       };
 
       const exitSubView = () => {
@@ -697,7 +703,7 @@ const serializedCategoryCounts = JSON.stringify(
           viewTitle.textContent = `# ${pageLang.startsWith('zh') ? '归档' : 'Archives'}`;
         }
 
-        animateViewSwitch(subView, topView, 'backward');
+        animateViewSwitch(subView as HTMLElement | null, topView as HTMLElement | null, 'backward');
       };
 
       rootChips.forEach((chip) => {
@@ -716,7 +722,7 @@ const serializedCategoryCounts = JSON.stringify(
               selectedCategories.clear();
               selectedCategories.add(rootCategory);
             }
-            applyFilter([...selectedCategories], true);
+            applyFilter([...selectedCategories] as string[], true);
             syncUrlCategories();
           }
         });
@@ -736,8 +742,8 @@ const serializedCategoryCounts = JSON.stringify(
       // ===== 折叠/展开：年 =====
       years.forEach((year) => {
         if (!(year instanceof HTMLElement)) return;
-        const toggle = year.querySelector('[data-archive-year-toggle]');
-        const content = year.querySelector('[data-archive-year-content]');
+        const toggle = year.querySelector('[data-archive-year-toggle]') as HTMLElement | null;
+        const content = year.querySelector('[data-archive-year-content]') as HTMLElement | null;
         if (!toggle || !content) return;
         if (toggle.dataset.bound === 'true') return;
         toggle.dataset.bound = 'true';
@@ -782,8 +788,8 @@ const serializedCategoryCounts = JSON.stringify(
       // ===== 折叠/展开：月 =====
       months.forEach((month) => {
         if (!(month instanceof HTMLElement)) return;
-        const toggle = month.querySelector('[data-archive-month-toggle]');
-        const content = month.querySelector('[data-archive-month-content]');
+        const toggle = month.querySelector('[data-archive-month-toggle]') as HTMLElement | null;
+        const content = month.querySelector('[data-archive-month-content]') as HTMLElement | null;
         if (!toggle || !content) return;
         if (toggle.dataset.bound === 'true') return;
         toggle.dataset.bound = 'true';
@@ -878,7 +884,7 @@ const serializedCategoryCounts = JSON.stringify(
     color: var(--chip-text);
     padding: 0.42rem 0.72rem;
     text-align: left;
-    transition: border-color 0.22s ease, background-color 0.22s ease, color 0.22s ease, transform 0.22s ease;
+    transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
     cursor: pointer;
     font-size: 0.82rem;
     font-weight: 650;
@@ -922,7 +928,7 @@ const serializedCategoryCounts = JSON.stringify(
 
   .archive-explorer__top-view,
   .archive-explorer__sub-view {
-    transition: opacity 220ms ease, transform 220ms ease;
+    transition: opacity 300ms ease, transform 300ms ease;
   }
 
   .archive-explorer__top-view[data-view-state='inactive'],
@@ -989,7 +995,7 @@ const serializedCategoryCounts = JSON.stringify(
     min-height: 0;
     opacity: 0;
     transform: translateY(-3px);
-    transition: opacity 0.22s ease, transform 0.22s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
   }
 
   .archive-explorer__post:hover .archive-explorer__post-summary-wrap,

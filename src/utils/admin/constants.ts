@@ -7,6 +7,10 @@ export const ADMIN_GH_BRANCH_KEY = "cmchen_admin_gh_branch";
 export const ADMIN_GH_API_URL_KEY = "cmchen_admin_api_url";
 export const ADMIN_PREVIEW_DRAFT_KEY = "cmchen_admin_preview_draft";
 export const ADMIN_PREVIEW_RESULT_KEY = "cmchen_admin_preview_result";
+// 登录失败限速（SEC-3）：localStorage 持久化失败计数与锁定截止时间
+export const LOGIN_ATTEMPTS_KEY = "cmchen_admin_login_attempts";
+// 已确认信任的自定义 API 代理源（SEC-5）：切换端点前需显式确认，避免 Token 被发往陌生地址
+export const TRUSTED_API_HOSTS_KEY = "cmchen_admin_trusted_api_hosts";
 
 export const REPO_OWNER = externalUrlsConfig.githubRepo.split('/')[0];
 export const REPO_NAME = externalUrlsConfig.githubRepo.split('/')[1];

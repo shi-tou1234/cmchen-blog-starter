@@ -51,6 +51,7 @@ async function exportPosts(format: "csv" | "markdown") {
 
   let JSZip: any;
   try {
+    // 类型声明见 src/types/jszip-cdn.d.ts
     JSZip = (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm')).default;
   } catch {
     setMsg(msgEl, "JSZip 库加载失败，请检查网络连接", true);

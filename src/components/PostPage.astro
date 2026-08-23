@@ -84,10 +84,38 @@ const resolvedCovers = await Promise.all(
         shell.classList.add('is-loading');
         content.classList.remove('is-ready');
 
+        // 最小显示时间，避免快速加载时骨架屏闪烁
+        const MIN_DISPLAY = 180;
+        const MAX_WAIT = 800;
+        const startTime = performance.now();
+        let hideScheduled = false;
+
+        const scheduleHide = () => {
+            if (hideScheduled) return;
+            hideScheduled = true;
+            const elapsed = performance.now() - startTime;
+            const delay = Math.max(0, MIN_DISPLAY - elapsed);
+
+            window.__postListLoadingTimer = window.setTimeout(() => {
+                shell.classList.remove('is-loading');
+                content.classList.add('is-ready');
+            }, delay);
+        };
+
+        // 跟随实际渲染：页面已完成加载时，等一帧 paint 后隐藏
+        if (document.readyState === 'complete') {
+            requestAnimationFrame(() => requestAnimationFrame(scheduleHide));
+        } else {
+            window.addEventListener('load', () => {
+                requestAnimationFrame(() => requestAnimationFrame(scheduleHide));
+            }, { once: true });
+        }
+
+        // 兜底：内容初始化极慢时最多等 800ms
         window.__postListLoadingTimer = window.setTimeout(() => {
             shell.classList.remove('is-loading');
             content.classList.add('is-ready');
-        }, 340);
+        }, MAX_WAIT);
     }
 
     function initPostCardReveal() {

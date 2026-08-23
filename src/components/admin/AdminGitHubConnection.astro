@@ -5,12 +5,17 @@ import { externalUrlsConfig } from "../../config";
   <h2 class="text-xl font-semibold mb-4">GitHub 连接</h2>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <div>
-      <label class="block text-sm mb-2">GitHub Token（repo 权限）</label>
+      <label class="block text-sm mb-2">GitHub Token</label>
       <input id="gh-token" type="password" class="w-full rounded border border-[var(--border-color)] bg-transparent px-3 py-2" placeholder="ghp_xxx 或 github_pat_xxx" />
       <label class="flex items-center gap-1.5 mt-1.5 text-xs text-[var(--text-color)]/70 cursor-pointer select-none">
         <input id="gh-remember-token" type="checkbox" class="cursor-pointer" />
         记住 Token（勾选后长期保留，不勾选关闭标签即清除）
       </label>
+      <p class="text-xs mt-1.5 text-[var(--text-color)]/60 leading-5">
+        安全建议：优先使用 <a class="underline" href="https://github.com/settings/personal-access-types/new" target="_blank" rel="noopener noreferrer">Fine-grained Token</a>，
+        只授权本仓库（{externalUrlsConfig.githubRepo}）的 Contents 读写权限，并设置较短有效期；
+        尽量避免使用 classic token 的完整 repo 权限——Token 以明文保存在本浏览器中，权限越小、泄露损失越小。
+      </p>
     </div>
     <div>
       <label class="block text-sm mb-2">分支</label>

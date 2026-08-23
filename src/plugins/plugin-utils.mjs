@@ -57,16 +57,21 @@ export function shouldSkipParent(parentType) {
  * @param {string} opts.onSuccessBody - 收到 JSON 后执行的函数体字符串（变量名为 data）
  * @param {string} opts.errorTag - 错误日志前缀（如 "GITHUB-CARD"）
  * @param {string} opts.errorCtx - 错误日志上下文（如 repo 名，已转义）
+ * @param {number} [opts.timeout] - 可选超时毫秒数，传值时用 AbortSignal.timeout 取消请求
  * @returns {string} 完整的 IIFE 脚本字符串
  */
-export function generateCardFetcherScript({ cardUuid, url, onSuccessBody, errorTag, errorCtx }) {
+export function generateCardFetcherScript({ cardUuid, url, onSuccessBody, errorTag, errorCtx, timeout }) {
   return `
         (function() {
             const fetchCardData = () => {
                 const card = document.getElementById('${cardUuid}-card');
                 if (!card || card.dataset.loaded === "true") return;
 
-                fetch('${url}', { referrerPolicy: "no-referrer" })
+                const fetchOpts = { referrerPolicy: "no-referrer" };
+                if (typeof timeout === 'number' && timeout > 0) {
+                    fetchOpts.signal = AbortSignal.timeout(timeout);
+                }
+                fetch('${url}', fetchOpts)
                     .then(response => response.json())
                     .then(data => {
                         ${onSuccessBody}

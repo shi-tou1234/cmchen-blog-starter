@@ -3,6 +3,7 @@ import {
   getToken,
   syncApiBase,
   saveGitHubDraft,
+  ensureApiEndpointTrusted,
 } from "./core";
 import {
   GITHUB_API_DEFAULT,
@@ -37,7 +38,7 @@ export function initGitHubConnectionHandlers() {
     setMsg(msgEl, "正在检测可用端点...");
 
     const candidates = ["https://api.github.com"];
-    const customUrl = (document.getElementById("gh-api-custom-url")?.value || "").trim().replace(/\/+$/, "");
+    const customUrl = ((document.getElementById("gh-api-custom-url") as HTMLInputElement | null)?.value || "").trim().replace(/\/+$/, "");
     if (customUrl && !candidates.includes(customUrl)) {
       candidates.push(customUrl);
     }
@@ -51,14 +52,20 @@ export function initGitHubConnectionHandlers() {
           signal: AbortSignal.timeout(8000),
         });
         if (testRes.ok) {
+          // 自定义端点需先通过信任确认（SEC-5），拒绝则继续尝试下一个候选
+          if (!ensureApiEndpointTrusted(endpoint)) {
+            if (endpoint !== "https://api.github.com") {
+              continue;
+            }
+          }
           adminService.setApiBase(endpoint);
           localStorage.setItem(ADMIN_GH_API_URL_KEY, endpoint);
-          const selectEl = document.getElementById("gh-api-endpoint");
+          const selectEl = document.getElementById("gh-api-endpoint") as HTMLSelectElement | null;
           const customWrap = document.getElementById("custom-api-url-wrap");
           let found = false;
           if (selectEl) {
             for (const opt of selectEl.options) {
-              if (opt.value === endpoint) {
+              if ((opt as HTMLOptionElement).value === endpoint) {
                 selectEl.value = endpoint;
                 found = true;
                 break;
@@ -66,7 +73,7 @@ export function initGitHubConnectionHandlers() {
             }
             if (!found) {
               selectEl.value = "custom";
-              const customInput = document.getElementById("gh-api-custom-url");
+              const customInput = document.getElementById("gh-api-custom-url") as HTMLInputElement | null;
               if (customInput) customInput.value = endpoint;
               customWrap?.classList.remove("hidden");
             } else {

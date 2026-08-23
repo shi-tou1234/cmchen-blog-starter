@@ -1,11 +1,11 @@
 <script>
 function initHeaderLogoFracture() {
-  const previousCleanup = window.__headerLogoFractureCleanup;
+  const previousCleanup = (window as any).__headerLogoFractureCleanup;
   if (previousCleanup) {
     previousCleanup();
   }
 
-  const logo = document.querySelector('[data-header-logo="true"]');
+  const logo = document.querySelector('[data-header-logo="true"]') as HTMLElement | null;
   if (!logo) return;
 
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -49,15 +49,15 @@ function initHeaderLogoFracture() {
   let pointerX = 0;
   let pointerY = 0;
 
-  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-  const setProgress = (nextProgress) => {
+  const setProgress = (nextProgress: number) => {
     progress = nextProgress;
     logo.style.setProperty('--fracture-progress', progress.toFixed(4));
     logo.classList.toggle('is-fracturing', progress > 0.015);
   };
 
-  const sampleTarget = (clientX, clientY) => {
+  const sampleTarget = (clientX: number, clientY: number) => {
     const rect = logo.getBoundingClientRect();
     if (!rect.width || !rect.height) return 0;
 
@@ -122,7 +122,7 @@ function initHeaderLogoFracture() {
     }
   };
 
-  const handlePointerMove = (event) => {
+  const handlePointerMove = (event: PointerEvent) => {
     pointerX = event.clientX;
     pointerY = event.clientY;
     target = sampleTarget(pointerX, pointerY);
@@ -130,12 +130,12 @@ function initHeaderLogoFracture() {
     schedule();
   };
 
-  const handlePointerOut = (event) => {
+  const handlePointerOut = (event: PointerEvent) => {
     if (event.relatedTarget) return;
     stopAnimation();
   };
 
-  const handleVisibilityChange = () => {
+  const handleVisibilityChange = (event: Event) => {
     if (document.hidden) {
       stopAnimation();
     }
@@ -149,15 +149,15 @@ function initHeaderLogoFracture() {
   };
 
   window.addEventListener('pointermove', handlePointerMove, { passive: true });
-  document.addEventListener('mouseout', handlePointerOut);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+  document.addEventListener('mouseout', handlePointerOut as EventListener);
+  document.addEventListener('visibilitychange', handleVisibilityChange as EventListener);
   window.addEventListener('blur', stopAnimation);
   window.addEventListener('resize', handleResize, { passive: true });
 
-  window.__headerLogoFractureCleanup = () => {
+  (window as any).__headerLogoFractureCleanup = () => {
     window.removeEventListener('pointermove', handlePointerMove);
-    document.removeEventListener('mouseout', handlePointerOut);
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.removeEventListener('mouseout', handlePointerOut as EventListener);
+    document.removeEventListener('visibilitychange', handleVisibilityChange as EventListener);
     window.removeEventListener('blur', stopAnimation);
     window.removeEventListener('resize', handleResize);
 

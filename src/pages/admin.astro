@@ -35,6 +35,7 @@ const pageTitle = `后台管理 - ${siteConfig.title}`;
     loadPostList,
     loadAllSiteSettings,
     setMsg,
+    hasValidSession,
   } from "@/utils/admin";
 
   // Initialize all handlers
@@ -48,7 +49,7 @@ const pageTitle = `后台管理 - ${siteConfig.title}`;
   loadGitHubDraft();
 
   // Auto-load post list + site settings if already logged in
-  if (sessionStorage.getItem("cmchen_admin_ok") === "1") {
+  if (hasValidSession()) {
     loadPostList().catch((error) => {
       setMsg(document.getElementById("post-msg"), String(error), true);
     });

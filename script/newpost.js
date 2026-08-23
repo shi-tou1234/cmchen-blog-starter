@@ -44,7 +44,7 @@ pubDate: ${new Date().toISOString()}
 description: Some description here
 image: ""
 draft: false
-slugId: ${folderPath}
+slugId: ${JSON.stringify(folderPath)}
 ---
 
 ## Title

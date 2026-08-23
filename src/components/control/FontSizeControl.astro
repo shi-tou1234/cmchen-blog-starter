@@ -44,7 +44,12 @@ import { Icon } from "astro-icon/components";
   var _fontSizeAbortController = null;
 
   function getFontSize() {
-    var saved = localStorage.getItem(FONT_SIZE_KEY);
+    var saved = null;
+    try {
+      saved = localStorage.getItem(FONT_SIZE_KEY);
+    } catch (_error) {
+      saved = null;
+    }
     var value = parseInt(saved, 10);
     if (isNaN(value) || value < 80 || value > 150) return DEFAULT_SIZE;
     return value;
@@ -79,7 +84,11 @@ import { Icon } from "astro-icon/components";
 
     function setFontSize(value) {
       htmlRoot.style.setProperty('--font-size-scale', (value / 100).toFixed(2));
-      localStorage.setItem(FONT_SIZE_KEY, String(value));
+      try {
+        localStorage.setItem(FONT_SIZE_KEY, String(value));
+      } catch (_error) {
+        // 隐私模式等存储不可用场景：字号本次会话内仍生效，仅不持久化
+      }
       fontSizeSlider.value = String(value);
       if (fontSizeValue) fontSizeValue.textContent = value + '%';
     }

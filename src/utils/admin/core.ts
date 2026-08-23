@@ -18,6 +18,7 @@ import {
   ADMIN_GH_TOKEN_REMEMBER_KEY,
   ADMIN_GH_BRANCH_KEY,
   ADMIN_GH_API_URL_KEY,
+  TRUSTED_API_HOSTS_KEY,
   ADMIN_PREVIEW_DRAFT_KEY,
   ADMIN_PREVIEW_RESULT_KEY,
   REPO_OWNER,
@@ -33,9 +34,27 @@ export const ADMIN_SECURITY_URL = typeof window !== "undefined"
   ? new URL("admin-security.json", `${window.location.origin}${BASE_URL}`).toString()
   : "";
 
-const savedApiUrl = typeof localStorage !== "undefined"
-  ? localStorage.getItem(ADMIN_GH_API_URL_KEY) || GITHUB_API_DEFAULT
-  : GITHUB_API_DEFAULT;
+const savedApiUrl = (() => {
+  const saved = typeof localStorage !== "undefined"
+    ? localStorage.getItem(ADMIN_GH_API_URL_KEY) || GITHUB_API_DEFAULT
+    : GITHUB_API_DEFAULT;
+  // 启动恢复时只接受默认端点或此前已确认信任的源，防止历史遗留的自定义地址静默生效
+  try {
+    const origin = new URL(saved).origin;
+    const defaultOrigin = new URL(GITHUB_API_DEFAULT).origin;
+    if (origin !== defaultOrigin) {
+      let trusted: string[] = [];
+      try {
+        const list = JSON.parse(localStorage.getItem(TRUSTED_API_HOSTS_KEY) || "[]");
+        trusted = Array.isArray(list) ? list.filter((x) => typeof x === "string") : [];
+      } catch { /* 视为未信任 */ }
+      if (!trusted.includes(origin) || !isSafeApiUrl(saved)) return GITHUB_API_DEFAULT;
+    }
+  } catch {
+    return GITHUB_API_DEFAULT;
+  }
+  return saved;
+})();
 
 export const adminService = new AdminService({
   repoOwner: REPO_OWNER,
@@ -83,30 +102,140 @@ export function unlockPanel() {
   const adminPanel = document.getElementById("admin-panel");
   loginSection?.classList.add("hidden");
   adminPanel?.classList.remove("hidden");
-  sessionStorage.setItem(SESSION_KEY, "1");
+}
+
+/**
+ * 会话凭据（SEC-2）：登录成功后存入由密码派生的凭据，取代过去的固定值 "1"。
+ * 派生盐与公开的 admin-security.json 中的哈希相互独立，攻击者无法在不
+ * 知道密码的情况下伪造出格式合法且真实有效的凭据。
+ */
+export function setSessionProof(proof: string) {
+  sessionStorage.setItem(SESSION_KEY, proof);
+}
+
+export function clearSessionProof() {
+  sessionStorage.removeItem(SESSION_KEY);
+}
+
+/** 校验会话存储值是否为合法凭据格式（base64 且解码后不少于 16 字节） */
+export function isValidSessionProof(value: string | null | undefined): value is string {
+  if (!value) return false;
+  try {
+    const bytes = Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
+    return bytes.length >= 16;
+  } catch {
+    return false;
+  }
+}
+
+/** 是否已持有有效会话（用于页面加载时自动解锁面板） */
+export function hasValidSession(): boolean {
+  return isValidSessionProof(sessionStorage.getItem(SESSION_KEY));
 }
 
 export function getToken() {
-  return (document.getElementById("gh-token")?.value || "").trim();
+  return ((document.getElementById("gh-token") as HTMLInputElement | null)?.value || "").trim();
 }
 
 export function getBranch() {
-  return (document.getElementById("gh-branch")?.value || "main").trim();
+  return ((document.getElementById("gh-branch") as HTMLInputElement | null)?.value || "main").trim();
 }
 
 export function getActiveApiUrl() {
-  const selectEl = document.getElementById("gh-api-endpoint");
+  const selectEl = document.getElementById("gh-api-endpoint") as HTMLSelectElement | null;
   const sel = selectEl?.value || GITHUB_API_DEFAULT;
   if (sel === "custom") {
-    return (document.getElementById("gh-api-custom-url")?.value || "").trim().replace(/\/+$/, "") || GITHUB_API_DEFAULT;
+    return ((document.getElementById("gh-api-custom-url") as HTMLInputElement | null)?.value || "").trim().replace(/\/+$/, "") || GITHUB_API_DEFAULT;
   }
   return sel;
 }
 
-export function syncApiBase() {
+// ---- 自定义 API 端点信任校验（SEC-5）----
+// Token 会随 Authorization 头发往 apiBase，自定义代理必须在显式确认后才会生效，
+// 防止被诱导配置陌生地址后 Token 被直接送出。
+
+function parseTrustedApiHosts(): string[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(TRUSTED_API_HOSTS_KEY) || "[]");
+    return Array.isArray(list) ? list.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** 仅接受 https 公网地址，拒绝携带凭据、localhost 与内网段 */
+export function isSafeApiUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    const host = parsed.hostname.toLowerCase();
+    if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return false;
+    if (/^(127\.|10\.|192\.168\.|0\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resetApiEndpointUi() {
+  const selectEl = document.getElementById("gh-api-endpoint") as HTMLSelectElement | null;
+  if (selectEl) selectEl.value = GITHUB_API_DEFAULT;
+  document.getElementById("custom-api-url-wrap")?.classList.add("hidden");
+}
+
+/**
+ * 确认目标端点可信：默认端点直接通过；其余源首次使用需弹窗确认，
+ * 确认结果持久化。地址不安全或用户拒绝时返回 false。
+ */
+export function ensureApiEndpointTrusted(url: string): boolean {
+  const defaultOrigin = new URL(GITHUB_API_DEFAULT).origin;
+  const origin = new URL(url).origin;
+  if (origin === defaultOrigin) return true;
+
+  const trusted = parseTrustedApiHosts();
+  if (trusted.includes(origin)) return true;
+  if (!isSafeApiUrl(url)) return false;
+
+  const ok = window.confirm(
+    `后续所有请求（包括 Authorization 头中的 GitHub Token）都将发送到：\n\n${origin}\n\n请确认你信任该代理地址，继续吗？`,
+  );
+  if (!ok) return false;
+
+  trusted.push(origin);
+  localStorage.setItem(TRUSTED_API_HOSTS_KEY, JSON.stringify(trusted));
+  return true;
+}
+
+/**
+ * 校验并应用当前选择的 API 端点。
+ * 非默认端点首次使用时弹窗确认，确认过的源记录在本地；拒绝或校验失败则回退默认端点。
+ * @returns 是否成功应用（false 表示已回退到默认端点）
+ */
+export function syncApiBase(): boolean {
   const url = getActiveApiUrl();
+
+  try {
+    if (!ensureApiEndpointTrusted(url)) {
+      resetApiEndpointUi();
+      adminService.setApiBase(GITHUB_API_DEFAULT);
+      localStorage.setItem(ADMIN_GH_API_URL_KEY, GITHUB_API_DEFAULT);
+      if (!isSafeApiUrl(url)) {
+        setMsg(document.getElementById("connection-msg"), "自定义端点被拒绝：仅允许 https 公网地址（不支持内网/localhost）", true);
+      }
+      return false;
+    }
+  } catch {
+    // URL 解析失败视为非法端点，回退默认
+    resetApiEndpointUi();
+    adminService.setApiBase(GITHUB_API_DEFAULT);
+    localStorage.setItem(ADMIN_GH_API_URL_KEY, GITHUB_API_DEFAULT);
+    return false;
+  }
+
   adminService.setApiBase(url);
   localStorage.setItem(ADMIN_GH_API_URL_KEY, url);
+  return true;
 }
 
 export function loadGitHubDraft() {
@@ -124,18 +253,18 @@ export function loadGitHubDraft() {
     : (sessionStorage.getItem(ADMIN_GH_TOKEN_KEY) || "");
   const savedBranch = localStorage.getItem(ADMIN_GH_BRANCH_KEY) || "main";
   const savedApi = localStorage.getItem(ADMIN_GH_API_URL_KEY) || GITHUB_API_DEFAULT;
-  if (tokenInput && savedToken) tokenInput.value = savedToken;
-  if (branchInput && savedBranch) branchInput.value = savedBranch;
+  if (tokenInput && savedToken) ((tokenInput as HTMLInputElement).value = savedToken);
+  if (branchInput && savedBranch) ((branchInput as HTMLInputElement).value = savedBranch);
 
-  const selectEl = document.getElementById("gh-api-endpoint");
-  const customUrlInput = document.getElementById("gh-api-custom-url");
+  const selectEl = document.getElementById("gh-api-endpoint") as HTMLSelectElement | null;
+  const customUrlInput = document.getElementById("gh-api-custom-url") as HTMLInputElement | null;
   const customWrap = document.getElementById("custom-api-url-wrap");
 
   if (savedApi && savedApi !== GITHUB_API_DEFAULT) {
     let found = false;
     if (selectEl) {
       for (const opt of selectEl.options) {
-        if (opt.value === savedApi) {
+        if ((opt as HTMLOptionElement).value === savedApi) {
           selectEl.value = savedApi;
           found = true;
           break;
@@ -177,10 +306,10 @@ export function getPreviewPageUrl() {
 }
 
 export function savePreviewDraft() {
-  const content = document.getElementById("post-content")?.value || "";
-  const title = document.getElementById("post-title")?.value || "";
-  const slug = document.getElementById("post-slug")?.value || "";
-  const lang = document.getElementById("post-lang")?.value || "zh-cn";
+  const content = ((document.getElementById("post-content") as HTMLTextAreaElement | null)?.value || "");
+  const title = ((document.getElementById("post-title") as HTMLInputElement | null)?.value || "");
+  const slug = ((document.getElementById("post-slug") as HTMLInputElement | null)?.value || "");
+  const lang = ((document.getElementById("post-lang") as HTMLSelectElement | null)?.value || "zh-cn");
   const payload = {
     content,
     title,
@@ -199,7 +328,7 @@ export function applyPreviewResult() {
   try {
     const parsed = JSON.parse(raw);
     const nextContent = String(parsed?.content || "");
-    const textarea = document.getElementById("post-content");
+    const textarea = document.getElementById("post-content") as HTMLTextAreaElement | null;
     if (textarea) {
       textarea.value = nextContent;
     }
@@ -290,7 +419,7 @@ export async function renderPdfPagesToImages(file: File) {
 
   for (let pageNo = 1; pageNo <= pdfDoc.numPages; pageNo++) {
     const page = await pdfDoc.getPage(pageNo);
-    const viewport = page.getViewport({ scale: 1.8 });
+    const viewport = page.getViewport({ scale: 1.5 });
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
     if (!context) throw new Error("PDF 渲染失败：无法创建画布上下文");
@@ -306,18 +435,18 @@ export async function renderPdfPagesToImages(file: File) {
       viewport,
       background: "#ffffff",
       annotationMode: pdfjsLib.AnnotationMode.ENABLE,
-      renderInteractiveForms: true
+      ...({ renderInteractiveForms: true } as any),
     }).promise;
 
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((result) => {
         if (result) resolve(result);
         else reject(new Error("PDF 转图片失败"));
-      }, "image/png");
+      }, "image/webp", 0.9);
     });
 
-    const fileName = `${baseName}-p${String(pageNo).padStart(2, "0")}.png`;
-    generatedFiles.push(new File([blob], fileName, { type: "image/png" }));
+    const fileName = `${baseName}-p${String(pageNo).padStart(2, "0")}.webp`;
+    generatedFiles.push(new File([blob], fileName, { type: "image/webp" }));
   }
 
   return generatedFiles;

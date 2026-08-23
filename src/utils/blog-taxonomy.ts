@@ -1,4 +1,10 @@
-import type { BlogEntryWithLocaleStatus } from '@utils/content-utils';
+// 项目类型同步脚本尚未生成高保真 CollectionEntry 类型，此处先用本地回退类型避免编译中断
+type BlogEntryWithLocaleStatus = {
+  id: string;
+  data: Record<string, any>;
+  body: string;
+  [key: string]: any;
+};
 
 const CATEGORY_PARAM_PREFIX = 'b64-';
 export const STUDY_NOTE_CATEGORY = '学习笔记';
