@@ -188,7 +188,7 @@ export default defineConfig({
 
 ## 桌面版（Electron）
 
-本项目支持打包为 Windows 桌面 exe，离线浏览全站、中文搜索可用。
+本项目支持打包为 Windows 桌面 exe：**优先在线加载 GitHub Pages 线上站点（新文章即时可见，无需重新打包），断网或站点不可达时自动回落到打包时内置的离线快照**，中文搜索两种模式下均可用。
 
 ### 打包命令
 
@@ -203,9 +203,11 @@ pnpm run dist:electron
 
 ### 实现说明
 
-- 桌面壳基于 [Electron](https://www.electronjs.org/)，内置 `serve-handler` 在 127.0.0.1 随机端口托管构建产物
+- 桌面壳基于 [Electron](https://www.electronjs.org/)，启动时探测线上站点（HEAD + 5 秒超时），可达即加载线上；不可达则用内置 `serve-handler` 在 127.0.0.1 随机端口托管打包时的离线快照
+- 线上地址可用环境变量 `DESKTOP_ONLINE_URL` 覆盖（如换自定义域名）
 - 采用精简打包策略：staging 目录仅包含 `electron/main.js` + `dist/` + `serve-handler` 运行时依赖（约 12 个包），exe 体积约 **110MB**
-- 搜索（Pagefind）通过本地 http 服务加载，`file://` 协议下不可用，桌面版已处理
+- 搜索（Pagefind）需要 http 源加载，两种模式均已处理
+- 只有想让「离线快照」更新时才需要重新打包；在线模式下内容始终最新
 
 ### 开发与调试
 
