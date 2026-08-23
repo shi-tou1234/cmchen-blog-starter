@@ -208,6 +208,7 @@ pnpm run dist:electron
 - 采用精简打包策略：staging 目录仅包含 `electron/main.js` + `dist/` + `serve-handler` 运行时依赖（约 12 个包），exe 体积约 **110MB**
 - 搜索（Pagefind）需要 http 源加载，两种模式均已处理
 - 只有想让「离线快照」更新时才需要重新打包；在线模式下内容始终最新
+- 应用图标在 `electron/icon.png`（≥256 的正方形 PNG），换成自己的图重新打包即可生效
 
 ### 开发与调试
 

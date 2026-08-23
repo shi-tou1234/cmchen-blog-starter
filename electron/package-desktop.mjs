@@ -22,8 +22,13 @@ if (readFileSync(indexHtml, 'utf8').includes('="/cmchen-blog-starter/')) {
 
 rmSync(staging, { recursive: true, force: true });
 mkdirSync(path.join(staging, 'electron'), { recursive: true });
+mkdirSync(path.join(staging, 'build'), { recursive: true });
 cpSync(path.join(root, 'electron', 'main.js'), path.join(staging, 'electron', 'main.js'));
 cpSync(path.join(root, 'dist'), path.join(staging, 'dist'), { recursive: true });
+// 应用图标（≥256 的正方形 png，electron-builder 自动转 ico；无图标则用默认）
+const iconSrc = path.join(root, 'electron', 'icon.png');
+const hasIcon = existsSync(iconSrc);
+if (hasIcon) cpSync(iconSrc, path.join(staging, 'build', 'icon.png'));
 
 const stagingPkg = {
   name: 'cmchen-blog-desktop',
@@ -38,7 +43,10 @@ const stagingPkg = {
     electronVersion,
     directories: { output: '..' },
     files: ['electron/**', 'dist/**'],
-    win: { target: ['nsis', 'portable'] },
+    win: {
+      target: ['nsis', 'portable'],
+      ...(hasIcon ? { icon: 'build/icon.png' } : {}),
+    },
   },
 };
 writeFileSync(path.join(staging, 'package.json'), JSON.stringify(stagingPkg, null, 2));

@@ -7,6 +7,10 @@ import serveHandler from 'serve-handler';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
+// 窗口/任务栏图标（打包后 exe 图标由 electron-builder 内嵌，这里兜底开发模式）
+const ICON = fs.existsSync(path.join(__dirname, 'icon.png'))
+  ? path.join(__dirname, 'icon.png')
+  : undefined;
 
 // 优先在线（新文章即时可见），断网回落到打包时内置的离线快照。
 // 可用环境变量 DESKTOP_ONLINE_URL 覆盖（如换自定义域名）。
@@ -86,6 +90,7 @@ async function createWindow() {
     width: 1280,
     height: 800,
     title: 'cmchen blog',
+    icon: ICON,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
