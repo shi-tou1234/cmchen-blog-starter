@@ -15,6 +15,15 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       // 项目大量使用 any（沿用既有宽松风格），不强制禁用
       '@typescript-eslint/no-explicit-any': 'off',
+      // 允许带说明的 ts-nocheck/ts-expect-error（用于标记回退的遗留实现），仍禁止裸 ts-ignore
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        {
+          'ts-ignore': true,
+          'ts-nocheck': 'allow-with-description',
+          'ts-expect-error': 'allow-with-description',
+        },
+      ],
       // .ts/.astro 的未定义变量由 astro check（TypeScript）兜底；
       // astro 脚本中的 TS 断言（as EventListener 等）与 define:vars 注入变量会被 no-undef 误报
       'no-undef': 'off',

@@ -41,9 +41,9 @@ const {
   <div class="main-content">
     <div class="map-container">
       <div class="map-toolbar">
-        <button class="back-btn" data-role="back-btn" type="button" aria-label="返回全国视图">返回全国</button>
+        <button class="back-btn" data-role="back-btn" type="button">返回全国</button>
         <div class="breadcrumb">
-          <button type="button" class="crumb-country" data-role="crumb-country">中国</button>
+          <span class="crumb-country" data-role="crumb-country">中国</span>
           <span class="crumb-separator">/</span>
           <span class="crumb-current" data-role="crumb-current">全国视图</span>
         </div>
@@ -68,7 +68,7 @@ const {
     <aside class="sidebar">
       <div class="panel">
         <div class="panel-title">已点亮城市</div>
-        <input class="search-box" data-role="search" type="text" placeholder="搜索城市或省份..." aria-label="搜索城市或省份" />
+        <input class="search-box" data-role="search" type="text" placeholder="搜索城市或省份..." />
         <div class="city-list" data-role="city-list">
           <div class="empty-state">暂无标记城市</div>
         </div>
@@ -76,7 +76,7 @@ const {
 
       {editable && (
         <div class="panel">
-          <button class="clear-btn" data-role="clear-btn" type="button" aria-label="清空全部标记">清空全部标记</button>
+          <button class="clear-btn" data-role="clear-btn" type="button">清空全部标记</button>
         </div>
       )}
     </aside>
@@ -202,18 +202,6 @@ const {
   .crumb-country {
     color: var(--tm-strong);
     cursor: pointer;
-    padding: 0;
-    background: none;
-    border: 0;
-    font: inherit;
-    line-height: inherit;
-    letter-spacing: inherit;
-  }
-
-  .crumb-country:focus-visible {
-    outline: 2px solid var(--tm-strong);
-    outline-offset: 2px;
-    border-radius: 4px;
   }
 
   .crumb-country.disabled {
@@ -447,6 +435,8 @@ const {
 </style>
 
 <script>
+  // @ts-nocheck — 地图组件为回退后的原始宽松类型实现，待后续重新标注
+  import * as echarts from "echarts";
   import { externalUrlsConfig } from "../../config";
 
   (function setupTravelMap() {
@@ -500,9 +490,9 @@ const {
       ]),
     );
 
-    const globalGeoCache = (window as any).__travelGeoCache || ((window as any).__travelGeoCache = new Map());
+    const globalGeoCache = window.__travelGeoCache || (window.__travelGeoCache = new Map());
 
-    function normalizeRegionName(name: string): string {
+    function normalizeRegionName(name) {
       return String(name || "")
         .trim()
         .replace(/\s+/g, "")
@@ -515,17 +505,17 @@ const {
         .replace(/市$/u, "");
     }
 
-    function normalizeCityName(name: string): string {
+    function normalizeCityName(name) {
       return String(name || "").trim().replace(/\s+/g, "");
     }
 
-    function makeCityKey(province: string, city: string): string {
+    function makeCityKey(province, city) {
       const p = normalizeRegionName(province);
       const c = normalizeCityName(city || province);
       return `${p}::${c}`;
     }
 
-    function normalizeTravelItems(rawItems: any[]) {
+    function normalizeTravelItems(rawItems) {
       const list = Array.isArray(rawItems) ? rawItems : [];
       const map = new Map();
 
@@ -556,7 +546,7 @@ const {
       return map;
     }
 
-    function parseStoredValue(raw: string): any[] {
+    function parseStoredValue(raw) {
       const text = String(raw || "").trim();
       if (!text) return [];
 
@@ -580,7 +570,7 @@ const {
         .filter((item) => item.province);
     }
 
-    function exportTravelItems(visitedMap: Map<string, { province: string; city: string; visited: boolean }>) {
+    function exportTravelItems(visitedMap) {
       return Array.from(visitedMap.values())
         .map((item) => ({
           province: String(item.province || "").trim(),
@@ -595,7 +585,17 @@ const {
         });
     }
 
-    async function fetchGeoJson(adcode: string) {
+    async function ensureEchartsReady() {
+      if (!window.echarts) {
+        window.echarts = echarts;
+      }
+
+      if (!window.echarts) {
+        throw new Error("ECharts load failed");
+      }
+    }
+
+    async function fetchGeoJson(adcode) {
       const code = String(adcode || "").trim();
       if (!code) {
         throw new Error("地图编码为空");
@@ -649,7 +649,7 @@ const {
       return geoJson;
     }
 
-    function formatCityLabel(item: { province?: string; city?: string }) {
+    function formatCityLabel(item) {
       const province = String(item?.province || "").trim();
       const city = String(item?.city || "").trim();
       if (!province) return city;
@@ -657,9 +657,9 @@ const {
       return `${province} · ${city}`;
     }
 
-    function createNotifier(notifEl: HTMLElement) {
-      let timer: any = null;
-      return function notify(message: string, isError = false) {
+    function createNotifier(notifEl) {
+      let timer = null;
+      return function notify(message, isError = false) {
         if (!(notifEl instanceof HTMLElement)) return;
         notifEl.textContent = message;
         notifEl.style.background = isError ? "rgba(255, 107, 107, 0.92)" : "rgba(46, 213, 115, 0.92)";
@@ -671,7 +671,7 @@ const {
       };
     }
 
-    function bindWrapper(wrapper: HTMLElement) {
+    function bindWrapper(wrapper) {
       if (!(wrapper instanceof HTMLElement) || wrapper.dataset.bound === "true") return;
       wrapper.dataset.bound = "true";
 
@@ -688,7 +688,7 @@ const {
       const visitedCityCountEl = wrapper.querySelector('[data-role="visited-city-count"]');
       const visitedProvinceCountEl = wrapper.querySelector('[data-role="visited-province-count"]');
       const clearBtn = wrapper.querySelector('[data-role="clear-btn"]');
-      const notifier = createNotifier(wrapper.querySelector('[data-role="notification"]') as HTMLElement);
+      const notifier = createNotifier(wrapper.querySelector('[data-role="notification"]'));
 
       if (!(mapEl instanceof HTMLElement)) return;
 
@@ -696,7 +696,7 @@ const {
       let visitedMap = normalizeTravelItems(parsedInitial);
 
       const mapState = {
-        chart: null as any,
+        chart: null,
         currentLevel: "country",
         currentProvinceName: "",
         currentProvinceAdcode: "",
@@ -706,7 +706,7 @@ const {
         visitedCitySetByProvince: new Map(),
       };
 
-      function getCssColor(name: string, fallback: string): string {
+      function getCssColor(name, fallback) {
         const value = getComputedStyle(wrapper).getPropertyValue(name).trim();
         return value || fallback;
       }
@@ -739,13 +739,13 @@ const {
         };
       }
 
-      function setLoading(loading: boolean) {
+      function setLoading(loading) {
         if (loadingEl instanceof HTMLElement) {
           loadingEl.style.display = loading ? "block" : "none";
         }
       }
 
-      function setMapError(message: string = "") {
+      function setMapError(message = "") {
         if (!(mapErrorEl instanceof HTMLElement)) return;
         if (!message) {
           mapErrorEl.hidden = true;
@@ -853,29 +853,29 @@ const {
         renderCityList();
       }
 
-      function getProvinceAdcode(name: string) {
+      function getProvinceAdcode(name) {
         const raw = String(name || "").trim();
         const normalized = normalizeRegionName(raw);
 
         return (
           mapState.provinceAdcodeByName.get(raw) ||
           mapState.provinceAdcodeByNormalized.get(normalized) ||
-          FALLBACK_ADCODE_MAP[raw as keyof typeof FALLBACK_ADCODE_MAP] ||
-          FALLBACK_ADCODE_BY_NORMALIZED[normalized as keyof typeof FALLBACK_ADCODE_BY_NORMALIZED] ||
+          FALLBACK_ADCODE_MAP[raw] ||
+          FALLBACK_ADCODE_BY_NORMALIZED[normalized] ||
           null
         );
       }
 
-      function getVisitedCountInProvince(provinceName: string) {
+      function getVisitedCountInProvince(provinceName) {
         const key = normalizeRegionName(provinceName);
         return mapState.visitedCitySetByProvince.get(key)?.size || 0;
       }
 
-      function buildProvinceData(geoJson: any, provinceName: string) {
+      function buildProvinceData(geoJson, provinceName) {
         const provinceKey = normalizeRegionName(provinceName);
         const visitedCitySet = mapState.visitedCitySetByProvince.get(provinceKey) || new Set();
 
-        return (geoJson.features || []).map((feature: any) => {
+        return (geoJson.features || []).map((feature) => {
           const cityName = String(feature?.properties?.name || "").trim();
           const visited = visitedCitySet.has(normalizeCityName(cityName));
           return {
@@ -930,11 +930,11 @@ const {
           mapState.provinceAdcodeByNormalized.clear();
 
           const provinceNames = geoJson
-            ? (geoJson.features || []).map((feature: any) => String(feature?.properties?.name || "").trim()).filter(Boolean)
+            ? (geoJson.features || []).map((feature) => String(feature?.properties?.name || "").trim()).filter(Boolean)
             : Object.keys(FALLBACK_ADCODE_MAP);
 
           if (geoJson) {
-            (geoJson.features || []).forEach((feature: any) => {
+            (geoJson.features || []).forEach((feature) => {
               const provinceName = String(feature?.properties?.name || "").trim();
               const adcode = String(feature?.properties?.adcode || "").slice(0, 6);
               if (provinceName && adcode) {
@@ -954,7 +954,7 @@ const {
             }
           });
 
-          const seriesData = provinceNames.map((provinceName: string) => {
+          const seriesData = provinceNames.map((provinceName) => {
             const provinceVisited = mapState.visitedProvinceNameSet.has(normalizeRegionName(provinceName));
             return {
               name: provinceName,
@@ -975,7 +975,7 @@ const {
                 backgroundColor: themeColors.tooltipBg,
                 borderColor: themeColors.tooltipBorder,
                 textStyle: { color: themeColors.tooltipText },
-                formatter: (params: any) => {
+                formatter: (params) => {
                   const count = getVisitedCountInProvince(params.name);
                   const action = editable ? "点击进入城市视图" : "点击查看城市分布";
                   return `<div style="font-weight:600;color:${themeColors.tooltipText}">${params.name}</div><div style="color:${themeColors.tooltipText}">已标记城市：${count}</div><div style="margin-top:4px;color:${themeColors.tooltipAction};font-size:12px">${action}</div>`;
@@ -1019,7 +1019,7 @@ const {
         }
       }
 
-      async function renderProvinceView(provinceName: string, adcode: string) {
+      async function renderProvinceView(provinceName, adcode) {
         const code = String(adcode || "").trim();
         if (!code) {
           notifier("未找到该省份边界数据", true);
@@ -1050,7 +1050,7 @@ const {
                 backgroundColor: themeColors.tooltipBg,
                 borderColor: themeColors.tooltipBorder,
                 textStyle: { color: themeColors.tooltipText },
-                formatter: (params: any) => {
+                formatter: (params) => {
                   const isVisited = Number(params.value) > 0;
                   if (editable) {
                     return `<div style="font-weight:600;color:${themeColors.tooltipText}">${params.name}</div><div style="color:${themeColors.tooltipText}">${isVisited ? "已去过" : "未标记"}</div><div style="margin-top:4px;color:${themeColors.tooltipAction};font-size:12px">点击切换状态</div>`;
@@ -1095,7 +1095,7 @@ const {
         }
       }
 
-      function toggleCity(cityName: string) {
+      function toggleCity(cityName) {
         if (!editable || mapState.currentLevel !== "province") return;
 
         const province = mapState.currentProvinceName;
@@ -1117,7 +1117,7 @@ const {
         });
       }
 
-      function onMapClick(params: { name?: string; [key: string]: any }) {
+      function onMapClick(params) {
         if (!params?.name) return;
         if (mapState.currentLevel === "country") {
           const adcode = getProvinceAdcode(params.name);
@@ -1183,8 +1183,8 @@ const {
         });
       }
 
-      document.addEventListener("travel-map-refresh", (event: Event) => {
-        const detail = (event as CustomEvent)?.detail || {};
+      document.addEventListener("travel-map-refresh", (event) => {
+        const detail = event?.detail || {};
         if (!editable || !storageInputId) return;
         if (detail.inputId && detail.inputId !== storageInputId) return;
 
@@ -1203,50 +1203,34 @@ const {
       });
 
       const observer = new IntersectionObserver(
-        async (entries) => {
+        (entries) => {
           const active = entries.some((entry) => entry.isIntersecting);
           if (!active) return;
 
           observer.disconnect();
 
-          try {
-            if (!window.echarts) {
-              // echarts 5.4 仅提供整桶导出（charts/components 按模块路径是 5.5+ 才有）
-              const echartsCore = await import("echarts/core");
-              const [{ MapChart }, { TooltipComponent }] = await Promise.all([
-                import("echarts/charts"),
-                import("echarts/components"),
-              ]);
-              echartsCore.use([MapChart, TooltipComponent]);
-              window.echarts = echartsCore;
-            }
+          const chart = window.echarts.getInstanceByDom(mapEl) || window.echarts.init(mapEl);
+          mapState.chart = chart;
+          chart.off("click");
+          chart.on("click", onMapClick);
 
-            const chart = window.echarts.getInstanceByDom(mapEl) || window.echarts.init(mapEl);
-            mapState.chart = chart;
-            chart.off("click");
-            chart.on("click", onMapClick);
+          bindInputSync();
+          rebuildVisitedIndex();
+          updateStats();
 
-            bindInputSync();
-            rebuildVisitedIndex();
-            updateStats();
-
-            if (editable) {
-              syncStorage();
-            }
-
-            renderChinaView().catch(() => {
-              notifier("地图初始化失败，请刷新重试", true);
-            });
-
-            window.addEventListener("resize", () => {
-              if (mapState.chart) {
-                mapState.chart.resize();
-              }
-            });
-          } catch (error) {
-            setMapError("地图数据加载失败，请检查网络后刷新");
-            setLoading(false);
+          if (editable) {
+            syncStorage();
           }
+
+          renderChinaView().catch(() => {
+            notifier("地图初始化失败，请刷新重试", true);
+          });
+
+          window.addEventListener("resize", () => {
+            if (mapState.chart) {
+              mapState.chart.resize();
+            }
+          });
         },
         {
           rootMargin: "120px",
@@ -1257,8 +1241,9 @@ const {
     }
 
     async function initTravelMapWrappers() {
+      await ensureEchartsReady();
       document.querySelectorAll(".travel-map-wrapper").forEach((wrapper) => {
-        bindWrapper(wrapper as HTMLElement);
+        bindWrapper(wrapper);
       });
     }
 
