@@ -186,6 +186,37 @@ export default defineConfig({
 3. 在仓库 Settings → Pages 中，将 Source 设置为 **GitHub Actions**（构建方式选择 GitHub Actions，而不是 Deploy from a branch）。
 4. 推送 `main` 分支后，工作流会自动构建并部署。
 
+## 桌面版（Electron）
+
+本项目支持打包为 Windows 桌面 exe，离线浏览全站、中文搜索可用。
+
+### 打包命令
+
+```bash
+# 一键打包（桌面形态构建 + 精简 electron 应用）
+pnpm run dist:electron
+```
+
+产物输出到 `release/`：
+- `cmchen-blog-desktop 0.0.1.exe`：portable 便携版，双击即用
+- `cmchen-blog-desktop Setup 0.0.1.exe`：NSIS 安装版
+
+### 实现说明
+
+- 桌面壳基于 [Electron](https://www.electronjs.org/)，内置 `serve-handler` 在 127.0.0.1 随机端口托管构建产物
+- 采用精简打包策略：staging 目录仅包含 `electron/main.js` + `dist/` + `serve-handler` 运行时依赖（约 12 个包），exe 体积约 **110MB**
+- 搜索（Pagefind）通过本地 http 服务加载，`file://` 协议下不可用，桌面版已处理
+
+### 开发与调试
+
+```bash
+# 先构建桌面形态的 dist
+pnpm run build:desktop
+
+# 启动 electron 调试窗口
+pnpm exec electron .
+```
+
 
 ## 致谢
 

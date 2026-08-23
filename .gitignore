@@ -30,3 +30,6 @@ pnpm-debug.log*
 
 # TRAE IDE 临时文件
 .trae/
+
+# electron 打包产物
+release/
