@@ -188,9 +188,60 @@ export default defineConfig({
 
 ## 桌面版（Electron）
 
-本项目支持打包为 Windows 桌面 exe：**优先在线加载 GitHub Pages 线上站点（新文章即时可见，无需重新打包），断网或站点不可达时自动回落到打包时内置的离线快照**，中文搜索两种模式下均可用。
+本项目支持打包为三平台桌面应用（Windows / macOS / Linux）：**优先在线加载 GitHub Pages 线上站点（新文章即时可见，无需重新打包），断网或站点不可达时自动回落到打包时内置的离线快照**，中文搜索两种模式下均可用。
 
-### 打包命令
+### GitHub Actions 自动发布（推荐）
+
+推送 `v*` 格式的 tag 后，GitHub Actions 自动构建三平台安装包并挂上 Release：
+
+```bash
+# 打 tag 并推送 → 自动触发构建并发布 Release
+git tag v0.0.2
+git push origin v0.0.2
+```
+
+Release 包含的产物：
+
+| 平台 | 产物 | 说明 |
+| --- | --- | --- |
+| Windows | `*-Setup*.exe` | NSIS 安装版，运行即装 |
+| Windows | `*.exe`（无 Setup） | 便携版，双击即用 |
+| macOS | `*-arm64.dmg` | Apple Silicon 芯片（M1/M2/M3/M4） |
+| macOS | `*.dmg`（无后缀） | Intel 芯片 |
+| Linux | `*.AppImage` | 单文件免安装 |
+
+### 安装指南
+
+#### Windows
+1. 从 Release 下载 `*-Setup*.exe`（安装版）或另一个 exe（便携版）
+2. 安装版：双击运行，按提示安装；便携版：直接双击运行
+3. Windows SmartScreen 可能提示「未知发布者」，选择「仍要运行」即可（当前未签名）
+
+#### macOS
+1. 从 Release 下载对应芯片的 `.dmg`：
+   - **Apple Silicon**（M 系列）：`*-arm64.dmg`
+   - **Intel**：下载另一个 `.dmg`（文件名无 arm64 后缀）
+2. 双击 dmg → 拖动 `cmchen-blog-desktop.app` 到 Applications 文件夹
+3. **首次打开**：右键选择「打开」→ 弹窗中点「打开」（未签名应用，Gatekeeper 默认拦截）
+4. 或终端执行：`xattr -cr /Applications/cmchen-blog-desktop.app`
+
+> 确认自己的芯片类型：左上角苹果菜单 →「关于本机」→ 查看芯片信息
+
+#### Linux
+1. 从 Release 下载 `*.AppImage`
+2. 赋予执行权限并运行：
+   ```bash
+   chmod +x cmchen-blog-desktop-*.AppImage
+   ./cmchen-blog-desktop-*.AppImage
+   ```
+3. **Ubuntu 24.04+**：需要先安装 libfuse2
+   ```bash
+   sudo apt install libfuse2t64
+   ```
+
+### 本地打包（Windows）
+
+本机 Windows 可直接打包 Windows 版：
 
 ```bash
 # 一键打包（桌面形态构建 + 精简 electron 应用）
@@ -198,8 +249,25 @@ pnpm run dist:electron
 ```
 
 产物输出到 `release/`：
-- `cmchen-blog-desktop 0.0.1.exe`：portable 便携版，双击即用
 - `cmchen-blog-desktop Setup 0.0.1.exe`：NSIS 安装版
+- `cmchen-blog-desktop 0.0.1.exe`：便携版，双击即用
+
+> macOS 和 Linux 包需要在对应系统的 GitHub Actions 构建机上自动产出，Windows 本地无法打出。
+
+### 各平台构建环境要求
+
+如果需要在本地自行构建（不使用 GitHub Actions 自动发布），需满足以下环境：
+
+| 平台 | 必需 | 说明 |
+| --- | --- | --- |
+| 全平台 | Node.js 24+ | 本项目使用 `packageManager` 字段锁定 pnpm 版本 |
+| 全平台 | pnpm | 通过 `corepack enable` 启用，版本见 `package.json` |
+| 全平台 | npm | 随 Node.js 安装，打包脚本内部用 npm 安装隔离依赖 |
+| Windows | 无额外要求 | 打包 NSIS + portable，electron-builder 内置所需工具 |
+| macOS | 无额外要求 | 打包 dmg，需 macOS 系统（不能用 Linux 或 Windows 交叉编译） |
+| Linux | 无额外要求 | 打包 AppImage，Ubuntu 24.04+ 需 `sudo apt install libfuse2t64` |
+
+> macOS 的 dmg 依赖系统工具 `hdiutil` 和 Apple SDK，**只能在 macOS 上打包**，Windows 和 Linux 均无法交叉编译。GitHub Actions 使用 macOS 构建机（Apple Silicon）解决此限制。
 
 ### 实现说明
 
@@ -209,16 +277,7 @@ pnpm run dist:electron
 - 搜索（Pagefind）需要 http 源加载，两种模式均已处理
 - 只有想让「离线快照」更新时才需要重新打包；在线模式下内容始终最新
 - 应用图标在 `electron/icon.png`（≥256 的正方形 PNG），换成自己的图重新打包即可生效
-
-### 开发与调试
-
-```bash
-# 先构建桌面形态的 dist
-pnpm run build:desktop
-
-# 启动 electron 调试窗口
-pnpm exec electron .
-```
+- macOS 和 Linux 包均未签名（无 Apple 开发者账号），需用户手动授权首次打开
 
 
 ## 致谢
