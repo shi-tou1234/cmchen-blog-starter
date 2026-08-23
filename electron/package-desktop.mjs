@@ -1,7 +1,7 @@
 // 精简打包：把桌面壳抽成独立小应用再交给 electron-builder，
 // 避免把 astro/sharp/typst 等构建工具当运行时依赖打进 exe。
 // 用法：先 pnpm run build:desktop（产出根路径 dist/），再 node electron/package-desktop.mjs
-import { rmSync, mkdirSync, cpSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { rmSync, mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -72,4 +72,13 @@ const run = (label, cmd, args) => {
 // 把根项目当目标执行 --prod 剪枝（实测曾误删根 node_modules 的 380 个包）
 run('安装 staging 运行时依赖', 'npm', ['install', '--prefix', staging, '--omit=dev', '--no-audit', '--no-fund']);
 run('electron-builder 打包', 'pnpm', ['exec', 'electron-builder', '--win', '--projectDir', staging]);
-console.log('[desktop] 打包完成：release/ 下的 exe 为精简版');
+
+// 清理构建中间产物，release/ 只留最终 exe（下次构建自动重新生成，不算丢失）
+const releaseDir = path.join(root, 'release');
+for (const junk of ['win-unpacked', 'desktop-app', '.icon-ico', 'builder-debug.yml']) {
+  rmSync(path.join(releaseDir, junk), { recursive: true, force: true });
+}
+for (const f of readdirSync(releaseDir)) {
+  if (f.endsWith('.blockmap')) rmSync(path.join(releaseDir, f), { force: true });
+}
+console.log('[desktop] 打包完成：release/ 下的 exe 为精简版，中间产物已清理');
