@@ -10,8 +10,13 @@ const staging = path.join(root, 'release', 'desktop-app');
 const electronVersion = '43.4.1';
 // 打包目标：命令行第一个参数 win/mac/linux，缺省 win 保持原有行为
 const target = process.argv[2] || 'win';
-// 版本号：CI 从 tag 剥 v 透传，本地默认
-const appVersion = process.env.DESKTOP_VERSION || '0.0.1';
+// 版本号：CI 从 tag 剥 v 透传，本地默认；electron-builder 只认三段式 semver，
+// 两段的短 tag（如 v1.0 → 1.0）补零成 1.0.0，否则打包报 Invalid version
+const appVersion = (() => {
+  const segs = (process.env.DESKTOP_VERSION || '0.0.1').split('.').slice(0, 3);
+  while (segs.length < 3) segs.push('0');
+  return segs.join('.');
+})();
 
 // 前提核验：dist 必须是桌面形态（根路径引用），网页形态直接停
 const indexHtml = path.join(root, 'dist', 'index.html');
