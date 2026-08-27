@@ -196,8 +196,8 @@ export default defineConfig({
 
 ```bash
 # 打 tag 并推送 → 自动触发构建并发布 Release
-git tag v0.0.2
-git push origin v0.0.2
+git tag v1.0
+git push origin v1.0
 ```
 
 Release 包含的产物：
@@ -248,9 +248,9 @@ Release 包含的产物：
 pnpm run dist:electron
 ```
 
-产物输出到 `release/`：
-- `cmchen-blog-desktop Setup 0.0.1.exe`：NSIS 安装版
-- `cmchen-blog-desktop 0.0.1.exe`：便携版，双击即用
+产物输出到 `release/`（文件名中的版本号取 `DESKTOP_VERSION` 环境变量，缺省 `0.0.1`；CI 上由 tag 自动透传，两段式短 tag 会自动补零为三段）：
+- `cmchen-blog-desktop Setup <版本>.exe`：NSIS 安装版
+- `cmchen-blog-desktop <版本>.exe`：便携版，双击即用
 
 > macOS 和 Linux 包需要在对应系统的 GitHub Actions 构建机上自动产出，Windows 本地无法打出。
 
