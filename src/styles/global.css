@@ -126,6 +126,17 @@ html.theme-anim body {
   }
 }
 
+/* 移动端主题切换：颜色过渡（配合 ThemeIcon.astro 的 theme-morph 逻辑）。
+   View Transitions 的快照在触屏设备上常丢失文字栅格，只显示纯色；
+   这里改为对新旧文字/边框/填充色做平滑过渡，文字全程可见 */
+html.theme-morph *,
+html.theme-morph *::before,
+html.theme-morph *::after {
+  transition-property: color, background-color, border-color, fill, stroke;
+  transition-duration: 0.36s;
+  transition-timing-function: ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),

@@ -73,11 +73,27 @@ if (typeof window !== 'undefined') {
 
     let themeSwitching = false;
     let themeAnimTimer;
+    let themeMorphTimer;
 
     const handleToggleClick = () => {
       if (themeSwitching) return;
       const isCurrentlyDark = htmlRoot.getAttribute('data-theme') === 'dark';
       const nextTheme = isCurrentlyDark ? 'light' : 'dark';
+
+      // 触屏设备（如手机）：View Transitions 的快照常丢失文字栅格，只剩纯色；
+      // 改走颜色过渡，文字全程可见并平滑变色
+      const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+
+      if (isCoarsePointer && motionOK) {
+        htmlRoot.classList.add('theme-morph');
+        setTheme(nextTheme);
+        window.clearTimeout(themeMorphTimer);
+        themeMorphTimer = window.setTimeout(
+          () => htmlRoot.classList.remove('theme-morph'),
+          450
+        );
+        return;
+      }
 
       // 支持 View Transitions 且不在 Astro 路由过渡中时走圆形揭示
       if (
