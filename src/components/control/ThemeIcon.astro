@@ -13,29 +13,12 @@ import { Icon } from "astro-icon/components";
 if (typeof window !== 'undefined') {
   const THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)';
 
-  // 移动端自绘揭示依赖 CSS mask（个别旧 WebView 不支持）；不支持时退化为直接切换
-  const MASK_SUPPORT = (() => {
-    try {
-      const maskVal = 'radial-gradient(circle, #000 0, transparent 0)';
-      return typeof CSS !== 'undefined' && CSS.supports
-        ? CSS.supports('mask-image', maskVal) || CSS.supports('-webkit-mask-image', maskVal)
-        : true;
-    } catch (_e) {
-      return true;
-    }
-  })();
-
   function initThemeToggle() {
     const htmlRoot = document.querySelector('html');
     const themeToggle = document.getElementById('themeToggle');
 
     const getTheme = () => {
-      var localStorageTheme = null;
-      try {
-        localStorageTheme = localStorage?.getItem("theme") ?? '';
-      } catch (_error) {
-        localStorageTheme = '';
-      }
+      const localStorageTheme = localStorage?.getItem("theme") ?? '';
       if (['dark', 'light', 'system'].includes(localStorageTheme)) {
         return localStorageTheme;
       }
@@ -49,11 +32,7 @@ if (typeof window !== 'undefined') {
         ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
         : themeSet;
       htmlRoot.setAttribute('data-theme', resolved);
-      try {
-        window.localStorage.setItem('theme', themeSet);
-      } catch (_error) {
-        // 忽略无痕模式等导致的存储写入失败
-      }
+      window.localStorage.setItem('theme', themeSet);
     };
 
     // 系统主题变化监听器
@@ -86,91 +65,12 @@ if (typeof window !== 'undefined') {
     let themeSwitching = false;
     let themeAnimTimer;
 
-    // ===== 移动端自绘圆形揭示（不依赖浏览器快照）=====
-    // 触屏设备上 startViewTransition 的快照机制不稳定（偶发缺字、甚至冻结页面吞掉点击），
-    // 改为：克隆当前页面盖在最上层（旧主题），遮罩开一个从按钮位置扩散的圆洞，
-    // 露出下面已切换好的真实页面。全程真实 DOM（文字必定可见），
-    // 覆盖层 pointer-events:none，动画期间点击照常穿透到真实页面
-    const showMobileReveal = (nextTheme) => {
-      themeSwitching = true;
-      htmlRoot.classList.add('theme-switching');
-
-      const rect = themeToggle.getBoundingClientRect();
-      const x = rect.left + rect.width / 2;
-      const y = rect.top + rect.height / 2;
-      const maxR =
-        Math.hypot(
-          Math.max(x, window.innerWidth - x),
-          Math.max(y, window.innerHeight - y),
-        ) + 20;
-      const mask = (r) =>
-        `radial-gradient(circle ${r}px at ${x}px ${y}px, transparent 0, #000 1.5px)`;
-
-      const overlay = document.createElement('div');
-      overlay.id = 'theme-reveal-overlay';
-      const scrollBox = document.createElement('div');
-      scrollBox.style.cssText =
-        'position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain;';
-      const clone = document.body.cloneNode(true);
-      // 只留纯视觉副本：移除脚本/样式/外链/嵌入/媒体，避免重复请求与重播
-      clone.querySelectorAll('script,link,style,iframe,audio,video,canvas').forEach((el) => el.remove());
-      clone.setAttribute('aria-hidden', 'true');
-      clone.setAttribute('inert', '');
-      // 把旧主题钉在覆盖层：内联一份旧 CSS 变量值，data-theme 属性兜底直接取色规则
-      overlay.setAttribute('data-theme', htmlRoot.getAttribute('data-theme'));
-      const cs = getComputedStyle(document.documentElement);
-      for (const prop of cs) {
-        if (prop.startsWith('--')) {
-          overlay.style.setProperty(prop, cs.getPropertyValue(prop).trim());
-        }
-      }
-      scrollBox.appendChild(clone);
-      overlay.appendChild(scrollBox);
-      document.body.appendChild(overlay);
-
-      themeRevealStyle.textContent = `
-#theme-reveal-overlay {
-  position: fixed; inset: 0; z-index: 99990;
-  pointer-events: none; overflow: hidden;
-  animation: theme-reveal-mask 0.52s linear forwards;
-}
-@keyframes theme-reveal-mask {
-  from { mask-image: ${mask(6)}; -webkit-mask-image: ${mask(6)}; }
-  to   { mask-image: ${mask(maxR)}; -webkit-mask-image: ${mask(maxR)}; }
-}`;
-      // 强制布局：克隆按旧主题完成定位后再同步滚动位置
-      void overlay.offsetHeight;
-      scrollBox.scrollTop = window.scrollY;
-      // 覆盖层就位后才切换真实页面主题：首个可见帧即为旧页面 + 按钮处小圆洞
-      setTheme(nextTheme);
-
-      const cleanup = () => {
-        if (!overlay.isConnected) return;
-        overlay.remove();
-        htmlRoot.classList.remove('theme-switching');
-        themeSwitching = false;
-      };
-      overlay.addEventListener('animationend', cleanup, { once: true });
-      window.setTimeout(cleanup, 800);
-    };
-
     const handleToggleClick = () => {
       if (themeSwitching) return;
       const isCurrentlyDark = htmlRoot.getAttribute('data-theme') === 'dark';
       const nextTheme = isCurrentlyDark ? 'light' : 'dark';
 
-      // 触屏设备走自绘揭示；正在 Astro 路由过渡时不打扰
-      if (
-        motionOK &&
-        window.matchMedia('(pointer: coarse)').matches &&
-        MASK_SUPPORT &&
-        !htmlRoot.hasAttribute('data-astro-transition')
-      ) {
-        showMobileReveal(nextTheme);
-        return;
-      }
-
-      // 桌面端/支持快照的浏览器：View Transitions 圆形揭示
+      // 支持 View Transitions 且不在 Astro 路由过渡中时走圆形揭示
       if (
         motionOK &&
         document.startViewTransition &&

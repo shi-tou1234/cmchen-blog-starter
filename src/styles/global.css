@@ -110,13 +110,6 @@ html.theme-vt *::after {
   transition: none !important;
 }
 
-/* 移动端自绘揭示期间同样冻结颜色过渡，圆洞内新页面颜色一步到位 */
-html.theme-switching *,
-html.theme-switching *::before,
-html.theme-switching *::after {
-  transition: none !important;
-}
-
 /* 降级方案（不支持 View Transitions 的浏览器）：整体轻微沉降提示变化 */
 html.theme-anim body {
   animation: theme-settle 0.36s ease-out both;
