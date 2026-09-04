@@ -73,27 +73,11 @@ if (typeof window !== 'undefined') {
 
     let themeSwitching = false;
     let themeAnimTimer;
-    let themeMorphTimer;
 
     const handleToggleClick = () => {
       if (themeSwitching) return;
       const isCurrentlyDark = htmlRoot.getAttribute('data-theme') === 'dark';
       const nextTheme = isCurrentlyDark ? 'light' : 'dark';
-
-      // 触屏设备（如手机）：View Transitions 的快照常丢失文字栅格，只剩纯色；
-      // 改走颜色过渡，文字全程可见并平滑变色
-      const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
-
-      if (isCoarsePointer && motionOK) {
-        htmlRoot.classList.add('theme-morph');
-        setTheme(nextTheme);
-        window.clearTimeout(themeMorphTimer);
-        themeMorphTimer = window.setTimeout(
-          () => htmlRoot.classList.remove('theme-morph'),
-          450
-        );
-        return;
-      }
 
       // 支持 View Transitions 且不在 Astro 路由过渡中时走圆形揭示
       if (
@@ -120,7 +104,24 @@ if (typeof window !== 'undefined') {
         themeSwitching = true;
         themeRevealStyle.textContent = `@keyframes theme-reveal { from { clip-path: circle(0% at ${xPercent.toFixed(4)}% ${yPercent.toFixed(4)}%); } to { clip-path: circle(${radiusPercent.toFixed(4)}% at ${xPercent.toFixed(4)}% ${yPercent.toFixed(4)}%); } }`;
         htmlRoot.classList.add('theme-vt');
-        const vt = document.startViewTransition(() => setTheme(nextTheme));
+
+        // 移动端快照偶发「只剩纯色、文字消失」：慢速网络下文字字体未就绪，
+        // 或切换后浏览器抓到未完成绘制的一帧。切主题后等字体就绪并多等一帧
+        // 再让浏览器截取新快照，确保文字被包含（字体等待设 1.2s 上限防卡顿）
+        const fontsReady =
+          document.fonts && document.fonts.ready
+            ? Promise.race([
+                document.fonts.ready,
+                new Promise((resolve) => setTimeout(resolve, 1200)),
+              ])
+            : Promise.resolve();
+        const vt = document.startViewTransition(async () => {
+          setTheme(nextTheme);
+          await fontsReady;
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+          );
+        });
         vt.finished
           .catch(() => {})
           .finally(() => {
