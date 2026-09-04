@@ -105,19 +105,10 @@ if (typeof window !== 'undefined') {
         themeRevealStyle.textContent = `@keyframes theme-reveal { from { clip-path: circle(0% at ${xPercent.toFixed(4)}% ${yPercent.toFixed(4)}%); } to { clip-path: circle(${radiusPercent.toFixed(4)}% at ${xPercent.toFixed(4)}% ${yPercent.toFixed(4)}%); } }`;
         htmlRoot.classList.add('theme-vt');
 
-        // 移动端快照偶发「只剩纯色、文字消失」：慢速网络下文字字体未就绪，
-        // 或切换后浏览器抓到未完成绘制的一帧。切主题后等字体就绪并多等一帧
-        // 再让浏览器截取新快照，确保文字被包含（字体等待设 1.2s 上限防卡顿）
-        const fontsReady =
-          document.fonts && document.fonts.ready
-            ? Promise.race([
-                document.fonts.ready,
-                new Promise((resolve) => setTimeout(resolve, 1200)),
-              ])
-            : Promise.resolve();
+        // 切主题后多等一帧绘制再截取新快照，避免移动端抓到未上字的半渲染帧。
+        // 注意：这里不能做长等待（如等字体就绪）——期间快照覆盖层会冻结页面并吞掉点击
         const vt = document.startViewTransition(async () => {
           setTheme(nextTheme);
-          await fontsReady;
           await new Promise((resolve) =>
             requestAnimationFrame(() => requestAnimationFrame(resolve))
           );
