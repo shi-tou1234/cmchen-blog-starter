@@ -1,0 +1,83 @@
+<script>
+// 移动端顶栏 logo 区域（标题 + slogan + 运行天数）的滚动显隐：
+// 页面顶部时始终显示；向下滚动超过阈值后滑出消失；向上滚动时重新出现。
+// 仅 <768px 生效，桌面端顶栏 logo 常驻不动。
+function initHeaderLogoScrollHide() {
+  const logo = document.querySelector('.header-logo');
+  if (!logo) return;
+
+  const mobileMq = window.matchMedia('(max-width: 767px)');
+  if (!mobileMq.matches) return;
+
+  const TOP_KEEP_ZONE = 80;   // 距顶部 < 80px 时始终显示
+  const HIDE_DISTANCE = 120;  // 向下累计滚动超过 120px 才隐藏
+  const SHOW_DISTANCE = 24;   // 向上累计滚动超过 24px 就重新显示
+
+  let lastY = window.scrollY;
+  let downAcc = 0;
+  let upAcc = 0;
+  let ticking = false;
+
+  const setHidden = (hidden: boolean) => {
+    logo.classList.toggle('is-logo-hidden', hidden);
+  };
+
+  const updateLogo = () => {
+    ticking = false;
+    const y = window.scrollY;
+    const delta = y - lastY;
+    lastY = y;
+
+    if (delta > 0) upAcc = 0;
+    if (delta < 0) downAcc = 0;
+    if (delta > 0) downAcc += delta;
+    if (delta < 0) upAcc -= delta;
+
+    const shouldHide = y > TOP_KEEP_ZONE && downAcc > HIDE_DISTANCE;
+    const shouldShow = y < TOP_KEEP_ZONE || upAcc > SHOW_DISTANCE;
+
+    if (shouldHide) setHidden(true);
+    else if (shouldShow) setHidden(false);
+  };
+
+  const onScroll = () => {
+    if (!ticking) {
+      ticking = true;
+      window.requestAnimationFrame(updateLogo);
+    }
+  };
+
+  const oldScrollHandler = (window as any).__headerLogoScrollHandler;
+  if (oldScrollHandler) window.removeEventListener('scroll', oldScrollHandler);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  (window as any).__headerLogoScrollHandler = onScroll;
+
+  const oldMqHandler = (window as any).__headerLogoMqHandler;
+  if (oldMqHandler) {
+    mobileMq.removeEventListener('change', oldMqHandler);
+    oldMqHandler({ matches: window.innerWidth > 767 });
+  }
+  const handleMqChange = (e: MediaQueryListEvent | { matches: boolean }) => {
+    if (!e.matches) {
+      // 回到桌面断点时复位，避免残留隐藏类
+      logo.classList.remove('is-logo-hidden');
+      downAcc = 0;
+      upAcc = 0;
+    }
+  };
+  mobileMq.addEventListener('change', handleMqChange);
+  (window as any).__headerLogoMqHandler = handleMqChange;
+
+  // 初始状态：顶部时确保可见
+  if (window.scrollY < TOP_KEEP_ZONE) setHidden(false);
+
+  updateLogo();
+}
+
+document.addEventListener('DOMContentLoaded', initHeaderLogoScrollHide);
+document.addEventListener('astro:page-load', initHeaderLogoScrollHide);
+document.addEventListener('astro:after-swap', initHeaderLogoScrollHide);
+if (document.readyState !== 'loading') {
+  initHeaderLogoScrollHide();
+}
+</script>

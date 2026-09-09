@@ -5,7 +5,7 @@
   --toc-width: 240px;
 
   /* 头部高度（侧边栏/目录/内容区避让用，改头部高度只改这里） */
-  --header-height: 72px;
+  --header-height: 104px;
   --header-height-lg: 88px;
 
   /* 层级档位：全站统一，避免随意数字互相盖错层 */

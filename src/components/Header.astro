@@ -7,6 +7,7 @@ import FontSizeControl from "./control/FontSizeControl.astro"
 import headerContact from "@/data/header-contact"
 import siteInfo from "@/data/site-info"
 import HeaderLogoFracture from "./header/HeaderLogoFracture.astro"
+import HeaderLogoScrollHide from "./header/HeaderLogoScrollHide.astro"
 import MobileMenu from "./header/MobileMenu.astro"
 import CopyEmail from "./header/CopyEmail.astro"
 import RunningDays from "./header/RunningDays.astro"
@@ -29,9 +30,9 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
 <div id="main-header" class="fixed top-0 left-0 right-0 z-[var(--z-header)] w-full overflow-visible transition-transform duration-300 ease-in-out">
 <div class="header-inner relative flex items-center pt-2 md:py-4 text-[var(--text-color)] max-w-[var(--header-width)] mx-auto">
     <!-- logo -->
-    <div class="pr-3 md:pr-5 py-2 z-30 shrink-0 header-logo -ml-2 md:-ml-32 hidden md:block">
+    <div class="pr-3 md:pr-5 py-2 z-30 shrink-0 header-logo -ml-2 md:-ml-32">
         <a href={ indexPage } >
-            <span class="header-slice-text text-3xl font-bold" data-text={siteInfo.title} data-header-logo="true">
+            <span class="header-slice-text text-2xl md:text-3xl font-bold" data-text={siteInfo.title} data-header-logo="true">
               <span class="header-slice-text__base">{ siteInfo.title }</span>
               <span class="header-slice-text__shards" aria-hidden="true"></span>
             </span>
@@ -307,6 +308,25 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
   }
 }
 
+/* 移动端滚动显隐：顶部常驻，下滑隐藏，上滑重现 */
+@media (max-width: 767px) {
+  .header-logo {
+    transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.3s ease;
+  }
+
+  .header-logo.is-logo-hidden {
+    transform: translateX(-135%);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-logo {
+    transition: none;
+  }
+}
+
   @media (max-width: 775px) {
     #mobile-menu {
       width: min(86vw, 320px);
@@ -353,6 +373,7 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
 </style>
 
 <HeaderLogoFracture />
+<HeaderLogoScrollHide />
 <CopyEmail />
 <HeaderScroll />
 <PagefindLoader />
