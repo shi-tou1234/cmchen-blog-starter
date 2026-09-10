@@ -13,7 +13,7 @@
 
   body {
     @apply bg-[--bg-color] text-[--text-color];
-    font-family: "Noto Serif SC", "Times New Roman", "STZhongsong", serif;
+    font-family: var(--font-serif-cjk);
     overflow-y: scroll;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;

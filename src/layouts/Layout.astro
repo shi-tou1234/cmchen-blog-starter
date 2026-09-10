@@ -53,12 +53,6 @@ const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
     <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, max-image-preview:none">
     <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <link rel="icon" href={siteConfig.favicon} type="image/x-icon">
-    <link rel="preconnect" href="https://fonts.font.im" crossorigin>
-    <link rel="preload" as="style" href="https://fonts.font.im/css2?family=Noto+Serif+SC:wght@400;700&display=swap">
-    <link rel="preload" as="style" href="https://fonts.font.im/css2?family=EB+Garamond&display=swap">
-    <link rel="stylesheet" href="https://fonts.font.im/css2?family=Noto+Serif+SC:wght@400;700&display=swap">
-    <link rel="stylesheet" href="https://fonts.font.im/css2?family=EB+Garamond&display=swap">
-    <link rel="stylesheet" href="https://fonts.font.im/css2?family=ZCOOL+KuaiLe&family=Ma+Shan+Zheng&family=ZCOOL+QingKe+HuangYou&display=swap">
     <title>{pageTitle}</title>
     {description && <meta name="description" content={description} />}
     <meta property="og:site_name" content={siteConfig.title} />

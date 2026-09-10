@@ -26,6 +26,26 @@
 }
 
 
+/* 字体栈：先用本机可能已安装的原字体，否则回退到系统自带字库。
+   全站不依赖任何外部字体 CDN，改字体只改这里。 */
+:root {
+  /* 楷体（顶栏 logo 标题）——原 Ma Shan Zheng 马善政楷书 */
+  --font-kai: "Ma Shan Zheng", "Kaiti SC", "STKaiti", "KaiTi", "楷体", "AR PL UKai CN", serif;
+
+  /* 展示黑体（顶栏标语）——原 ZCOOL QingKe HuangYou 站酷庆科黄油体 */
+  --font-display: "ZCOOL QingKe HuangYou", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Hiragino Sans GB", sans-serif;
+
+  /* 圆体（卡片标题/摘要、移动端菜单）——原 ZCOOL KuaiLe 站酷快乐体 */
+  --font-rounded: "ZCOOL KuaiLe", "Yuanti SC", "YouYuan", "幼圆", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+
+  /* 中文衬线（正文）——原 Noto Serif SC 思源宋体 */
+  --font-serif-cjk: "Noto Serif SC", "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", "STZhongsong", "SimSun", "Times New Roman", serif;
+
+  /* 西文衬线（页脚）——原 EB Garamond */
+  --font-serif-latin: "EB Garamond", Georgia, "Songti SC", "Times New Roman", Times, serif;
+}
+
+
 /* 颜色变量 */
 :root {
     --bg-color: #f8f0dd;
