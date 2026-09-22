@@ -47,7 +47,7 @@ const noRecommendHint = '暂时没有可推荐的文章，去首页逛逛吧～'
                         return (
                             <a
                                 href={getRelativeLocaleUrl(currentLang, `/blog/${post.id}`)}
-                                class="recommend-card group block rounded-xl border border-[var(--border-color)] bg-[var(--bg-color)]/60 p-5 no-underline transition-all duration-300 hover:border-[var(--link-color)] hover:bg-[var(--hover-bg-color)] hover:shadow-[0_8px_24px_var(--shadow-color)] hover:-translate-y-1"
+                                class="recommend-card group block rounded-xl border border-[var(--border-color)] bg-[var(--surface-overlay)] p-5 no-underline transition-all duration-300 hover:border-[var(--link-color)] hover:bg-[var(--hover-bg-color)] hover:shadow-[0_8px_24px_var(--shadow-color)] hover:-translate-y-1"
                             >
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     {categories.slice(0, 2).map((cat) => (

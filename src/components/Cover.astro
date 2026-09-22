@@ -64,7 +64,8 @@ const typewriterEnabled = Array.isArray(signatures) && signatures.length > 0;
             phrases = [];
         }
 
-        if (phrases.length <= 1) {
+        // 减少动画偏好：直接展示首句，不播放打字循环
+        if (phrases.length <= 1 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             textNode.textContent = phrases[0] || textNode.textContent || '';
             return;
         }

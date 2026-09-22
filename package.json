@@ -23,7 +23,6 @@
     "@tailwindcss/vite": "^4.1.13",
     "@tsparticles/engine": "^3.9.1",
     "@tsparticles/slim": "^3.9.1",
-    "aos": "^2.3.4",
     "astro": "^5.13.7",
     "astro-icon": "^1.1.5",
     "echarts": "5.4.3",

@@ -243,32 +243,32 @@
   padding: 0.8rem 1rem;
   border-radius: 0.6rem;
   margin: 1rem 0;
-  border-left: 4px solid;
   border: 1px solid var(--border-color);
+  border-left-width: 4px;
 }
 
 .note {
-  border-color: var(--admonition-note-border);
+  border-left-color: var(--admonition-note-border);
   background: var(--admonition-note-bg);
 }
 
 .tip {
-  border-color: var(--admonition-tip-border);
+  border-left-color: var(--admonition-tip-border);
   background: var(--admonition-tip-bg);
 }
 
 .important {
-  border-color: var(--admonition-important-border);
+  border-left-color: var(--admonition-important-border);
   background: var(--admonition-important-bg);
 }
 
 .warning {
-  border-color: var(--warning-border-color);
+  border-left-color: var(--warning-border-color);
   background: var(--warning-bg-color);
 }
 
 .caution {
-  border-color: var(--admonition-caution-border);
+  border-left-color: var(--admonition-caution-border);
   background: var(--admonition-caution-bg);
 }
 

@@ -4,7 +4,6 @@ import { baseUrl } from '@utils/url-utils';
 import { resolveAssetUrl } from '@utils/asset-url';
 import "@styles/global.css"
 import 'katex/dist/katex.min.css';
-import 'aos/dist/aos.css';
 import { ClientRouter } from "astro:transitions";
 
 interface Props {
@@ -294,25 +293,23 @@ const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
 </style>
 
 <script>
-  // @ts-expect-error aos 包没有类型声明
-  import AOS from 'aos';
   import { onPageScoped } from '@utils/page-lifecycle';
+  import { initCardReveal } from '@utils/reveal';
 
+  // 全站统一入场机制（AOS 已移除）：
+  // 1) 正文块程序化挂 data-card-reveal + 递进 delay；
+  // 2) initCardReveal 用 IntersectionObserver 统一驱动（含 prefers-reduced-motion 分支），
+  //    其余 [data-card-reveal] 元素（PostCard、Navi、BlogNavi、LicenseCard 等）由它一并接管。
   onPageScoped(() => {
     const container = document.querySelector('.markdown-content');
     if (container) {
-      const elements = container.querySelectorAll(':scope > *');
+      const elements = container.querySelectorAll<HTMLElement>(':scope > *');
       elements.forEach((el, i) => {
-        el.setAttribute('data-aos', 'fade-up');
-        el.setAttribute('data-aos-delay', (i % 5 * 50).toString());
+        el.setAttribute('data-card-reveal', '');
+        el.style.setProperty('--card-reveal-delay', `${(i % 5) * 50}ms`);
       });
     }
 
-    AOS.init({
-      duration: 800,
-      once: true,
-    });
-    
-    AOS.refreshHard();
+    initCardReveal();
   });
 </script>

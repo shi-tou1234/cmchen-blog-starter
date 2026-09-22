@@ -18,7 +18,7 @@ interface Props {
     categories?: string[];
     preview?: string;
     readingMinutes?: number;
-    aosDelay?: number;
+    revealDelay?: number;
     externalImage?: string;
     photographer?: string;
     photographerUrl?: string;
@@ -36,7 +36,7 @@ const {
     categories = [],
     preview = description,
     readingMinutes = 1,
-    aosDelay = 0,
+    revealDelay = 0,
     externalImage = '',
     photographer = '',
     photographerUrl = '',
@@ -71,18 +71,9 @@ const placeholderDecorations = Array.from({ length: 14 }, (_, index) => {
     return `left:${left}%;top:${top}%;width:${size}px;height:${size}px;transform:translate(-50%,-50%) rotate(${rotate}deg);opacity:${opacity};background-image:url("${image}");animation-delay:${(seed % 7) * 0.35}s;`;
 });
 
-const tagPalette = [
-    { bg: 'rgba(251, 191, 36, 0.35)', text: '#92400e', border: 'rgba(245, 158, 11, 0.88)', darkBg: 'rgba(251, 191, 36, 0.32)', darkText: '#fff4bf', darkBorder: 'rgba(245, 158, 11, 0.96)' },
-    { bg: 'rgba(34, 211, 238, 0.34)', text: '#0e7490', border: 'rgba(6, 182, 212, 0.86)', darkBg: 'rgba(34, 211, 238, 0.3)', darkText: '#d8fbff', darkBorder: 'rgba(34, 211, 238, 0.94)' },
-    { bg: 'rgba(167, 139, 250, 0.34)', text: '#5b21b6', border: 'rgba(139, 92, 246, 0.86)', darkBg: 'rgba(139, 92, 246, 0.3)', darkText: '#efe7ff', darkBorder: 'rgba(167, 139, 250, 0.94)' },
-    { bg: 'rgba(52, 211, 153, 0.34)', text: '#0f766e', border: 'rgba(16, 185, 129, 0.88)', darkBg: 'rgba(16, 185, 129, 0.3)', darkText: '#d8fff1', darkBorder: 'rgba(52, 211, 153, 0.94)' },
-    { bg: 'rgba(251, 113, 133, 0.34)', text: '#9f1239', border: 'rgba(244, 63, 94, 0.86)', darkBg: 'rgba(244, 63, 94, 0.3)', darkText: '#ffe2ea', darkBorder: 'rgba(251, 113, 133, 0.94)' },
-    { bg: 'rgba(180, 130, 90, 0.34)', text: '#7c5a34', border: 'rgba(160, 110, 70, 0.86)', darkBg: 'rgba(160, 110, 70, 0.3)', darkText: '#e8d5b8', darkBorder: 'rgba(180, 130, 90, 0.94)' },
-];
-
+// 分类色与归档页同一套 --cat-slot 体系（8 档 × 45° 色相），明暗主题由 variables.css 接管
 function getTagStyle(tag: string): string {
-    const selected = tagPalette[hashString(tag) % tagPalette.length];
-    return `--post-tag-bg:${selected.bg};--post-tag-text:${selected.text};--post-tag-border:${selected.border};--post-tag-bg-dark:${selected.darkBg};--post-tag-text-dark:${selected.darkText};--post-tag-border-dark:${selected.darkBorder};`;
+    return `--cat-slot:${hashString(tag) % 8};`;
 }
 
 
@@ -91,8 +82,8 @@ const pageUrl = getRelativeLocaleUrl(currentLang, "/blog/" + url);
 
 <article
     data-card-reveal
-    style={`--card-reveal-delay:${aosDelay}ms; --card-width:min(720px, 88vw);`}
-    class="post-card group relative mx-auto my-5 block min-w-0 w-full max-w-[var(--card-width)] overflow-hidden rounded-[1.35rem] border border-[var(--border-color)]/80 bg-[color-mix(in_srgb,var(--bg-color)_96%,transparent)] shadow-[0_12px_34px_color-mix(in_srgb,var(--shadow-color)_58%,transparent)]"
+    style={`--card-reveal-delay:${revealDelay}ms; --card-width:min(720px, 88vw);`}
+    class="post-card group relative mx-auto my-5 block min-w-0 w-full max-w-[var(--card-width)] overflow-hidden rounded-[var(--radius-card-lg)] border border-[var(--border-color)]/80 bg-[var(--surface-raised)] shadow-[var(--shadow-card)]"
 >
     <a
         href={pageUrl}
@@ -177,8 +168,8 @@ const pageUrl = getRelativeLocaleUrl(currentLang, "/blog/" + url);
     .post-card {
         position: relative;
         transform: translate3d(0, 0, 0) scale(1);
-        background: color-mix(in srgb, var(--bg-color) 96%, transparent);
-        box-shadow: 0 0 0 1px var(--border-color), 0 12px 34px color-mix(in srgb, var(--shadow-color) 58%, transparent);
+        background: var(--surface-raised);
+        box-shadow: 0 0 0 1px var(--border-color), var(--shadow-card);
         transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.52s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, background-color 0.3s ease, opacity 0.45s ease;
         will-change: transform, opacity, box-shadow;
     }
@@ -190,19 +181,6 @@ const pageUrl = getRelativeLocaleUrl(currentLang, "/blog/" + url);
     .post-card__stretched-link:focus-visible {
         outline: 2px solid var(--link-color);
         outline-offset: 4px;
-    }
-
-    .post-card.post-card-reveal {
-        opacity: 0;
-        transform: translate3d(0, 24px, 0) scale(0.985);
-        filter: blur(5px) saturate(0.94);
-    }
-
-    .post-card.post-card-reveal.is-visible {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0) saturate(1);
-        transition-delay: var(--card-reveal-delay, 0ms);
     }
 
     .post-card:hover {
@@ -333,31 +311,25 @@ const pageUrl = getRelativeLocaleUrl(currentLang, "/blog/" + url);
     }
 
     .post-card__tag {
+        --cat-hue: calc(var(--cat-slot, 0) * 45);
         display: inline-flex;
         align-items: center;
         border-radius: 999px;
-        border: 1px solid var(--post-tag-border);
-        background: var(--post-tag-bg);
-        color: var(--post-tag-text);
+        border: 1px solid var(--cat-tag-border);
+        background: var(--cat-tag-bg);
+        color: var(--cat-tag-color);
         font-size: 0.68rem;
         line-height: 1;
         padding: 0.28rem 0.5rem;
         font-weight: 700;
-        box-shadow: 0 4px 10px color-mix(in srgb, var(--post-tag-border) 35%, transparent);
+        box-shadow: 0 4px 10px color-mix(in srgb, var(--cat-tag-border) 35%, transparent);
         transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), filter 0.24s ease, box-shadow 0.24s ease;
-    }
-
-    [data-theme="dark"] .post-card__tag {
-        background: var(--post-tag-bg-dark);
-        color: var(--post-tag-text-dark);
-        border-color: var(--post-tag-border-dark);
-        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
     }
 
     .post-card:hover .post-card__tag {
         transform: translateY(-2px);
         filter: saturate(1.1);
-        box-shadow: 0 8px 16px color-mix(in srgb, var(--post-tag-border) 58%, transparent);
+        box-shadow: 0 8px 16px color-mix(in srgb, var(--cat-tag-border) 58%, transparent);
     }
 
     .post-card__photo-credit {

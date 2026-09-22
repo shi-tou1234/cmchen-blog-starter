@@ -57,7 +57,7 @@ const resolvedCovers = await Promise.all(
                         preview={preview}
                         readingMinutes={readingMinutes}
                         updatedDate={entry.data.updatedDate}
-                        aosDelay={index * 95}
+                        revealDelay={index * 95}
                         externalImage={resolved.source !== 'user' ? resolved.imageUrl : ''}
                         photographer={resolved.photographer}
                         photographerUrl={resolved.photographerUrl}
@@ -118,59 +118,10 @@ const resolvedCovers = await Promise.all(
         }, MAX_WAIT);
     }
 
-    function initPostCardReveal() {
-        const cards = Array.from(document.querySelectorAll('[data-card-reveal]'));
-        if (cards.length === 0) return;
-
-        const oldObserver = window.__postCardRevealObserver;
-        if (oldObserver) {
-            oldObserver.disconnect();
-        }
-
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (reduceMotion) {
-            cards.forEach((card) => {
-                if (!(card instanceof HTMLElement)) return;
-                card.classList.remove('post-card-reveal');
-                card.classList.add('is-visible');
-            });
-            return;
-        }
-
-        cards.forEach((card) => {
-            if (!(card instanceof HTMLElement)) return;
-            card.classList.add('post-card-reveal');
-            card.classList.remove('is-visible');
-        });
-
-        const observer = new IntersectionObserver(
-            (entries, currentObserver) => {
-                entries.forEach((entry) => {
-                    if (!entry.isIntersecting) return;
-                    const element = entry.target;
-                    if (element instanceof HTMLElement) {
-                        element.classList.add('is-visible');
-                    }
-                    currentObserver.unobserve(entry.target);
-                });
-            },
-            {
-                root: null,
-                rootMargin: '0px 0px -12% 0px',
-                threshold: 0.08,
-            },
-        );
-
-        cards.forEach((card) => observer.observe(card));
-        window.__postCardRevealObserver = observer;
-    }
-
+    // 卡片入场动画初始化已抽到 utils/reveal.ts，由 Layout 全局接管
     initPostListLoading();
-    initPostCardReveal();
     document.addEventListener('astro:page-load', initPostListLoading);
     document.addEventListener('astro:after-swap', initPostListLoading);
-    document.addEventListener('astro:page-load', initPostCardReveal);
-    document.addEventListener('astro:after-swap', initPostCardReveal);
 </script>
 
 <style is:global>

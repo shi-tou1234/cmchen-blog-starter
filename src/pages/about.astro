@@ -170,7 +170,7 @@ function getIntensityLevel(count: number, maxCount: number): number {
   <div class="relative z-10 mx-auto w-full max-w-[var(--page-width)]">
     <Cover title={t('cover.title.about')} subTitle={t('cover.subTitle.about')} />
 
-    <section class="mb-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg-color)]/40 p-4 md:p-5">
+    <section class="mb-6 rounded-[var(--radius-card)] border border-[var(--border-color)] bg-[var(--card-bg-color)]/40 p-4 md:p-5">
       <Markdown class="markdown-content onload-animation">
         <Content />
       </Markdown>
@@ -217,7 +217,7 @@ function getIntensityLevel(count: number, maxCount: number): number {
       </div>
     </section>
 
-    <section class="mb-8 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg-color)]/40 p-4 md:p-5">
+    <section class="mb-8 rounded-[var(--radius-card)] border border-[var(--border-color)] bg-[var(--card-bg-color)]/40 p-4 md:p-5">
       <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 class="text-lg font-semibold text-[var(--text-color)]">{labels.heatmapTitle}</h2>
@@ -286,11 +286,11 @@ function getIntensityLevel(count: number, maxCount: number): number {
       )}
     </section>
 
-    <section class="mb-8 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg-color)]/40 p-4 md:p-5">
+    <section class="mb-8 rounded-[var(--radius-card)] border border-[var(--border-color)] bg-[var(--card-bg-color)]/40 p-4 md:p-5">
       <h2 class="mb-4 text-lg font-semibold text-[var(--text-color)]">{labels.introTitle}</h2>
       <p class="text-[var(--text-color)]/80 leading-7">{aboutPersonal.intro}</p>
 
-      <div class="mt-5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-color)]/60 p-4 shadow-sm">
+      <div class="mt-5 rounded-[var(--radius-card-sm)] border border-[var(--border-color)] bg-[var(--bg-color)]/60 p-4 shadow-sm">
         <h3 class="text-base font-semibold text-[var(--text-color)] mb-3">{labels.musicTitle}</h3>
         <audio id="about-music-player" controls class="w-full" src={aboutPersonal.musicTracks[0]?.url || ''}></audio>
         <p class="mt-2 text-sm text-[var(--text-color)]/70">
@@ -314,12 +314,12 @@ function getIntensityLevel(count: number, maxCount: number): number {
         </ul>
       </div>
 
-      <div class="mt-5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-color)]/60 p-4 shadow-sm">
+      <div class="mt-5 rounded-[var(--radius-card-sm)] border border-[var(--border-color)] bg-[var(--bg-color)]/60 p-4 shadow-sm">
         <TravelMap editable={false} visitedCities={travelPlaces} />
       </div>
     </section>
 
-    <section class="mb-8 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg-color)]/40 p-4 md:p-5">
+    <section class="mb-8 rounded-[var(--radius-card)] border border-[var(--border-color)] bg-[var(--card-bg-color)]/40 p-4 md:p-5">
       <h2 class="mb-4 text-lg font-semibold text-[var(--text-color)]">{labels.siteRecordTitle}</h2>
       <div class="about-timeline">
         {timelineRecent.map((item, index) => (
@@ -600,7 +600,7 @@ function getIntensityLevel(count: number, maxCount: number): number {
 <style is:global>
   .about-heatmap-tooltip {
     position: fixed;
-    z-index: 999;
+    z-index: var(--z-tooltip);
     pointer-events: none;
     padding: 0.35rem 0.65rem;
     border-radius: 0.45rem;

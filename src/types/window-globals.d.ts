@@ -21,6 +21,10 @@ declare global {
     __travelGeoCache?: Record<string, any>;
     /** MainPageLayout 粒子主题切换 observer */
     __globalParticleThemeObserver?: MutationObserver;
+    /** 卡片入场动画的 IntersectionObserver（utils/reveal.ts 持有，换页时先断开旧的） */
+    __postCardRevealObserver?: IntersectionObserver;
+    /** 全局键盘快捷键只绑定一次（KeyboardShortcuts.astro） */
+    __keyboardShortcutsBound?: boolean;
     /** MainPageLayout 弹层焦点圈住函数（历史遗留接口） */
     __blogTrapFocus?: (el: Element) => void;
   }

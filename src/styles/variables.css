@@ -10,9 +10,11 @@
 
   /* 层级档位：全站统一，避免随意数字互相盖错层 */
   --z-header: 50;
-  --z-search: 100;
   --z-nav: 900;
   --z-backtop: 1000;
+  --z-tooltip: 1050;
+  /* 搜索浮层必须压住底栏(900)与回顶(1000)，故高于两者、低于遮罩/弹窗 */
+  --z-search: 1100;
   --z-modal: 1200;
   --z-mask: 1190;
   --z-guide: 1300;
@@ -23,6 +25,17 @@
 
   /* 字体大小缩放 */
   --font-size-scale: 1;
+
+  /* 卡片壳参数：圆角三档（内层圆角不得大于外层）、表面三配方、阴影两档。
+     明暗主题自动接管；新表面/阴影一律引用这里，不要在组件里写裸值。 */
+  --radius-card-lg: 1.35rem;
+  --radius-card: 0.75rem;
+  --radius-card-sm: 0.5rem;
+  --surface-card: color-mix(in srgb, var(--bg-color) 97%, transparent);
+  --surface-raised: color-mix(in srgb, var(--bg-color) 96%, transparent);
+  --surface-overlay: color-mix(in srgb, var(--bg-color) 60%, transparent);
+  --shadow-card: 0 12px 34px color-mix(in srgb, var(--shadow-color) 58%, transparent);
+  --shadow-card-hover: 0 10px 28px color-mix(in srgb, var(--shadow-color) 65%, transparent), 0 2px 8px color-mix(in srgb, var(--shadow-color) 45%, transparent);
 }
 
 
@@ -48,6 +61,7 @@
 
 /* 颜色变量 */
 :root {
+    color-scheme: light;
     --bg-color: #f8f0dd;
     --text-color: #2c2416;
     --shadow-color: rgba(139, 69, 19, 0.1);
@@ -132,6 +146,7 @@
   }
 
   [data-theme="dark"] {
+    color-scheme: dark;
     --bg-color: #1a1612;
     --text-color: #e8ddd0;
     --shadow-color: rgba(0, 0, 0, 0.3);
