@@ -136,6 +136,16 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
   letter-spacing: 1px;
 }
 
+/* 电脑端 logo 区块（标题/运行天数/slogan）整体左移，退回文章卡片左侧的留白里。
+   logo 文本实测宽约 182px，而 header 内容列到 776px 正文容器的留白只有 124px，
+   不左移必然压上去；位移量按 header-inner 外侧留白钳制：
+   留白够就移满 96px，留白不够就只移到还剩 12px 视口边距，避免被挤出屏幕。 */
+@media (min-width: 768px) {
+  .header-logo {
+    transform: translateX(max(-96px, calc((var(--header-width) - 100vw) / 2 + 12px)));
+  }
+}
+
 .header-slogan {
   font-family: var(--font-display);
   font-weight: 600;
