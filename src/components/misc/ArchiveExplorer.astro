@@ -86,6 +86,9 @@ for (const [year, months] of Object.entries(postsByYearMonth)) {
   yearPostCounts[year] = total;
 }
 
+// 全部默认展开，统一单行式（悬停展开摘要）
+const orderedYears = Object.keys(postsByYearMonth).sort().reverse();
+
 const allLabel = language.toLowerCase().startsWith('zh') ? '全部文章' : 'All posts';
 const filterTitle = language.toLowerCase().startsWith('zh') ? '归档' : 'Archives';
 const filterHint = language.toLowerCase().startsWith('zh') ? '点击归档可筛选对应文章' : 'Use archives to filter posts';
@@ -95,6 +98,8 @@ const backLabel = language.toLowerCase().startsWith('zh') ? '← 返回' : '← 
 const minLabel = language.toLowerCase().startsWith('zh') ? '分钟' : 'min';
 const postsLabel = language.toLowerCase().startsWith('zh') ? '篇' : 'posts';
 const collapseHint = language.toLowerCase().startsWith('zh') ? '点击折叠/展开' : 'Click to fold/unfold';
+const expandAllLabel = language.toLowerCase().startsWith('zh') ? '全部展开' : 'Expand all';
+const collapseAllLabel = language.toLowerCase().startsWith('zh') ? '全部收起' : 'Collapse all';
 
 const serializedTopLevelCategories = JSON.stringify(topLevelCategories);
 const serializedSubcategoriesByRoot = JSON.stringify(
@@ -111,8 +116,21 @@ const serializedCategoryCounts = JSON.stringify(
 
 <div class="archive-explorer grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]" data-initial-category={initialCategory.toLowerCase()} data-top-level-categories={serializedTopLevelCategories} data-subcategories-by-root={serializedSubcategoriesByRoot} data-category-counts={serializedCategoryCounts} data-lang={language}>
   <section class="min-w-0 space-y-8">
-    {Object.keys(postsByYearMonth).sort().reverse().map((year) => (
-      <section class="archive-explorer__year space-y-3" data-archive-year>
+    <div class="archive-explorer__toolbar">
+      <button
+        type="button"
+        class="archive-explorer__toggle-all"
+        data-archive-toggle-all
+        data-label-expand={expandAllLabel}
+        data-label-collapse={collapseAllLabel}
+      >
+        {collapseAllLabel}
+      </button>
+    </div>
+
+    {orderedYears.map((year) => {
+      return (
+      <section class="archive-explorer__year space-y-3" data-archive-year data-year-key={year} data-collapsed="false">
         <button
           type="button"
           class="archive-explorer__year-header sticky top-20 z-10 inline-flex items-center gap-2 border-l-4 border-[var(--link-color)] pl-3 text-2xl font-bold text-[var(--text-color)] backdrop-blur"
@@ -129,7 +147,7 @@ const serializedCategoryCounts = JSON.stringify(
           {Object.keys(postsByYearMonth[year]).sort().reverse().map((monthKey) => {
             const monthData = postsByYearMonth[year][monthKey];
             return (
-              <section class="archive-explorer__month space-y-2" data-archive-month>
+              <section class="archive-explorer__month space-y-2" data-archive-month data-month-key={`${year}-${monthKey}`} data-collapsed="false">
                 <button
                   type="button"
                   class="archive-explorer__month-header inline-flex items-center gap-2 rounded-lg px-2 py-1 text-base font-semibold text-[var(--text-color)]/80 transition-colors hover:bg-[var(--hover-bg-color)] hover:text-[var(--text-color)]"
@@ -137,7 +155,7 @@ const serializedCategoryCounts = JSON.stringify(
                   title={collapseHint}
                   aria-expanded="true"
                 >
-                  <span class="archive-explorer__fold-icon archive-explorer__fold-icon--sm" data-fold-icon aria-hidden="true">▸</span>
+                  <span class="archive-explorer__fold-icon archive-explorer__fold-icon--sm" data-fold-icon aria-hidden="true">▾</span>
                   <span>{monthData.label}</span>
                   <span class="archive-explorer__month-count text-xs font-normal text-[var(--text-color)]/45">{monthData.posts.length} {postsLabel}</span>
                 </button>
@@ -200,7 +218,8 @@ const serializedCategoryCounts = JSON.stringify(
           })}
         </div>
       </section>
-    ))}
+      );
+    })}
 
     <div class="archive-explorer__empty hidden rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-color)]/45 px-6 py-10 text-center text-[var(--text-color)]/65" data-archive-empty>
       {emptyLabel}
@@ -261,6 +280,7 @@ const serializedCategoryCounts = JSON.stringify(
       const emptyState = root.querySelector('[data-archive-empty]');
       const topView = root.querySelector('.archive-explorer__top-view');
       const subView = root.querySelector('.archive-explorer__sub-view');
+      const viewContainer = root.querySelector<HTMLElement>('.archive-explorer__view-container');
       const subChipsContainer = root.querySelector('.archive-explorer__sub-chips');
       const backBtn = root.querySelector('.archive-explorer__back-btn');
       const viewTitle = root.querySelector('.archive-explorer__title');
@@ -642,31 +662,77 @@ const serializedCategoryCounts = JSON.stringify(
           return;
         }
 
-        const translateY = direction === 'forward' ? -8 : 8;
-        fromView.dataset.viewState = 'inactive';
-        fromView
-          .animate(
-            [
-              { opacity: 1, transform: 'translateY(0)' },
-              { opacity: 0, transform: `translateY(${translateY}px)` },
-            ],
-            { duration: 220, easing: 'ease', fill: 'both' },
-          )
-          .finished.then(() => {
-            toView.dataset.viewState = 'active';
-            toView
-              .animate(
-                [
-                  { opacity: 0, transform: `translateY(${-translateY}px)` },
-                  { opacity: 1, transform: 'translateY(0)' },
-                ],
-                { duration: 220, easing: 'ease', fill: 'both' },
-              )
-              .finished.finally(() => {
-                toView.style.opacity = '';
-                toView.style.transform = '';
-              });
-          });
+        // 预量目标视图高度（隐形渲染一帧，容器高度平滑过渡而不硬跳）
+        const fromHeight = fromView.offsetHeight;
+        toView.style.visibility = 'hidden';
+        toView.dataset.viewState = 'active';
+        const toHeight = toView.offsetHeight;
+        toView.dataset.viewState = 'inactive';
+        toView.style.visibility = '';
+
+        const slide = direction === 'forward' ? 16 : -16;
+        const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+        if (viewContainer) {
+          viewContainer.style.height = `${fromHeight}px`;
+          viewContainer.style.overflow = 'hidden';
+        }
+
+        // 两视图交叉过渡：旧视图侧移淡出，新视图自另一侧滑入（前进/返回方向相反）
+        fromView.style.pointerEvents = 'none';
+        toView.style.pointerEvents = 'none';
+        toView.style.position = 'absolute';
+        toView.style.left = '0';
+        toView.style.right = '0';
+        toView.style.top = '0';
+        toView.dataset.viewState = 'active';
+
+        const outAnim = fromView.animate(
+          [
+            { opacity: 1, transform: 'translateX(0)' },
+            { opacity: 0, transform: `translateX(${-slide}px)` },
+          ],
+          { duration: 220, easing: EASE, fill: 'both' },
+        );
+        const inAnim = toView.animate(
+          [
+            { opacity: 0, transform: `translateX(${slide}px)` },
+            { opacity: 1, transform: 'translateX(0)' },
+          ],
+          { duration: 320, easing: EASE, fill: 'both', delay: 30 },
+        );
+        const heightAnim = viewContainer
+          ? viewContainer.animate(
+              [
+                { height: `${fromHeight}px` },
+                { height: `${toHeight}px` },
+              ],
+              { duration: 380, easing: EASE, fill: 'both' },
+            )
+          : null;
+
+        Promise.all([
+          outAnim.finished.catch(() => {}),
+          inAnim.finished.catch(() => {}),
+          heightAnim ? heightAnim.finished.catch(() => {}) : Promise.resolve(),
+        ]).then(() => {
+          fromView.dataset.viewState = 'inactive';
+          outAnim.cancel();
+          inAnim.cancel();
+          heightAnim?.cancel();
+
+          fromView.style.pointerEvents = '';
+          toView.style.pointerEvents = '';
+          toView.style.position = '';
+          toView.style.left = '';
+          toView.style.right = '';
+          toView.style.top = '';
+
+          if (viewContainer) {
+            viewContainer.style.height = '';
+            viewContainer.style.overflow = '';
+          }
+        });
       };
 
       const enterSubView = (rootCategory: string) => {
@@ -739,49 +805,149 @@ const serializedCategoryCounts = JSON.stringify(
         });
       });
 
+      // ===== 折叠状态：本地存储 + 状态助手 =====
+      const FOLD_STORAGE_KEY = 'archive-fold-v2';
+      const toggleAllBtn = root.querySelector('[data-archive-toggle-all]') as HTMLElement | null;
+      const labelExpand = toggleAllBtn?.dataset.labelExpand || 'Expand all';
+      const labelCollapse = toggleAllBtn?.dataset.labelCollapse || 'Collapse all';
+
+      const foldStorage: { years: Record<string, boolean>; months: Record<string, boolean> } = (() => {
+        try {
+          const raw = localStorage.getItem(FOLD_STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            return { years: parsed.years || {}, months: parsed.months || {} };
+          }
+        } catch {
+          // 忽略读取/解析失败，回退到服务端默认状态
+        }
+        return { years: {}, months: {} };
+      })();
+
+      const saveFoldState = () => {
+        const yearsState: Record<string, boolean> = {};
+        const monthsState: Record<string, boolean> = {};
+        years.forEach((year) => {
+          if (!(year instanceof HTMLElement)) return;
+          const key = year.dataset.yearKey;
+          if (key) yearsState[key] = year.dataset.collapsed === 'true';
+        });
+        months.forEach((month) => {
+          if (!(month instanceof HTMLElement)) return;
+          const key = month.dataset.monthKey;
+          if (key) monthsState[key] = month.dataset.collapsed === 'true';
+        });
+        try {
+          localStorage.setItem(FOLD_STORAGE_KEY, JSON.stringify({ years: yearsState, months: monthsState }));
+        } catch {
+          // 忽略写入失败（隐私模式等）
+        }
+      };
+
+      const setYearCollapsed = (year: HTMLElement, collapsed: boolean, animate: boolean) => {
+        const toggle = year.querySelector('[data-archive-year-toggle]') as HTMLElement | null;
+        const content = year.querySelector('[data-archive-year-content]') as HTMLElement | null;
+        if (!toggle || !content) return;
+
+        const alreadyCollapsed = year.dataset.collapsed === 'true';
+        year.dataset.collapsed = collapsed ? 'true' : 'false';
+        toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+
+        if (alreadyCollapsed === collapsed || !animate || prefersReducedMotion) {
+          content.classList.toggle('archive-explorer__hidden', collapsed);
+          return;
+        }
+
+        if (collapsed) {
+          const anim = content.animate(
+            [
+              { opacity: 1, maxHeight: content.scrollHeight + 'px' },
+              { opacity: 0, maxHeight: 0 },
+            ],
+            { duration: 280, easing: 'ease', fill: 'both' }
+          );
+          anim.finished.finally(() => {
+            content.classList.add('archive-explorer__hidden');
+            content.style.opacity = '';
+            content.style.maxHeight = '';
+          });
+        } else {
+          content.classList.remove('archive-explorer__hidden');
+          content.animate(
+            [
+              { opacity: 0, maxHeight: 0 },
+              { opacity: 1, maxHeight: '9999px' },
+            ],
+            { duration: 280, easing: 'ease', fill: 'both' }
+          ).finished.finally(() => {
+            content.style.opacity = '';
+            content.style.maxHeight = '';
+          });
+        }
+      };
+
+      const setMonthCollapsed = (month: HTMLElement, collapsed: boolean, animate: boolean) => {
+        const toggle = month.querySelector('[data-archive-month-toggle]') as HTMLElement | null;
+        const content = month.querySelector('[data-archive-month-content]') as HTMLElement | null;
+        if (!toggle || !content) return;
+
+        const alreadyCollapsed = month.dataset.collapsed === 'true';
+        month.dataset.collapsed = collapsed ? 'true' : 'false';
+        toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+
+        if (alreadyCollapsed === collapsed || !animate || prefersReducedMotion) {
+          content.classList.toggle('archive-explorer__hidden', collapsed);
+          return;
+        }
+
+        if (collapsed) {
+          const anim = content.animate(
+            [
+              { opacity: 1, transform: 'translateY(0)' },
+              { opacity: 0, transform: 'translateY(-4px)' },
+            ],
+            { duration: 200, easing: 'ease', fill: 'both' }
+          );
+          anim.finished.finally(() => {
+            content.classList.add('archive-explorer__hidden');
+            content.style.opacity = '';
+            content.style.transform = '';
+          });
+        } else {
+          content.classList.remove('archive-explorer__hidden');
+          content.animate(
+            [
+              { opacity: 0, transform: 'translateY(-4px)' },
+              { opacity: 1, transform: 'translateY(0)' },
+            ],
+            { duration: 200, easing: 'ease', fill: 'both' }
+          ).finished.finally(() => {
+            content.style.opacity = '';
+            content.style.transform = '';
+          });
+        }
+      };
+
+      const updateToggleAllLabel = () => {
+        if (!toggleAllBtn) return;
+        const anyCollapsed = [...years, ...months].some(
+          (el) => el instanceof HTMLElement && el.dataset.collapsed === 'true'
+        );
+        toggleAllBtn.textContent = anyCollapsed ? labelExpand : labelCollapse;
+      };
+
       // ===== 折叠/展开：年 =====
       years.forEach((year) => {
         if (!(year instanceof HTMLElement)) return;
         const toggle = year.querySelector('[data-archive-year-toggle]') as HTMLElement | null;
-        const content = year.querySelector('[data-archive-year-content]') as HTMLElement | null;
-        if (!toggle || !content) return;
+        if (!toggle) return;
         if (toggle.dataset.bound === 'true') return;
         toggle.dataset.bound = 'true';
 
         toggle.addEventListener('click', () => {
-          const collapsed = year.dataset.collapsed === 'true';
-          year.dataset.collapsed = collapsed ? 'false' : 'true';
-          toggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
-          if (prefersReducedMotion) {
-            content.classList.toggle('archive-explorer__hidden', !collapsed);
-          } else {
-            if (collapsed) {
-              content.classList.remove('archive-explorer__hidden');
-              content.animate(
-                [
-                  { opacity: 0, maxHeight: 0 },
-                  { opacity: 1, maxHeight: '9999px' },
-                ],
-                { duration: 280, easing: 'ease', fill: 'both' }
-              ).finished.finally(() => {
-                content.style.opacity = '';
-                content.style.maxHeight = '';
-              });
-            } else {
-              const anim = content.animate(
-                [
-                  { opacity: 1, maxHeight: content.scrollHeight + 'px' },
-                  { opacity: 0, maxHeight: 0 },
-                ],
-                { duration: 280, easing: 'ease', fill: 'both' }
-              );
-              anim.finished.finally(() => {
-                content.classList.add('archive-explorer__hidden');
-                content.style.opacity = '';
-                content.style.maxHeight = '';
-              });
-            }
-          }
+          setYearCollapsed(year, year.dataset.collapsed !== 'true', true);
+          saveFoldState();
+          updateToggleAllLabel();
         });
       });
 
@@ -789,45 +955,14 @@ const serializedCategoryCounts = JSON.stringify(
       months.forEach((month) => {
         if (!(month instanceof HTMLElement)) return;
         const toggle = month.querySelector('[data-archive-month-toggle]') as HTMLElement | null;
-        const content = month.querySelector('[data-archive-month-content]') as HTMLElement | null;
-        if (!toggle || !content) return;
+        if (!toggle) return;
         if (toggle.dataset.bound === 'true') return;
         toggle.dataset.bound = 'true';
 
         toggle.addEventListener('click', () => {
-          const collapsed = month.dataset.collapsed === 'true';
-          month.dataset.collapsed = collapsed ? 'false' : 'true';
-          toggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
-          if (prefersReducedMotion) {
-            content.classList.toggle('archive-explorer__hidden', !collapsed);
-          } else {
-            if (collapsed) {
-              content.classList.remove('archive-explorer__hidden');
-              content.animate(
-                [
-                  { opacity: 0, transform: 'translateY(-4px)' },
-                  { opacity: 1, transform: 'translateY(0)' },
-                ],
-                { duration: 200, easing: 'ease', fill: 'both' }
-              ).finished.finally(() => {
-                content.style.opacity = '';
-                content.style.transform = '';
-              });
-            } else {
-              const anim = content.animate(
-                [
-                  { opacity: 1, transform: 'translateY(0)' },
-                  { opacity: 0, transform: 'translateY(-4px)' },
-                ],
-                { duration: 200, easing: 'ease', fill: 'both' }
-              );
-              anim.finished.finally(() => {
-                content.classList.add('archive-explorer__hidden');
-                content.style.opacity = '';
-                content.style.transform = '';
-              });
-            }
-          }
+          setMonthCollapsed(month, month.dataset.collapsed !== 'true', true);
+          saveFoldState();
+          updateToggleAllLabel();
         });
       });
 
@@ -846,6 +981,64 @@ const serializedCategoryCounts = JSON.stringify(
       } else {
         setSelectedCategories([], false, false);
       }
+
+      // 应用本地保存的折叠状态（无动画；未记录的键沿用服务端默认）
+      years.forEach((year) => {
+        if (!(year instanceof HTMLElement)) return;
+        const key = year.dataset.yearKey;
+        if (!key || !(key in foldStorage.years)) return;
+        setYearCollapsed(year, foldStorage.years[key], false);
+      });
+      months.forEach((month) => {
+        if (!(month instanceof HTMLElement)) return;
+        const key = month.dataset.monthKey;
+        if (!key || !(key in foldStorage.months)) return;
+        setMonthCollapsed(month, foldStorage.months[key], false);
+      });
+
+      // 兜底：筛选/折叠后若没有「可见且可达（自身与所属年份均展开）」的月份，自动展开第一个可见月份
+      const hasReachableMonth = () =>
+        months.some((month) => {
+          if (!(month instanceof HTMLElement) || month.hidden) return false;
+          if (month.dataset.collapsed !== 'false') return false;
+          const yearSection = month.closest('[data-archive-year]');
+          return (
+            yearSection instanceof HTMLElement &&
+            !yearSection.hidden &&
+            yearSection.dataset.collapsed === 'false'
+          );
+        });
+
+      if (!hasReachableMonth()) {
+        const firstVisible = months.find((month) => month instanceof HTMLElement && !month.hidden);
+        if (firstVisible instanceof HTMLElement) {
+          const yearSection = firstVisible.closest('[data-archive-year]');
+          if (yearSection instanceof HTMLElement && yearSection.dataset.collapsed === 'true') {
+            setYearCollapsed(yearSection, false, false);
+          }
+          setMonthCollapsed(firstVisible, false, false);
+        }
+      }
+
+      // 全局展开/收起
+      if (toggleAllBtn) {
+        toggleAllBtn.addEventListener('click', () => {
+          const anyCollapsed = [...years, ...months].some(
+            (el) => el instanceof HTMLElement && el.dataset.collapsed === 'true'
+          );
+          const targetCollapsed = !anyCollapsed ? true : false;
+          years.forEach((year) => {
+            if (year instanceof HTMLElement) setYearCollapsed(year, targetCollapsed, true);
+          });
+          months.forEach((month) => {
+            if (month instanceof HTMLElement) setMonthCollapsed(month, targetCollapsed, true);
+          });
+          saveFoldState();
+          updateToggleAllLabel();
+        });
+      }
+
+      updateToggleAllLabel();
 
       const handlePopState = () => {
         const urlCats = parseUrlCategories();
@@ -869,56 +1062,94 @@ const serializedCategoryCounts = JSON.stringify(
     position: relative;
   }
 
+  /* 分类导航：清单行造型（无边框细行、行内高亮、左侧指示条）+ 顺滑动效 */
   .archive-explorer__chip {
-    --chip-bg: color-mix(in srgb, var(--bg-color) 86%, transparent);
-    --chip-text: var(--text-color);
-    --chip-border: var(--border-color);
-    display: inline-flex;
+    position: relative;
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
     width: 100%;
-    border: 1px solid var(--chip-border);
-    border-radius: 999px;
-    background: var(--chip-bg);
-    color: var(--chip-text);
-    padding: 0.42rem 0.72rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: color-mix(in srgb, var(--text-color) 78%, transparent);
+    padding: 0.42rem 0.6rem;
     text-align: left;
-    transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease,
+      border-color 0.3s ease,
+      transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
     cursor: pointer;
-    font-size: 0.82rem;
-    font-weight: 650;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  /* 活动指示条：切换时纵向生长/收起 */
+  .archive-explorer__chip::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 2px;
+    height: 1.05em;
+    border-radius: 999px;
+    background: var(--link-color);
+    opacity: 0;
+    transform: translateY(-50%) scaleY(0.2);
+    transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.3s ease;
   }
 
   .archive-explorer__chip:hover {
-    border-color: var(--link-color);
-    background: color-mix(in srgb, var(--hover-bg-color) 72%, transparent);
+    background: var(--hover-bg-color);
+    border-color: color-mix(in srgb, var(--link-color) 40%, transparent);
+    color: var(--text-color);
     transform: translateX(2px);
   }
 
+  .archive-explorer__chip:active {
+    transform: translateX(2px) scale(0.98);
+  }
+
   .archive-explorer__chip[data-active='true'] {
-    border-color: var(--link-color);
-    background: var(--link-color);
-    color: #ffffff;
-    transform: translateX(0);
+    background: color-mix(in srgb, var(--link-color) 10%, transparent);
+    color: var(--link-color);
+    font-weight: 650;
   }
 
-  .archive-explorer__chip[data-active='true'] span:last-child {
-    background: var(--chip-badge-active-bg);
-    color: var(--chip-badge-active-color);
-    border-color: var(--chip-badge-active-border);
+  .archive-explorer__chip[data-active='true']::before {
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1);
   }
 
-  .archive-explorer__chip span:last-child {
-    min-width: 1.7rem;
-    border-radius: 999px;
-    background: var(--chip-badge-bg);
-    color: var(--chip-badge-color);
-    border: 1px solid var(--chip-badge-border);
-    padding: 0.08rem 0.45rem;
-    text-align: center;
-    font-size: 0.72rem;
-    font-weight: 700;
+  .archive-explorer__chip span:nth-child(2) {
+    min-width: 1.6rem;
+    border: none;
+    background: transparent;
+    padding: 0;
+    text-align: right;
+    color: color-mix(in srgb, currentColor 62%, transparent);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .archive-explorer__chip[data-active='true'] span:nth-child(2) {
+    color: var(--link-color);
+  }
+
+  @media (min-width: 1024px) {
+    .archive-explorer__chips {
+      gap: 0.15rem;
+    }
+  }
+
+  /* 移动端无悬停：保留轻量底板，保证可点性 */
+  @media (max-width: 1023px) {
+    .archive-explorer__chip {
+      border-color: color-mix(in srgb, var(--border-color) 70%, transparent);
+      background: color-mix(in srgb, var(--bg-color) 70%, transparent);
+    }
   }
 
   .archive-explorer__view-container {
@@ -948,10 +1179,12 @@ const serializedCategoryCounts = JSON.stringify(
   .archive-explorer__back-btn {
     justify-content: flex-start;
     font-weight: 700;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
   }
 
-  .archive-explorer__back-btn:hover {
-    transform: translateX(-2px);
+  .archive-explorer__sub-chips .archive-explorer__chip:not(.archive-explorer__back-btn) {
+    padding-left: 1.1rem;
   }
 
   .archive-explorer__root-chip {
@@ -973,18 +1206,18 @@ const serializedCategoryCounts = JSON.stringify(
     padding: 0.1rem 0.5rem;
     font-size: 0.72rem;
     font-weight: 600;
-    transition: color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    transition: color 0.2s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
   }
 
   .archive-explorer__post-title {
     position: relative;
-    transition: color 0.2s ease, transform 0.2s ease, padding-left 0.2s ease, font-weight 0.2s ease;
+    transition: color 0.2s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .archive-explorer__post-summary-wrap {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    transition: grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .archive-explorer__post-summary {
@@ -994,8 +1227,8 @@ const serializedCategoryCounts = JSON.stringify(
     overflow: hidden;
     min-height: 0;
     opacity: 0;
-    transform: translateY(-3px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateY(-6px);
+    transition: opacity 0.26s ease, transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .archive-explorer__post:hover .archive-explorer__post-summary-wrap,
@@ -1046,17 +1279,41 @@ const serializedCategoryCounts = JSON.stringify(
   }
 
   .archive-explorer__post {
-    transition: background-color 0.2s ease, color 0.2s ease;
+    position: relative;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 
-  .archive-explorer__post:hover .archive-explorer__post-title {
+  /* 悬停点缀：左侧主题色竖条从中间生长（与侧边栏活动指示条同语言） */
+  .archive-explorer__post::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 2px;
+    height: 55%;
+    border-radius: 999px;
+    background: var(--link-color);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-50%) scaleY(0.2);
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+  }
+
+  .archive-explorer__post:hover::before,
+  .archive-explorer__post:focus-visible::before {
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1);
+  }
+
+  .archive-explorer__post:hover .archive-explorer__post-title,
+  .archive-explorer__post:focus-visible .archive-explorer__post-title {
     color: var(--link-color);
-    padding-left: 0.5rem;
-    font-weight: 700;
+    transform: translateX(6px);
   }
 
-  .archive-explorer__post:hover .archive-explorer__post-tag {
-    transform: translateX(-0.15rem);
+  .archive-explorer__post:hover .archive-explorer__post-tag,
+  .archive-explorer__post:focus-visible .archive-explorer__post-tag {
+    transform: translateX(-0.3rem);
   }
 
   .archive-explorer__post[hidden],
@@ -1089,6 +1346,39 @@ const serializedCategoryCounts = JSON.stringify(
     color: var(--link-color);
   }
 
+  /* 月份标题：细分隔线样式（近细远粗的骨架，替代此前的整块圆角条） */
+  .archive-explorer__month-header {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0 0.3rem;
+    border-radius: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--text-color) 72%, transparent);
+    background: none;
+  }
+
+  .archive-explorer__month-header:hover {
+    background: none;
+  }
+
+  .archive-explorer__month-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: color-mix(in srgb, var(--border-color) 88%, transparent);
+    transition: background 0.25s ease;
+  }
+
+  .archive-explorer__month-header:hover::after {
+    background: color-mix(in srgb, var(--link-color) 55%, transparent);
+  }
+
+  .archive-explorer__month-header .archive-explorer__month-count {
+    font-weight: 500;
+  }
+
   .archive-explorer__fold-icon {
     display: inline-block;
     transition: transform 0.22s ease;
@@ -1115,8 +1405,73 @@ const serializedCategoryCounts = JSON.stringify(
     display: none !important;
   }
 
+  /* 工具条：全局展开/收起 */
+  .archive-explorer__toolbar {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .archive-explorer__toggle-all {
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-color) 86%, transparent);
+    color: var(--text-color);
+    border-radius: 999px;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
+  }
+
+  .archive-explorer__toggle-all:hover {
+    border-color: var(--link-color);
+    color: var(--link-color);
+    background: color-mix(in srgb, var(--hover-bg-color) 72%, transparent);
+    transform: translateY(-1px);
+  }
+
+  /* 统一单行式：日期 + 标题 + 分类，悬停时行内展开摘要 */
+  .archive-explorer__post {
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+  }
+
+  .archive-explorer__post > div {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: baseline;
+    column-gap: 0.75rem;
+  }
+
+  .archive-explorer__post > div > div:first-child {
+    white-space: nowrap;
+  }
+
+  .archive-explorer__post > div > div:first-child > div:first-child {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .archive-explorer__post-title {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .archive-explorer__post-tag {
+    font-size: 0.68rem;
+    padding: 0.05rem 0.42rem;
+  }
+
+  @media (max-width: 767px) {
+    .archive-explorer__post > div > div:nth-child(3) {
+      display: none !important;
+    }
+  }
+
   .archive-explorer__reading-time {
-    pointer-events: none;
+    display: none !important;
   }
 
   @media (max-width: 1024px) {
@@ -1127,11 +1482,21 @@ const serializedCategoryCounts = JSON.stringify(
 
   @media (prefers-reduced-motion: reduce) {
     .archive-explorer__chip,
+    .archive-explorer__chip::before,
     .archive-explorer__post,
+    .archive-explorer__post::before,
     .archive-explorer__year-header,
     .archive-explorer__month-header,
+    .archive-explorer__toggle-all,
     .archive-explorer__fold-icon {
       transition: none !important;
+    }
+
+    .archive-explorer__chip:hover,
+    .archive-explorer__chip:active,
+    .archive-explorer__post:hover .archive-explorer__post-title,
+    .archive-explorer__post:hover .archive-explorer__post-tag {
+      transform: none;
     }
   }
 
