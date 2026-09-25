@@ -119,10 +119,8 @@
     --github-logo-color: #0a0a0a;
     --github-icon-color: #666666;
 
-    /* 分类标签（配合 --cat-hue 使用） */
-    --cat-tag-color: hsl(var(--cat-hue), 65%, 42%);
-    --cat-tag-bg: hsla(var(--cat-hue), 65%, 50%, 0.1);
-    --cat-tag-border: hsla(var(--cat-hue), 65%, 50%, 0.28);
+    /* 分类标签配色：--cat-hue 由各组件定义在标签元素上，
+       --cat-tag-* 因此必须写成元素级选择器（见文件末尾「分类标签色」一节） */
 
     /* 归档芯片数字角标 */
     --chip-badge-bg: color-mix(in srgb, white 72%, transparent);
@@ -201,10 +199,7 @@
     --github-logo-color: #aaaaaa;
     --github-icon-color: #aaaaaa;
 
-    /* 分类标签 */
-    --cat-tag-color: hsl(var(--cat-hue), 65%, 68%);
-    --cat-tag-bg: hsla(var(--cat-hue), 65%, 50%, 0.16);
-    --cat-tag-border: hsla(var(--cat-hue), 65%, 50%, 0.36);
+    /* 分类标签配色见文件末尾「分类标签色」（须在元素级解析） */
 
     /* 归档芯片数字角标 */
     --chip-badge-bg: rgba(255, 255, 255, 0.94);
@@ -226,3 +221,20 @@
     --scrollbar-thumb-hover: #4a3a2a;
     --scrollbar-track: #2a2218;
   }
+
+/* ===== 分类标签色（--cat-hue 由组件定义在标签元素上，必须元素级解析） ===== */
+.post-card__tag,
+.archive-explorer__post-tag,
+.recommend-tag {
+  --cat-tag-color: hsl(var(--cat-hue), 65%, 42%);
+  --cat-tag-bg: hsla(var(--cat-hue), 65%, 50%, 0.1);
+  --cat-tag-border: hsla(var(--cat-hue), 65%, 50%, 0.28);
+}
+
+[data-theme='dark'] .post-card__tag,
+[data-theme='dark'] .archive-explorer__post-tag,
+[data-theme='dark'] .recommend-tag {
+  --cat-tag-color: hsl(var(--cat-hue), 65%, 68%);
+  --cat-tag-bg: hsla(var(--cat-hue), 65%, 50%, 0.16);
+  --cat-tag-border: hsla(var(--cat-hue), 65%, 50%, 0.36);
+}
