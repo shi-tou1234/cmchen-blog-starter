@@ -1,6 +1,7 @@
 ---
 // 公式推导浮层：扫描 .derivation-block，自动绑定到前一个公式节点。
 // 桌面 hover/focus 弹出，移动端 click 展开。无可见 DOM 输出，仅注入脚本。
+import "../../styles/motion.css"
 ---
 
 <script>
@@ -24,7 +25,7 @@
     function ensurePopup() {
       if (popup) return popup;
       popup = document.createElement('div');
-      popup.className = 'derivation-popup';
+      popup.className = 'derivation-popup anim-sheet-out';
       popup.setAttribute('role', 'dialog');
       popup.setAttribute('aria-label', '公式推导');
       const title = document.createElement('div');

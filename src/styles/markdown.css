@@ -1,5 +1,5 @@
 .markdown-content {
-  line-height: 2.05;
+  line-height: var(--lh-body);
   transition: font-size 0.3s ease;
 }
 
@@ -9,7 +9,7 @@
 
 .markdown-content h1 {
   padding: 0.5rem 0;
-  font-size: 2em;
+  font-size: var(--fs-h1);
   font-weight: 700;
   margin: 2rem 0 1rem;
   border-bottom: 1px solid var(--text-color);
@@ -17,32 +17,32 @@
 
 .markdown-content h2 {
   padding: 0.4rem 0;
-  font-size: 1.75em;
+  font-size: var(--fs-h2);
   font-weight: 700;
   margin: 1.8rem 0 1rem;
   border-bottom: 1px solid var(--text-color);
 }
 
 .markdown-content h3 {
-  font-size: 1.5em;
+  font-size: var(--fs-h3);
   font-weight: 600;
   margin: 1.5rem 0 0.8rem;
 }
 
 .markdown-content h4 {
-  font-size: 1.25em;
+  font-size: var(--fs-h4);
   font-weight: 600;
   margin: 1.2rem 0 0.6rem;
 }
 
 .markdown-content h5 {
-  font-size: 1.1em;
+  font-size: var(--fs-h5);
   font-weight: 600;
   margin: 1rem 0 0.5rem;
 }
 
 .markdown-content h6 {
-  font-size: 1em;
+  font-size: var(--fs-h6);
   font-weight: 600;
   margin: 1rem 0 0.5rem;
 }
@@ -78,7 +78,7 @@
 
 .markdown-content li {
   margin: 0.45rem 0;
-  line-height: 1.85;
+  line-height: var(--lh-list);
 }
 
 .markdown-content li > ul,
@@ -93,7 +93,7 @@
   border-left: 4px solid var(--quote-left-color);
   background-color: var(--blockquote-bg);
   color: var(--muted-text-color);
-  line-height: 1.9;
+  line-height: var(--lh-blockquote);
 }
 
 .markdown-content p code,
@@ -105,7 +105,7 @@
   background-color: var(--inline-code-bg);
   border-radius: 4px;
   font-family: 'JetBrains Mono Variable', ui-monospace;
-  font-size: 0.9em;
+  font-size: var(--fs-table-code);
 }
 
 .markdown-content pre {
@@ -116,14 +116,14 @@
   border: 1px solid var(--border-color);
   background-color: var(--pre-bg);
   font-family: 'JetBrains Mono Variable', ui-monospace;
-  line-height: 1.75;
+  line-height: var(--lh-pre);
   position: relative;
 }
 
 .markdown-content pre code {
   padding: 0;
   background: none;
-  font-size: 0.9rem;
+  font-size: var(--fs-code);
 }
 
 .markdown-content pre .markdown-code-copy-button {
@@ -140,7 +140,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--bg-color) 88%, transparent);
   color: var(--text-color);
-  font-size: 0.76rem;
+  font-size: var(--fs-code-copy);
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 6px 16px color-mix(in srgb, var(--shadow-color) 30%, transparent);
@@ -187,7 +187,7 @@
 }
 
 .markdown-content .katex {
-  font-size: 1.02em;
+  font-size: var(--fs-katex);
 }
 
 .markdown-content iframe,
@@ -395,7 +395,7 @@
 .music-title {
     font-weight: 600;
     color: var(--music-title-color);
-    font-size: 1rem;
+    font-size: var(--fs-music-title);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -403,7 +403,7 @@
 
 .music-artist {
     color: var(--music-artist-color);
-    font-size: 0.9rem;
+    font-size: var(--fs-music-artist);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -494,15 +494,15 @@
 
 .card-github .gc-description {
     color: var(--cover-subtitle-color);
-    font-size: 0.9em;
+    font-size: var(--fs-card-desc);
     margin-bottom: 12px;
-    line-height: 1.4;
+    line-height: var(--lh-tight);
 }
 
 .card-github .gc-infobar {
     display: flex;
     gap: 16px;
-    font-size: 0.85em;
+    font-size: var(--fs-card-meta);
     color: var(--cover-subtitle-color);
 }
 
@@ -543,7 +543,7 @@
     margin-left: auto;
     padding: 2px 8px;
     border-radius: 10px;
-    font-size: 0.8em;
+    font-size: var(--fs-card-chip);
     background: var(--hover-bg-color);
 }
 
@@ -551,7 +551,7 @@
     display: inline-block;
     padding: 2px 8px;
     border-radius: 10px;
-    font-size: 0.8em;
+    font-size: var(--fs-card-chip);
     background: var(--hover-bg-color);
     margin-left: 8px;
 }
@@ -566,7 +566,7 @@
     position: relative;
     padding: 0 3rem;
 	  margin: 3.5rem 0;
-    line-height: 1.6;
+    line-height: var(--lh-quote);
     text-align: center;
 }
 
@@ -632,7 +632,7 @@ ruby {
 }
 
 rt {
-  font-size: 0.65em;
+  font-size: var(--fs-ruby);
   color: var(--muted-text-color);
   user-select: none;
   transform: translateY(-2px);
@@ -680,7 +680,7 @@ rt {
 
 .typst-render .typst-title {
   margin-top: 0.8rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-typst-title);
   color: var(--muted-text-color);
   font-family: 'Times New Roman', Times, serif;
 }
@@ -740,7 +740,7 @@ rt {
     position: absolute;
     top: -0.5rem;
     right: 0;
-    font-size: 0.75rem;
+    font-size: var(--fs-derivable-mark);
     opacity: 0.55;
     pointer-events: none;
   }
@@ -771,7 +771,7 @@ rt {
 }
 
 .derivation-popup-title {
-  font-size: 0.8rem;
+  font-size: var(--fs-popup-title);
   font-weight: 600;
   color: var(--text-color);
   opacity: 0.65;
@@ -782,7 +782,7 @@ rt {
 /* 浮层内继承 markdown 样式，保证公式/列表渲染一致 */
 .derivation-popup > div:last-child {
   font-size: calc(1rem * var(--font-size-scale, 1));
-  line-height: 1.7;
+  line-height: var(--lh-popup);
   color: var(--text-color);
 }
 

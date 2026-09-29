@@ -2,6 +2,8 @@
 import { baseUrl, getRelativeLocaleUrl } from "@utils/url-utils";
 import { getEntry, render } from 'astro:content'
 import i18nit from "@i18n/translation";
+import "../../styles/motion.css"
+import { PRESS } from "@utils/press";
 
 interface SearchResult {
   url: string;
@@ -53,7 +55,7 @@ const fakeResult: SearchResult[] = [
   }
 ]
 ---
-<div id="search-modal" class="fixed inset-0 z-[var(--z-search)] opacity-0 pointer-events-none" role="dialog" aria-modal="true" aria-labelledby="search-dialog-title" aria-hidden="true">
+<div id="search-modal" class="fixed inset-0 z-[var(--z-search)] opacity-0 pointer-events-none anim-fade-out" role="dialog" aria-modal="true" aria-labelledby="search-dialog-title" aria-hidden="true">
   <div class="absolute inset-0 modal-backdrop opacity-0" aria-hidden="true"></div>
 
   <div class="fixed inset-0 flex items-start justify-center p-4 pt-[25vh]">
@@ -72,7 +74,7 @@ const fakeResult: SearchResult[] = [
             autofocus
           />
         </div>
-        <button id="close-search" class="ml-2 p-2 text-[var(--cover-subtitle-color)] rounded-lg hover:bg-[var(--hover-bg-color)]">
+        <button id="close-search" class={`ml-2 p-2 text-[var(--cover-subtitle-color)] rounded-lg hover:bg-[var(--hover-bg-color)] ${PRESS}`}>
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>

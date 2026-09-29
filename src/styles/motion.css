@@ -1,0 +1,86 @@
+/* motion.css —— 弹层/抽屉/提示条的退场动画 + 全站减弱动效开关
+   谁在用：header/MobileMenu.astro（抽屉）、misc/Search.astro（弹层）、misc/DerivationPopup.astro（浮层），
+   三者各自 import 本文件，并在根元素上标一个类名：anim-fade-out / anim-drop-out / anim-sheet-out。
+   播放时机由下面每条规则自带的「关闭态闸门」决定：开着不播，只在脚本摘掉开启态标记的那一段播，
+   播完由组件原有的延时定时器做真隐藏（display:none / opacity-0）。
+   为什么不写成裸的 `.anim-fade-out { animation: ... }`：类名是静态写在标记里的，
+   无条件播放会在「打开的那一帧」和「首次渲染」就被触发（元素此刻本该是隐藏的，动画 from 状态会把它照亮），
+   所以退场类必须和关闭态条件写在同一条选择器里。
+   三个组件文件里只允许出现 import 行与类名，本文件不改任何组件脚本。 */
+
+/* ===== 1) 全局减弱动效：系统开了「减少动态效果」就把动效压到几乎为 0 =====
+   注：animation-iteration-count 是「次数」不是「时长」，写 0.01ms 是非法值会被整条丢掉，
+   故按次数写 1（与 global.css 现有写法一致）；三条时长一律 0.01ms。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== 2) 三条退场关键帧 ===== */
+
+/* 淡出 160ms —— 搜索弹层 */
+@keyframes anim-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* 上收淡出 140ms —— 移动端抽屉（终点 = 抽屉自己的关闭态 translateY(-10px) scale(0.97)，
+   跟它原有的 0.24s 过渡同方向，只是更快） */
+@keyframes anim-drop-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+}
+
+/* 下沉淡出 220ms —— 公式推导浮层（浮层关闭时本来就是往下退 4px，这里顺着走） */
+@keyframes anim-sheet-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ===== 3) 退场类的生效时机（各组件的关闭态） ===== */
+
+/* 移动端抽屉 #mobile-menu：
+   关闭 = 脚本摘掉 .is-open，240ms 后再加 .hidden 真隐藏（display:none）。
+   打开时脚本先置按钮 aria-expanded=true、下一帧才加 .is-open —— 用按钮状态当闸门，
+   打开那一帧闸门是关的，否则抽屉开合会闪一下；首屏菜单带 .hidden，闸门也是关的。 */
+#mobile-menu-button[aria-expanded="false"] + #mobile-menu.anim-drop-out:not(.is-open):not(.hidden) {
+  animation: anim-drop-out 140ms ease both;
+}
+
+/* 搜索弹层 #search-modal：
+   关闭 = 脚本给 .search-modal-content 加回 .opacity-0（下一帧才摘掉），根元素到 300ms 才加 .opacity-0。
+   闸门要求根元素「还没 .opacity-0」，所以首屏（根元素带 .opacity-0）不会误播；
+   动画 160ms 播完到 300ms 真隐藏之间根元素已经看不见，先收掉指针事件，免得看不见的遮罩还挡点击。 */
+#search-modal.anim-fade-out:not(.opacity-0):has(.search-modal-content.opacity-0) {
+  animation: anim-fade-out 160ms ease both;
+  pointer-events: none;
+}
+
+/* 公式推导浮层 .derivation-popup：
+   关闭 = 脚本摘掉 .is-visible，元素一直留在 DOM（原 CSS 过渡 0.32s）。
+   浮层是在 showPopup 里同一次调用中「建出来 → 加 is-visible」的，中间不落笔，首屏不会闪；
+   关着的时候闸门常开、动画停在终帧（opacity:0），与浮层自己的隐藏态一致。 */
+.derivation-popup.anim-sheet-out:not(.is-visible) {
+  animation: anim-sheet-out 220ms ease both;
+}

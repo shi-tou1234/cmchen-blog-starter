@@ -1,6 +1,8 @@
 ---
 import { Icon } from "astro-icon/components"
 import headerContact from "@/data/header-contact"
+import "../../styles/motion.css"
+import { PRESS } from "../../utils/press"
 ---
 
 <div class="relative md:hidden shrink-0">
@@ -9,26 +11,26 @@ import headerContact from "@/data/header-contact"
     <Icon name="fa6-solid:align-justify" class="w-5 h-5" />
   </button>
   <!-- 移动端快捷面板：导航项与底部导航栏重复，已移除；只保留快捷操作 -->
-  <div id="mobile-menu" aria-hidden="true" class="hidden fixed right-2 top-16 w-[min(86vw,320px)] bg-[var(--bg-color)]/95 backdrop-blur border border-[var(--border-color)] rounded-xl shadow-[0_8px_24px_var(--shadow-color)] z-[var(--z-modal)] text-[var(--text-color)]">
+  <div id="mobile-menu" aria-hidden="true" class="hidden fixed right-2 top-16 w-[min(86vw,320px)] bg-[var(--bg-color)]/95 backdrop-blur border border-[var(--border-color)] rounded-xl shadow-[0_8px_24px_var(--shadow-color)] z-[var(--z-modal)] text-[var(--text-color)] anim-drop-out">
     <p class="mobile-menu-heading">快捷操作</p>
     <div class="mobile-menu-actions">
-      <button id="mobile-search-btn" type="button" class="mobile-menu-action" title="搜索文章">
+      <button id="mobile-search-btn" type="button" class={`mobile-menu-action ${PRESS}`} title="搜索文章">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <span>搜索</span>
       </button>
-      <button id="mobile-theme-btn" type="button" class="mobile-menu-action" title="切换主题">
+      <button id="mobile-theme-btn" type="button" class={`mobile-menu-action ${PRESS}`} title="切换主题">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         <span>主题</span>
       </button>
-      <button id="mobile-guide-btn" type="button" class="mobile-menu-action" title="博客功能说明">
+      <button id="mobile-guide-btn" type="button" class={`mobile-menu-action ${PRESS}`} title="博客功能说明">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.4 2.4 0 0 1 4.7.6c0 1.6-2.3 2-2.3 3.4"/><path d="M12 16.8h.01"/></svg>
         <span>指南</span>
       </button>
-      <button class="copy-email-action mobile-menu-action" type="button" data-email={headerContact.email} title="复制邮箱">
+      <button class={`copy-email-action mobile-menu-action ${PRESS}`} type="button" data-email={headerContact.email} title="复制邮箱">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
         <span>邮箱</span>
       </button>
-      <button id="mobile-fontsize-btn" type="button" class="mobile-menu-action mobile-menu-action--wide" title="调整字号">
+      <button id="mobile-fontsize-btn" type="button" class={`mobile-menu-action mobile-menu-action--wide ${PRESS}`} title="调整字号">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M8 7l4-3 4 3M8 17l4 3 4-3"/></svg>
         <span>字体</span>
       </button>

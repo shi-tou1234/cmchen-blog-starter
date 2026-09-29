@@ -26,6 +26,36 @@
   /* 字体大小缩放 */
   --font-size-scale: 1;
 
+  /* 排版令牌：全站字号/行高的唯一来源，正文与组件一律引用这里。
+     只搬字面量、不改数值（等值替换）——改版式只改这一段，别在别处再写裸字号、裸行高。 */
+  --fs-h1: 2em;
+  --fs-h2: 1.75em;
+  --fs-h3: 1.5em;
+  --fs-h4: 1.25em;
+  --fs-h5: 1.1em;
+  --fs-h6: 1em;
+  --fs-katex: 1.02em;
+  --fs-table-code: 0.9em;
+  --fs-card-desc: 0.9em;
+  --fs-card-meta: 0.85em;
+  --fs-card-chip: 0.8em;
+  --fs-ruby: 0.65em;
+  --fs-code: 0.9rem;
+  --fs-code-copy: 0.76rem;
+  --fs-music-title: 1rem;
+  --fs-music-artist: 0.9rem;
+  --fs-typst-title: 0.9rem;
+  --fs-derivable-mark: 0.75rem;
+  --fs-popup-title: 0.8rem;
+
+  --lh-body: 2.05;          /* 正文 */
+  --lh-list: 1.85;          /* 列表项 */
+  --lh-blockquote: 1.9;     /* 引用块 */
+  --lh-pre: 1.75;           /* 代码块 */
+  --lh-popup: 1.7;          /* 推导浮层 */
+  --lh-quote: 1.6;          /* 居中摘录 .quote */
+  --lh-tight: 1.4;          /* 卡片描述，最紧一档 */
+
   /* 卡片壳参数：圆角三档（内层圆角不得大于外层）、表面三配方、阴影两档。
      明暗主题自动接管；新表面/阴影一律引用这里，不要在组件里写裸值。 */
   --radius-card-lg: 1.35rem;
@@ -141,6 +171,13 @@
     --scrollbar-thumb: #c4a882;
     --scrollbar-thumb-hover: #a8896a;
     --scrollbar-track: #e8dcc8;
+
+    /* 语义文字色 / 线色：只加一层语义名指向上面已有变量，不重命名、不改值、浅深色共用 */
+    --text: var(--text-color);
+    --text-2: var(--muted-text-color);
+    --text-3: var(--cover-subtitle-color);
+    --line: var(--border-color);
+    --line-2: var(--hover-bg-color);
   }
 
   [data-theme="dark"] {
