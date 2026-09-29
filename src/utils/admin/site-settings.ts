@@ -641,9 +641,10 @@ export function initSiteSettingsHandlers() {
     }
   });
 
-  // Site info
+  // Site info（标题/标语/创建时间）
   document.getElementById("load-site-info-btn")?.addEventListener("click", async () => {
     const msgEl = (document.getElementById("site-info-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
@@ -655,13 +656,7 @@ export function initSiteSettingsHandlers() {
 
       (document.getElementById("site-info-title") as HTMLInputElement).value = info.title || "";
       (document.getElementById("site-info-slogan") as HTMLInputElement).value = info.slogan || "";
-      (document.getElementById("site-info-start-date") as HTMLInputElement).value = info.startDate || "";
-
-      const coverMeta = await getFileMeta(HOME_COVER_PATH, token, branch);
-      const coverContent = decodeFileContent(coverMeta?.content || "");
-      const signatures = parseHomeCoverSignaturesFromTs(coverContent);
-      (document.getElementById("site-info-signatures") as HTMLTextAreaElement).value = (signatures || []).join("\n");
-
+      (document.getElementById("site-info-created-at") as HTMLInputElement).value = info.createdAt || "";
       setMsg(msgEl, "站点信息加载成功");
     } catch (error) {
       setMsg(msgEl, String(error), true);
@@ -670,27 +665,61 @@ export function initSiteSettingsHandlers() {
 
   document.getElementById("save-site-info-btn")?.addEventListener("click", async () => {
     const msgEl = (document.getElementById("site-info-msg") as HTMLElement | null);
+
     try {
       const token = getToken();
       const branch = getBranch();
       const title = ((document.getElementById("site-info-title") as HTMLInputElement | null)?.value || "").trim();
       const slogan = ((document.getElementById("site-info-slogan") as HTMLInputElement | null)?.value || "").trim();
-      const startDate = ((document.getElementById("site-info-start-date") as HTMLInputElement | null)?.value || "").trim();
-      const signatures = ((document.getElementById("site-info-signatures") as HTMLTextAreaElement | null)?.value || "")
-        .split(/\r?\n/)
-        .map((line: string) => line.trim())
-        .filter(Boolean);
+      const createdAt = ((document.getElementById("site-info-created-at") as HTMLInputElement | null)?.value || "").trim();
 
       if (!token) throw new Error("请先填写 GitHub Token");
       if (!title) throw new Error("请填写站点标题");
-      if (!startDate) throw new Error("请填写创建时间");
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error("创建时间格式应为 YYYY-MM-DD");
+      if (!slogan) throw new Error("请填写网站标语");
+      if (!createdAt) throw new Error("请填写创建时间（格式 YYYY-MM-DD）");
 
-      const infoContent = buildSiteInfoTs({ title, slogan, startDate });
-      const coverContent = buildHomeCoverSignaturesTs(signatures);
-      await upsertFile(SITE_INFO_PATH, infoContent, "site: update site info", token, branch);
-      await upsertFile(HOME_COVER_PATH, coverContent, "site: update home cover signatures", token, branch);
+      const content = buildSiteInfoTs({ title, slogan, createdAt });
+      await upsertFile(SITE_INFO_PATH, content, "site: update site info", token, branch);
       setMsg(msgEl, "站点信息保存成功");
+    } catch (error) {
+      setMsg(msgEl, String(error), true);
+    }
+  });
+
+  // 首页签名（打字机）
+  document.getElementById("load-home-cover-btn")?.addEventListener("click", async () => {
+    const msgEl = (document.getElementById("home-cover-msg") as HTMLElement | null);
+
+    try {
+      const token = getToken();
+      const branch = getBranch();
+      if (!token) throw new Error("请先填写 GitHub Token");
+
+      const meta = await getFileMeta(HOME_COVER_PATH, token, branch);
+      const content = decodeFileContent(meta?.content || "");
+      const signatures = parseHomeCoverSignaturesFromTs(content);
+      const textarea = document.getElementById("home-cover-signatures") as HTMLTextAreaElement | null;
+      if (textarea) textarea.value = signatures.join("\n");
+      setMsg(msgEl, "首页签名加载成功");
+    } catch (error) {
+      setMsg(msgEl, String(error), true);
+    }
+  });
+
+  document.getElementById("save-home-cover-btn")?.addEventListener("click", async () => {
+    const msgEl = (document.getElementById("home-cover-msg") as HTMLElement | null);
+
+    try {
+      const token = getToken();
+      const branch = getBranch();
+      const textarea = document.getElementById("home-cover-signatures") as HTMLTextAreaElement | null;
+      const lines = (textarea?.value || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      if (!token) throw new Error("请先填写 GitHub Token");
+      if (lines.length === 0) throw new Error("请至少填写一条签名");
+
+      const content = buildHomeCoverSignaturesTs(lines);
+      await upsertFile(HOME_COVER_PATH, content, "cover: update home signatures", token, branch);
+      setMsg(msgEl, `首页签名保存成功（${lines.length} 条）`);
     } catch (error) {
       setMsg(msgEl, String(error), true);
     }
@@ -710,6 +739,7 @@ export function loadAllSiteSettings() {
     "load-header-contact-btn",
     "load-blog-guide-btn",
     "load-site-info-btn",
+    "load-home-cover-btn",
   ];
   loadButtonIds.forEach((id) => {
     document.getElementById(id)?.click();

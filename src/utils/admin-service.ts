@@ -254,35 +254,29 @@ export function parseSiteInfoFromTs(content: string) {
 export function buildSiteInfoTs(info: {
   title: string;
   slogan: string;
-  startDate: string;
+  createdAt: string;
 }): string {
-  return `export type SiteInfo = {\n  title: string;\n  slogan: string;\n  startDate: string;\n}\n\nconst siteInfo: SiteInfo = ${JSON.stringify(info, null, 2)}\n\nexport default siteInfo\n`;
+  return `export type SiteInfo = {\n  title: string\n  slogan: string\n  createdAt: string\n}\n\nconst siteInfo: SiteInfo = ${JSON.stringify(info, null, 2)}\n\nexport default siteInfo\n`;
 }
 
 export function parseHomeCoverSignaturesFromTs(content: string) {
   const matched = content.match(
-    /const\s+homeCoverSignatures:\s*string\[\]\s*=\s*(\[[\s\S]*?\])\s*;?\s*\n\s*export\s+default\s+homeCoverSignatures/,
+    /homeCoverSignatures:\s*string\[\]\s*=\s*(\[[\s\S]*?\])\s*;\s*\n\s*export\s+default\s+homeCoverSignatures/,
   );
-  if (!matched?.[1]) throw new Error("无法解析首页签名文件");
+  if (!matched?.[1]) throw new Error("无法解析首页签名列表文件");
   const raw = matched[1]
-    .replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g, '$1"$2"$3')
-    .replace(/,\s*([}\]])/g, '$1');
-  try {
-    return JSON.parse(raw);
-  } catch {
-    // 兼容单引号字符串数组
-    return JSON.parse(raw.replace(/'/g, '"'));
-  }
+    .replace(/,\s*([}\]])/g, "$1")
+    .replace(/'/g, '"');
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) throw new Error("首页签名必须是数组");
+  return parsed.map((item) => String(item).trim()).filter(Boolean);
 }
 
-export function buildHomeCoverSignaturesTs(signatures: string[]) {
-  const list = Array.isArray(signatures)
-    ? signatures.map((s) => String(s ?? "").trim()).filter(Boolean)
-    : [];
-  const body = list.length > 0
-    ? `[\n  ${list.map((s) => JSON.stringify(s)).join(",\n  ")}\n]`
-    : "[]";
-  return `// 首页 Cover 打字机签名列表（留空则不显示打字机，改为显示副标题）\nconst homeCoverSignatures: string[] = ${body}\n\nexport default homeCoverSignatures;\n`;
+export function buildHomeCoverSignaturesTs(signatures: string[]): string {
+  const lines = signatures
+    .map((s) => `  '${String(s).replace(/'/g, "\\'")}'`)
+    .join(",\n");
+  return `// 首页 Cover 打字机签名列表\nconst homeCoverSignatures: string[] = [\n${lines},\n];\n\nexport default homeCoverSignatures;\n`;
 }
 
 export function parseAboutProfileFromTs(content: string) {
@@ -392,12 +386,17 @@ export function buildPostMarkdown(data: {
   image: string;
   category: string;
   subCategory?: string;
+  subCategory2?: string;
   slugId: string;
   content: string;
   pinned?: boolean;
 }): string {
   const imageLine = data.image ? `image: ${escapeFrontmatterValue(data.image)}\n` : "";
-  const categories = normalizeCategoryItems([data.category, data.subCategory || ""]);
+  const categories = normalizeCategoryItems([
+    data.category,
+    data.subCategory || "",
+    data.subCategory2 || "",
+  ]);
   const safeCategories = categories.map(escapeFrontmatterValue);
   const categoryLine = safeCategories[0] ? `category: ${safeCategories[0]}\n` : "";
   const categoriesLine = safeCategories.length > 0

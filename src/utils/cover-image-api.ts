@@ -50,12 +50,17 @@ function readCache(config: CoverImageConfig): CacheData {
 function writeCache(config: CoverImageConfig, data: CacheData): void {
   if (!config.cacheEnabled) return
   try {
-    const cachePath = path.resolve(config.cacheFilePath)
-    const dir = path.dirname(cachePath)
+    const root = path.resolve('.')
+    const target = path.resolve(config.cacheFilePath)
+    if (!target.startsWith(root + path.sep) && target !== root) {
+      console.warn('[cover-image] 缓存路径越界，拒绝写入')
+      return
+    }
+    const dir = path.dirname(target)
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true })
     }
-    fs.writeFileSync(cachePath, JSON.stringify(data, null, 2), 'utf-8')
+    fs.writeFileSync(target, JSON.stringify(data, null, 2), 'utf-8')
   } catch {
     console.warn('[cover-image] 写入缓存失败')
   }

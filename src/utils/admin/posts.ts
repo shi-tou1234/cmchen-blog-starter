@@ -21,7 +21,7 @@ import {
   toIsoDateTime,
   buildPostMarkdown,
   getPrimaryCategoryFromItems,
-  getSubcategoriesFromItems,
+  normalizeCategoryItems,
   extractCategoriesFromMarkdown,
   parsePostFrontmatter,
 } from "./core";
@@ -137,6 +137,7 @@ function collectPostDraft() {
     cover: get("post-cover"),
     category: get("post-category"),
     subcategory: get("post-subcategory"),
+    subcategory2: get("post-subcategory2"),
     content: get("post-content"),
     pinned: pinnedEl?.checked || false,
     updatedAt: Date.now(),
@@ -176,6 +177,7 @@ function loadPostDraftLocally(): boolean {
     setVal("post-cover", draft.cover || "");
     setVal("post-category", draft.category || "");
     setVal("post-subcategory", draft.subcategory || "");
+    setVal("post-subcategory2", draft.subcategory2 || "");
     setVal("post-content", draft.content || "");
     const pinnedEl = (document.getElementById("post-pinned") as HTMLInputElement | null) as HTMLInputElement | null;
     if (pinnedEl) pinnedEl.checked = !!draft.pinned;
@@ -309,10 +311,19 @@ function normalizeCategoryOptionList(categories: string[]) {
     .slice(0, CATEGORY_OPTIONS_LIMIT);
 }
 
-function renderSubcategoryOptions(rootCategory: string) {
+function findChildrenForCategory(category: string): string[] {
+  const children = categoryOptionMeta.subcategoriesByRoot[category] || [];
+  if (children.length > 0) return children;
+  const matchedKey = Object.keys(categoryOptionMeta.subcategoriesByRoot).find(
+    (key) => key.toLowerCase() === category.toLowerCase()
+  );
+  return matchedKey ? categoryOptionMeta.subcategoriesByRoot[matchedKey] : [];
+}
+
+function renderSubcategoryOptions(parentCategory: string) {
   const subcategoryDatalist = (document.getElementById("post-subcategory-options") as HTMLInputElement | null);
   if (!(subcategoryDatalist instanceof HTMLDataListElement)) return;
-  const subcategories = normalizeCategoryOptionList(categoryOptionMeta.subcategoriesByRoot[rootCategory] || []);
+  const subcategories = normalizeCategoryOptionList(findChildrenForCategory(parentCategory));
   subcategoryDatalist.innerHTML = "";
   subcategories.forEach((category) => {
     const option = document.createElement("option");
@@ -321,9 +332,23 @@ function renderSubcategoryOptions(rootCategory: string) {
   });
 }
 
+function renderSubsubcategoryOptions(parentCategory: string) {
+  const subsubcategoryDatalist = (document.getElementById("post-subcategory2-options") as HTMLInputElement | null);
+  if (!(subsubcategoryDatalist instanceof HTMLDataListElement)) return;
+  const subcategories = normalizeCategoryOptionList(findChildrenForCategory(parentCategory));
+  subsubcategoryDatalist.innerHTML = "";
+  subcategories.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    subsubcategoryDatalist.appendChild(option);
+  });
+}
+
 function syncSubcategoryOptions() {
   const rootCategory = (((document.getElementById("post-category") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
+  const middleCategory = (((document.getElementById("post-subcategory") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
   renderSubcategoryOptions(rootCategory);
+  renderSubsubcategoryOptions(middleCategory);
 }
 
 function renderCategoryOptions(meta: { topLevelCategories: string[]; subcategoriesByRoot: Record<string, string[]> }) {
@@ -400,14 +425,16 @@ async function loadCategoryOptions(
       try {
         const meta = await getFileMeta(entry.path, token, branch, true);
         const markdown = decodeFileContent(meta?.content || "");
-        const cats = extractCategoriesFromMarkdown(markdown);
+        const cats = normalizeCategoryItems(extractCategoriesFromMarkdown(markdown));
         const rootCategory = getPrimaryCategoryFromItems(cats);
         if (rootCategory) {
           categorySet.add(rootCategory);
-          const subcategories = getSubcategoriesFromItems(cats);
-          if (subcategories.length > 0) {
-            if (!subcategoriesByRoot[rootCategory]) subcategoriesByRoot[rootCategory] = new Set();
-            for (const sub of subcategories) subcategoriesByRoot[rootCategory].add(sub);
+          for (let index = 0; index < cats.length - 1; index += 1) {
+            const parent = cats[index];
+            const child = cats[index + 1];
+            if (!parent || !child || parent === child) continue;
+            if (!subcategoriesByRoot[parent]) subcategoriesByRoot[parent] = new Set();
+            subcategoriesByRoot[parent].add(child);
           }
         }
         // 回填列表项的标题/日期/置顶信息
@@ -463,6 +490,7 @@ function clearPostEditor() {
   const coverInput = (document.getElementById("post-cover") as HTMLInputElement | null);
   const categoryInput = (document.getElementById("post-category") as HTMLInputElement | null);
   const subcategoryInput = (document.getElementById("post-subcategory") as HTMLInputElement | null);
+  const subcategory2Input = (document.getElementById("post-subcategory2") as HTMLInputElement | null);
   const contentInput = (document.getElementById("post-content") as HTMLTextAreaElement | null);
   const categorySelect = (document.getElementById("post-category-select") as HTMLSelectElement | null);
 
@@ -474,6 +502,7 @@ function clearPostEditor() {
   if (coverInput) coverInput.value = "";
   if (categoryInput) categoryInput.value = "";
   if (subcategoryInput) subcategoryInput.value = "";
+  if (subcategory2Input) subcategory2Input.value = "";
   if (categorySelect instanceof HTMLSelectElement) categorySelect.value = "";
   if (contentInput) contentInput.value = "";
   const pinnedCheckbox = (document.getElementById("post-pinned") as HTMLInputElement | null);
@@ -604,6 +633,7 @@ async function loadSelectedPostToEditor() {
   const coverInput = (document.getElementById("post-cover") as HTMLInputElement | null);
   const categoryInput = (document.getElementById("post-category") as HTMLInputElement | null);
   const subcategoryInput = (document.getElementById("post-subcategory") as HTMLInputElement | null);
+  const subcategory2Input = (document.getElementById("post-subcategory2") as HTMLInputElement | null);
   const contentInput = (document.getElementById("post-content") as HTMLTextAreaElement | null);
 
   if (titleInput) titleInput.value = frontmatter.title || "";
@@ -616,8 +646,10 @@ async function loadSelectedPostToEditor() {
     const parsedCategories = extractCategoriesFromMarkdown(rawMarkdown);
     const currentCategory = parsedCategories[0] || "";
     const subCategory = parsedCategories[1] || "";
+    const subCategory2 = parsedCategories[2] || "";
     categoryInput.value = currentCategory;
     if (subcategoryInput) subcategoryInput.value = subCategory;
+    if (subcategory2Input) subcategory2Input.value = subCategory2;
     if (categorySelect instanceof HTMLSelectElement) {
       categorySelect.value = currentCategory;
       if (categorySelect.value !== currentCategory) categorySelect.value = "";
@@ -759,6 +791,10 @@ export function initPostHandlers() {
     syncSubcategoryOptions();
   });
 
+  (document.getElementById("post-subcategory") as HTMLInputElement | null)?.addEventListener("input", () => {
+    syncSubcategoryOptions();
+  });
+
   (document.getElementById("load-selected-post-btn") as HTMLInputElement | null)?.addEventListener("click", async () => {
     const msgEl = (document.getElementById("post-msg") as HTMLElement | null);
     try {
@@ -858,7 +894,7 @@ export function initPostHandlers() {
   });
 
   // 元数据字段变化时也自动保存草稿
-  ["post-title", "post-slug", "post-lang", "post-date", "post-desc", "post-cover", "post-category", "post-subcategory"].forEach((id) => {
+  ["post-title", "post-slug", "post-lang", "post-date", "post-desc", "post-cover", "post-category", "post-subcategory", "post-subcategory2"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", autoSaveDebounced);
   });
   (document.getElementById("post-pinned") as HTMLInputElement | null)?.addEventListener("change", autoSaveDebounced);
@@ -992,6 +1028,7 @@ export function initPostHandlers() {
       const image = (((document.getElementById("post-cover") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
       const category = (((document.getElementById("post-category") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
       const subCategory = (((document.getElementById("post-subcategory") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
+      const subCategory2 = (((document.getElementById("post-subcategory2") as HTMLInputElement | null) as HTMLInputElement | null)?.value || "").trim();
       const pinnedCheckbox = (document.getElementById("post-pinned") as HTMLInputElement | null);
       const pinned = pinnedCheckbox instanceof HTMLInputElement ? pinnedCheckbox.checked : false;
       const contentInput = (document.getElementById("post-content") as HTMLTextAreaElement | null) as HTMLTextAreaElement | null;
@@ -1009,7 +1046,7 @@ export function initPostHandlers() {
 
       const markdown = buildPostMarkdown({
         title, date, updatedDate: new Date().toISOString(),
-        description, image, category, subCategory,
+        description, image, category, subCategory, subCategory2,
         slugId: slug, content, pinned,
       });
 

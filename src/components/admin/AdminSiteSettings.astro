@@ -5,6 +5,7 @@ import AboutPersonal from '@/components/admin/settings/AboutPersonal.astro';
 import AboutProfile from '@/components/admin/settings/AboutProfile.astro';
 import ToolsLinks from '@/components/admin/settings/ToolsLinks.astro';
 import SiteInfo from '@/components/admin/settings/SiteInfo.astro';
+import HomeCover from '@/components/admin/settings/HomeCover.astro';
 import HeaderContact from '@/components/admin/settings/HeaderContact.astro';
 import BlogGuide from '@/components/admin/settings/BlogGuide.astro';
 
@@ -15,6 +16,7 @@ const subTabs = [
   { key: 'about-profile', label: '特质' },
   { key: 'tools-links', label: '工具链接' },
   { key: 'site-info', label: '站点信息' },
+  { key: 'home-cover', label: '首页签名' },
   { key: 'header-contact', label: '联系方式' },
   { key: 'blog-guide', label: '博客介绍' },
 ];
@@ -38,6 +40,7 @@ const subTabs = [
     <div data-subpanel="about-profile" class="admin-subpanel hidden"><AboutProfile /></div>
     <div data-subpanel="tools-links" class="admin-subpanel hidden"><ToolsLinks /></div>
     <div data-subpanel="site-info" class="admin-subpanel hidden"><SiteInfo /></div>
+    <div data-subpanel="home-cover" class="admin-subpanel hidden"><HomeCover /></div>
     <div data-subpanel="header-contact" class="admin-subpanel hidden"><HeaderContact /></div>
     <div data-subpanel="blog-guide" class="admin-subpanel hidden"><BlogGuide /></div>
   </div>

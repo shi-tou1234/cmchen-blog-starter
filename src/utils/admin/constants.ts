@@ -26,7 +26,7 @@ export const SITE_INFO_PATH = "src/data/site-info.ts";
 export const HOME_COVER_PATH = "src/data/home-cover.ts";
 
 export const CATEGORY_OPTIONS_LIMIT = 50;
-export const CATEGORY_CACHE_KEY = "cmchen_admin_category_cache";
+export const CATEGORY_CACHE_KEY = "cmchen_admin_category_cache_v3";
 export const CATEGORY_CACHE_TTL = 3600000;
 
 export const PREVIEW_TOOL_PATH = "admin-preview/index.html";

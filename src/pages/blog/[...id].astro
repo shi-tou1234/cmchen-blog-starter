@@ -74,10 +74,11 @@ const sameCategoryPosts = activeCategory
         .filter((post) => post.id !== entry.id && getPostCategories(post, currentLang).includes(activeCategory))
         .slice(0, 20)
     : [];
-const rootCategoryPageUrl = rootCategory && rootCategory !== activeCategory
-    ? getRelativeLocaleUrl(currentLang, `/categories/${encodeCategoryParam(rootCategory)}`)
-    : '';
 const categoryPageUrl = activeCategory ? getRelativeLocaleUrl(currentLang, `/categories/${encodeCategoryParam(activeCategory)}`) : '';
+const categoryLinks = currentCategories.map((category) => ({
+    category,
+    url: getRelativeLocaleUrl(currentLang, `/categories/${encodeCategoryParam(category)}`),
+}));
 const homeLabel = '首页';
 const updatedLabel = '最后更新于';
 const showUpdatedDate = entry.data.updatedDate && entry.data.updatedDate.valueOf() > entry.data.pubDate.valueOf();
@@ -103,18 +104,12 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
         <div id="post-reading-shell" class="post-content-column">
             <nav class="mb-4 text-sm text-[var(--text-color)]/65" aria-label="面包屑导航">
                 <a href={getRelativeLocaleUrl(currentLang, '/')} class="hover:text-[var(--link-color)]">{homeLabel}</a>
-                {rootCategory && (
+                {categoryLinks.map((link) => (
                     <>
                         <span class="px-2">&gt;</span>
-                        <a href={rootCategoryPageUrl || categoryPageUrl} class="hover:text-[var(--link-color)]">{rootCategory}</a>
-                        {activeCategory && activeCategory !== rootCategory && (
-                            <>
-                                <span class="px-2">&gt;</span>
-                                <a href={categoryPageUrl} class="hover:text-[var(--link-color)]">{activeCategory}</a>
-                            </>
-                        )}
+                        <a href={link.url} class="hover:text-[var(--link-color)]">{link.category}</a>
                     </>
-                )}
+                ))}
                 <span class="px-2">&gt;</span>
                 <span class="text-[var(--text-color)]/90">{entry.data.title}</span>
             </nav>
@@ -130,8 +125,8 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
                         id="post-share-button"
                         class="post-share-button"
                         type="button"
-                        title="复制友情链接"
-                        aria-label="复制友情链接"
+                        title="复制本文链接"
+                        aria-label="复制本文链接"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
@@ -354,36 +349,6 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
 </script>
 
 <style is:global>
-    .post-share-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        border: 1px solid var(--border-color);
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--bg-color) 92%, transparent);
-        color: var(--text-color);
-        padding: 0.2rem 0.7rem;
-        font-size: 0.78rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
-    }
-
-    .post-share-button:hover {
-        border-color: color-mix(in srgb, var(--link-color) 45%, var(--border-color));
-        color: var(--link-color);
-        background: var(--hover-bg-color);
-    }
-
-    .post-share-button:active {
-        transform: scale(0.94);
-    }
-
-    .post-share-button.is-copied {
-        border-color: var(--link-color);
-        color: var(--link-color);
-    }
-
     .post-layout-wrapper {
         --page-width: min(800px, 88vw);
         --toc-width: 230px;
@@ -506,6 +471,36 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
         flex-shrink: 0;
     }
 
+    .post-share-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+        color: var(--text-color);
+        padding: 0.2rem 0.7rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .post-share-button:hover {
+        border-color: color-mix(in srgb, var(--link-color) 45%, var(--border-color));
+        color: var(--link-color);
+        background: var(--hover-bg-color);
+    }
+
+    .post-share-button:active {
+        transform: scale(0.94);
+    }
+
+    .post-share-button.is-copied {
+        border-color: var(--link-color);
+        color: var(--link-color);
+    }
+
     @keyframes post-back-pulse {
         0%, 100% { box-shadow: 0 8px 24px var(--shadow-color); }
         15% { box-shadow: 0 8px 24px var(--shadow-color), 0 0 0 6px color-mix(in srgb, var(--link-color) 14%, transparent); }
@@ -586,12 +581,6 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
             pointer-events: none;
         }
 
-        .post-right-sidebar .post-back-floating,
-        .post-right-sidebar #backTop,
-        .post-right-sidebar .post-toc-fab {
-            display: none;
-        }
-
         .post-right-sidebar-inner {
             position: fixed;
             left: auto;
@@ -631,6 +620,15 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
         .post-content-column {
             padding-bottom: calc(2rem + 56px);
             max-width: 100%;
+        }
+    }
+
+    /* 移动端：收拢式浮动按钮（MobileFab）替代原浮动按钮簇，目录面板与遮罩保留供 FAB 编程式调用 */
+    @media (max-width: 767px) {
+        .post-right-sidebar .post-back-floating,
+        .post-right-sidebar #backTop,
+        .post-right-sidebar .post-toc-fab {
+            display: none;
         }
     }
 </style>

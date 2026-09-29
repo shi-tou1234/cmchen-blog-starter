@@ -311,10 +311,6 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
   filter: saturate(0.98) contrast(1.01);
 }
 
-.tiny-only {
-  display: none;
-}
-
 @media (max-width: 379px) {
   #main-header .hide-on-tiny {
     display: none !important;
@@ -339,12 +335,6 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
     transition: none;
   }
 }
-
-  @media (max-width: 767px) {
-    #mobile-menu {
-      width: min(86vw, 320px);
-    }
-  }
 
   #mobile-menu {
     display: block;
@@ -377,10 +367,6 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
     border-right: 0;
     padding-top: 3.8rem;
     overflow-y: auto;
-  }
-
-  #mobile-menu.is-tiny-screen .tiny-only {
-    display: block;
   }
 
 </style>

@@ -107,6 +107,15 @@ const serializedSubcategoriesByRoot = JSON.stringify(
     Object.entries(subcategoriesByRoot).map(([k, v]) => [k, [...v]])
   )
 );
+const categoryParentMap = Object.fromEntries(
+  Object.entries(subcategoriesByRoot).flatMap(([parent, children]) =>
+    [...children].map((child) => [child, parent])
+  )
+);
+const serializedCategoryParents = JSON.stringify(categoryParentMap);
+const serializedCategoryDisplayNames = JSON.stringify(
+  Object.fromEntries(Object.keys(categoriesMap).map((category) => [category.toLowerCase(), category]))
+);
 const serializedCategoryCounts = JSON.stringify(
   Object.fromEntries(
     Object.entries(categoriesMap).map(([k, v]) => [k, v.length])
@@ -114,7 +123,7 @@ const serializedCategoryCounts = JSON.stringify(
 );
 ---
 
-<div class="archive-explorer grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]" data-initial-category={initialCategory.toLowerCase()} data-top-level-categories={serializedTopLevelCategories} data-subcategories-by-root={serializedSubcategoriesByRoot} data-category-counts={serializedCategoryCounts} data-lang={language}>
+<div class="archive-explorer grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]" data-initial-category={initialCategory.toLowerCase()} data-top-level-categories={serializedTopLevelCategories} data-subcategories-by-root={serializedSubcategoriesByRoot} data-category-parents={serializedCategoryParents} data-category-display-names={serializedCategoryDisplayNames} data-category-counts={serializedCategoryCounts} data-lang={language}>
   <section class="min-w-0 space-y-8">
     <div class="archive-explorer__toolbar">
       <button
@@ -231,7 +240,7 @@ const serializedCategoryCounts = JSON.stringify(
       <h2 class="archive-explorer__title text-xl font-bold text-[var(--text-color)]"># {filterTitle}</h2>
 
       <div class="archive-explorer__view-container mt-4">
-        <div class="archive-explorer__top-view" data-view-state="active">
+        <div class="archive-explorer__top-view archive-explorer__view" data-view-state="active">
           <div class="archive-explorer__chips flex flex-wrap gap-2 lg:flex-col lg:items-stretch">
             <button type="button" class="archive-explorer__chip" data-filter-category="">
               <span>{allLabel}</span>
@@ -246,7 +255,7 @@ const serializedCategoryCounts = JSON.stringify(
           </div>
         </div>
 
-        <div class="archive-explorer__sub-view" data-view-state="inactive">
+        <div class="archive-explorer__sub-view archive-explorer__view" data-view-state="inactive">
           <div class="archive-explorer__chips archive-explorer__sub-chips flex flex-wrap gap-2 lg:flex-col lg:items-stretch">
             <button type="button" class="archive-explorer__chip archive-explorer__back-btn">
               <span>{backLabel}</span>
@@ -278,10 +287,9 @@ const serializedCategoryCounts = JSON.stringify(
       const years = [...root.querySelectorAll('[data-archive-year]')];
       const months = [...root.querySelectorAll('[data-archive-month]')];
       const emptyState = root.querySelector('[data-archive-empty]');
-      const topView = root.querySelector('.archive-explorer__top-view');
-      const subView = root.querySelector('.archive-explorer__sub-view');
+      const topView = root.querySelector<HTMLElement>('.archive-explorer__top-view');
+      const subView = root.querySelector<HTMLElement>('.archive-explorer__sub-view');
       const viewContainer = root.querySelector<HTMLElement>('.archive-explorer__view-container');
-      const subChipsContainer = root.querySelector('.archive-explorer__sub-chips');
       const backBtn = root.querySelector('.archive-explorer__back-btn');
       const viewTitle = root.querySelector('.archive-explorer__title');
       const initialCategories = (root.dataset.initialCategory || '')
@@ -290,22 +298,79 @@ const serializedCategoryCounts = JSON.stringify(
         .filter(Boolean);
       const selectedCategories = new Set();
 
-      const topLevelCategoriesList = (() => {
+      const topLevelCategoriesList: string[] = (() => {
         try { return JSON.parse(root.dataset.topLevelCategories || '[]'); }
         catch { return []; }
       })();
-      const subcategoriesByRootData = (() => {
-        try { return JSON.parse(root.dataset.subcategoriesByRoot || '{}'); }
-        catch { return {}; }
-      })();
+      // .astro 的 script 块里 `f<T>()` 会被 ESLint 解析器当成比较表达式，改用 as 断言标注类型
+      function normalizeKeyedRecord<T>(raw: Record<string, T>) {
+        return Object.fromEntries(Object.entries(raw || {}).map(([key, value]) => [key.toLowerCase(), value]));
+      }
+      const subcategoriesByRootData = normalizeKeyedRecord(
+        (() => {
+          try { return JSON.parse(root.dataset.subcategoriesByRoot || '{}') as Record<string, string[]>; }
+          catch { return {}; }
+        })()
+      );
+      const categoryParentsData = normalizeKeyedRecord(
+        (() => {
+          try { return JSON.parse(root.dataset.categoryParents || '{}') as Record<string, string>; }
+          catch { return {}; }
+        })()
+      );
+      const categoryDisplayNamesData = normalizeKeyedRecord(
+        (() => {
+          try { return JSON.parse(root.dataset.categoryDisplayNames || '{}') as Record<string, string>; }
+          catch { return {}; }
+        })()
+      );
       const categoryCountsData = (() => {
         try { return JSON.parse(root.dataset.categoryCounts || '{}'); }
         catch { return {}; }
       })();
 
+      const categoryDisplayName = (category: string) =>
+        categoryDisplayNamesData[category.toLowerCase()] || category;
+      const findChildren = (category: string) =>
+        subcategoriesByRootData[category.toLowerCase()] || [];
+      const resolveCategoryPath = (category: string) => {
+        const displayCategory = categoryDisplayName(category);
+        const path = [displayCategory];
+        const seen = new Set([displayCategory.toLowerCase()]);
+        let cursor = displayCategory;
+
+        while (true) {
+          const parent = categoryParentsData[cursor.toLowerCase()];
+          if (!parent || seen.has(parent.toLowerCase())) break;
+          const displayParent = categoryDisplayName(parent);
+          path.unshift(displayParent);
+          seen.add(displayParent.toLowerCase());
+          cursor = displayParent;
+        }
+
+        return path;
+      };
+
       let viewState = 'top';
-      let activeRootCategory = '';
+      let activePath: string[] = [];
       const pageLang = root.dataset.lang || 'zh-cn';
+      const backLabelText = backBtn?.textContent?.trim() || (pageLang.startsWith('zh') ? '← 返回' : '← Back');
+
+      // 子视图层双缓冲：subView 与动态创建的备用层交替承担「当前层」，
+      // 使二级→三级（及更深一级）与一级→二级 走完全相同的两个视图交叉过渡
+      const bufferLayer = document.createElement('div');
+      bufferLayer.className = 'archive-explorer__sub-view archive-explorer__view';
+      bufferLayer.dataset.viewState = 'inactive';
+      const bufferChips = document.createElement('div');
+      bufferChips.className = 'archive-explorer__chips archive-explorer__sub-chips flex flex-wrap gap-2 lg:flex-col lg:items-stretch';
+      bufferLayer.appendChild(bufferChips);
+      viewContainer?.appendChild(bufferLayer);
+
+      let currentSubLayer: HTMLElement | null = subView;
+      let bufferSubLayer: HTMLElement | null = bufferLayer;
+
+      const getLayerChips = (layer: HTMLElement | null) =>
+        (layer?.querySelector('.archive-explorer__sub-chips') as HTMLElement | null) ?? null;
 
       const parseUrlCategories = () => {
         const params = new URLSearchParams(window.location.search);
@@ -603,17 +668,39 @@ const serializedCategoryCounts = JSON.stringify(
         updateSubcategoryActiveStates();
       };
 
-      const renderSubcategoryButtons = (subcategories: string[]) => {
-        if (!subChipsContainer) return;
-        const backBtnEl = subChipsContainer.querySelector('.archive-explorer__back-btn');
-        subChipsContainer.innerHTML = '';
-        if (backBtnEl) subChipsContainer.appendChild(backBtnEl);
+      const renderSubcategoryButtons = (container: HTMLElement, path: string[], subcategories: string[]) => {
+        let backBtnEl = container.querySelector<HTMLButtonElement>('.archive-explorer__back-btn');
+        if (!backBtnEl) {
+          backBtnEl = document.createElement('button');
+          backBtnEl.type = 'button';
+          backBtnEl.className = 'archive-explorer__chip archive-explorer__back-btn';
+          backBtnEl.innerHTML = `<span>${backLabelText}</span>`;
+          backBtnEl.addEventListener('click', () => exitSubView());
+        }
+
+        container.innerHTML = '';
+        container.appendChild(backBtnEl);
+
+        const currentCategory = path[path.length - 1];
+        if (currentCategory) {
+          const currentBtn = document.createElement('button');
+          currentBtn.type = 'button';
+          currentBtn.className = 'archive-explorer__chip archive-explorer__current-btn';
+          currentBtn.dataset.filterCategory = currentCategory.toLowerCase();
+          const currentCount = categoryCountsData[currentCategory] || 0;
+          currentBtn.innerHTML = `<span>全部（${currentCategory}）</span><span>${currentCount}</span>`;
+          currentBtn.addEventListener('click', () => {
+            if (!(currentBtn instanceof HTMLElement)) return;
+            toggleCategory(currentBtn.dataset.filterCategory || '');
+          });
+          container.appendChild(currentBtn);
+        }
 
         if (!subcategories.length) {
           const emptyMsg = document.createElement('div');
           emptyMsg.className = 'archive-explorer__no-sub text-sm text-[var(--text-color)]/50 px-2 py-1';
           emptyMsg.textContent = pageLang.startsWith('zh') ? '暂无子分类' : 'No subcategories';
-          subChipsContainer.appendChild(emptyMsg);
+          container.appendChild(emptyMsg);
           return;
         }
 
@@ -621,20 +708,34 @@ const serializedCategoryCounts = JSON.stringify(
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'archive-explorer__chip';
-          btn.dataset.filterCategory = subcategory.toLowerCase();
           const count = categoryCountsData[subcategory] || 0;
-          btn.innerHTML = `<span>${subcategory}</span><span>${count}</span>`;
-          btn.addEventListener('click', () => {
-            if (!(btn instanceof HTMLElement)) return;
-            toggleCategory(btn.dataset.filterCategory || '');
-          });
-          subChipsContainer.appendChild(btn);
+          const hasChildren = findChildren(subcategory).length > 0;
+
+          if (hasChildren) {
+            btn.dataset.drillCategory = subcategory;
+            btn.innerHTML = `<span>${subcategory} ›</span><span>${count}</span>`;
+            btn.addEventListener('click', () => {
+              if (!(btn instanceof HTMLElement)) return;
+              const child = btn.dataset.drillCategory || '';
+              if (child) enterSubView([...path, child], true);
+            });
+          } else {
+            btn.dataset.filterCategory = subcategory.toLowerCase();
+            btn.innerHTML = `<span>${subcategory}</span><span>${count}</span>`;
+            btn.addEventListener('click', () => {
+              if (!(btn instanceof HTMLElement)) return;
+              toggleCategory(btn.dataset.filterCategory || '');
+            });
+          }
+
+          container.appendChild(btn);
         });
       };
 
       const updateSubcategoryActiveStates = () => {
-        if (!subChipsContainer) return;
-        subChipsContainer.querySelectorAll('[data-filter-category]').forEach((btn) => {
+        const container = getLayerChips(currentSubLayer);
+        if (!container) return;
+        container.querySelectorAll('[data-filter-category]').forEach((btn) => {
           if (!(btn instanceof HTMLElement)) return;
           const category = (btn.dataset.filterCategory || '').trim().toLowerCase();
           const matched = category ? selectedCategories.has(category) : selectedCategories.size === 0;
@@ -653,14 +754,51 @@ const serializedCategoryCounts = JSON.stringify(
         });
       };
 
+      let viewSwitchToken = 0;
+      let activeViewSwitch: { from: HTMLElement; to: HTMLElement; anims: Animation[] } | null = null;
+
+      const resetViewInlineStyles = (view: HTMLElement) => {
+        view.style.pointerEvents = '';
+        view.style.position = '';
+        view.style.left = '';
+        view.style.right = '';
+        view.style.top = '';
+        view.style.visibility = '';
+        view.getAnimations().forEach((animation) => animation.cancel());
+      };
+
+      // 中断进行中的视图过渡，回到「新视图激活、旧视图隐藏」的确定态，避免动画叠加错乱
+      const cancelViewSwitch = () => {
+        viewSwitchToken += 1;
+        const current = activeViewSwitch;
+        activeViewSwitch = null;
+        if (!current) return;
+
+        current.anims.forEach((animation) => animation.cancel());
+        current.from.dataset.viewState = 'inactive';
+        current.to.dataset.viewState = 'active';
+        resetViewInlineStyles(current.from);
+        resetViewInlineStyles(current.to);
+
+        if (viewContainer) {
+          viewContainer.getAnimations().forEach((animation) => animation.cancel());
+          viewContainer.style.height = '';
+          viewContainer.style.overflow = '';
+        }
+      };
+
       const animateViewSwitch = (fromView: HTMLElement | null, toView: HTMLElement | null, direction = 'forward') => {
-        if (!fromView || !toView) return;
+        if (!fromView || !toView || fromView === toView) return;
 
         if (prefersReducedMotion) {
+          cancelViewSwitch();
           fromView.dataset.viewState = 'inactive';
           toView.dataset.viewState = 'active';
           return;
         }
+
+        cancelViewSwitch();
+        const token = ++viewSwitchToken;
 
         // 预量目标视图高度（隐形渲染一帧，容器高度平滑过渡而不硬跳）
         const fromHeight = fromView.offsetHeight;
@@ -711,22 +849,27 @@ const serializedCategoryCounts = JSON.stringify(
             )
           : null;
 
+        activeViewSwitch = {
+          from: fromView,
+          to: toView,
+          anims: [outAnim, inAnim, ...(heightAnim ? [heightAnim] : [])],
+        };
+
         Promise.all([
           outAnim.finished.catch(() => {}),
           inAnim.finished.catch(() => {}),
           heightAnim ? heightAnim.finished.catch(() => {}) : Promise.resolve(),
         ]).then(() => {
+          if (token !== viewSwitchToken) return;
+          activeViewSwitch = null;
+
           fromView.dataset.viewState = 'inactive';
           outAnim.cancel();
           inAnim.cancel();
           heightAnim?.cancel();
 
-          fromView.style.pointerEvents = '';
-          toView.style.pointerEvents = '';
-          toView.style.position = '';
-          toView.style.left = '';
-          toView.style.right = '';
-          toView.style.top = '';
+          resetViewInlineStyles(fromView);
+          resetViewInlineStyles(toView);
 
           if (viewContainer) {
             viewContainer.style.height = '';
@@ -735,32 +878,80 @@ const serializedCategoryCounts = JSON.stringify(
         });
       };
 
-      const enterSubView = (rootCategory: string) => {
-        if (viewState === 'sub') return;
-        viewState = 'sub';
-        activeRootCategory = rootCategory;
+      const renderSubView = (layer: HTMLElement | null, path: string[], animatePosts = true) => {
+        const container = getLayerChips(layer);
+        if (!container) return;
 
         selectedCategories.clear();
-        const subcategories = subcategoriesByRootData[rootCategory] || [];
-        renderSubcategoryButtons(subcategories);
-        applyFilter([], true);
+        renderSubcategoryButtons(container, path, findChildren(path[path.length - 1]));
+        applyFilter([], animatePosts);
         syncUrlCategories();
 
         if (viewTitle) {
-          const displayName = topLevelCategoriesList.find(
-            (cat: string) => cat.toLowerCase() === rootCategory
-          ) || rootCategory;
-          viewTitle.textContent = `# ${displayName}`;
+          const displayPath = path.map((category, index) => {
+            if (index !== 0) return category;
+            return topLevelCategoriesList.find(
+              (item: string) => item.toLowerCase() === category.toLowerCase()
+            ) || category;
+          });
+          viewTitle.textContent = `# ${displayPath.join(' / ')}`;
+        }
+      };
+
+      const enterSubView = (path: string[], animate = true) => {
+        if (!path.length) return;
+
+        const wasTop = viewState === 'top';
+        const previousLength = activePath.length;
+        const fromLayer = wasTop ? topView : currentSubLayer;
+        const toLayer = wasTop ? subView : bufferSubLayer;
+        if (!fromLayer || !toLayer) return;
+
+        const direction = path.length >= previousLength ? 'forward' : 'backward';
+
+        viewState = 'sub';
+        activePath = path;
+        renderSubView(toLayer, path);
+
+        // 双层交替：旧层退为备用层，新层成为当前层
+        if (wasTop) {
+          currentSubLayer = subView;
+          bufferSubLayer = bufferLayer;
+        } else {
+          currentSubLayer = toLayer;
+          bufferSubLayer = fromLayer;
         }
 
-        animateViewSwitch(topView as HTMLElement | null, subView as HTMLElement | null, 'forward');
+        if (animate) {
+          animateViewSwitch(fromLayer, toLayer, direction);
+        } else {
+          cancelViewSwitch();
+          fromLayer.dataset.viewState = 'inactive';
+          toLayer.dataset.viewState = 'active';
+        }
       };
 
       const exitSubView = () => {
         if (viewState === 'top') return;
-        viewState = 'top';
-        activeRootCategory = '';
 
+        const fromLayer = currentSubLayer;
+        if (!fromLayer) return;
+
+        if (activePath.length > 1) {
+          const parentPath = activePath.slice(0, -1);
+          const toLayer = bufferSubLayer;
+          if (!toLayer) return;
+
+          activePath = parentPath;
+          renderSubView(toLayer, parentPath);
+          currentSubLayer = toLayer;
+          bufferSubLayer = fromLayer;
+          animateViewSwitch(fromLayer, toLayer, 'backward');
+          return;
+        }
+
+        viewState = 'top';
+        activePath = [];
         selectedCategories.clear();
         applyFilter([], true);
         syncUrlCategories();
@@ -769,7 +960,9 @@ const serializedCategoryCounts = JSON.stringify(
           viewTitle.textContent = `# ${pageLang.startsWith('zh') ? '归档' : 'Archives'}`;
         }
 
-        animateViewSwitch(subView as HTMLElement | null, topView as HTMLElement | null, 'backward');
+        currentSubLayer = subView;
+        bufferSubLayer = bufferLayer;
+        animateViewSwitch(fromLayer, topView, 'backward');
       };
 
       rootChips.forEach((chip) => {
@@ -778,9 +971,10 @@ const serializedCategoryCounts = JSON.stringify(
           const rootCategory = chip.dataset.rootCategory || '';
           if (!rootCategory) return;
 
-          const subcategories = subcategoriesByRootData[rootCategory] || [];
-          if (subcategories.length > 0) {
-            enterSubView(rootCategory);
+          const rootDisplay = categoryDisplayName(rootCategory);
+          const children = findChildren(rootDisplay);
+          if (children.length > 0) {
+            enterSubView([rootDisplay], true);
           } else {
             if (selectedCategories.has(rootCategory)) {
               selectedCategories.clear();
@@ -790,6 +984,7 @@ const serializedCategoryCounts = JSON.stringify(
             }
             applyFilter([...selectedCategories] as string[], true);
             syncUrlCategories();
+            updateSubcategoryActiveStates();
           }
         });
       });
@@ -971,9 +1166,9 @@ const serializedCategoryCounts = JSON.stringify(
         setSelectedCategories(urlCategories, false, false);
       } else if (initialCategories.length > 0) {
         const firstInitial = initialCategories[0];
-        const hasSubcategories = subcategoriesByRootData[firstInitial] && subcategoriesByRootData[firstInitial].length > 0;
+        const hasSubcategories = findChildren(categoryDisplayName(firstInitial)).length > 0;
         if (hasSubcategories) {
-          enterSubView(firstInitial);
+          enterSubView(resolveCategoryPath(firstInitial), false);
         } else {
           setSelectedCategories(initialCategories, false, false);
           updateRootChipActiveStates();
@@ -1157,20 +1352,17 @@ const serializedCategoryCounts = JSON.stringify(
     min-height: 3rem;
   }
 
-  .archive-explorer__top-view,
-  .archive-explorer__sub-view {
+  .archive-explorer__view {
     transition: opacity 300ms ease, transform 300ms ease;
   }
 
-  .archive-explorer__top-view[data-view-state='inactive'],
-  .archive-explorer__sub-view[data-view-state='inactive'] {
+  .archive-explorer__view[data-view-state='inactive'] {
     display: none;
     opacity: 0;
     transform: translateY(-8px);
   }
 
-  .archive-explorer__top-view[data-view-state='active'],
-  .archive-explorer__sub-view[data-view-state='active'] {
+  .archive-explorer__view[data-view-state='active'] {
     display: block;
     opacity: 1;
     transform: translateY(0);

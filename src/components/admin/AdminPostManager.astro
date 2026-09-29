@@ -64,10 +64,17 @@ const previewEmbedUrl = `${import.meta.env.BASE_URL}admin-preview/?embed=1`;
               </div>
             </div>
             <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-              <label class="text-xs font-medium whitespace-nowrap">小分类</label>
+              <label class="text-xs font-medium whitespace-nowrap">中分类</label>
               <div class="flex-1 min-w-0">
                 <input id="post-subcategory" list="post-subcategory-options" type="text" class="post-input w-full" placeholder="选择或输入" />
                 <datalist id="post-subcategory-options"></datalist>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <label class="text-xs font-medium whitespace-nowrap">小分类</label>
+              <div class="flex-1 min-w-0">
+                <input id="post-subcategory2" list="post-subcategory2-options" type="text" class="post-input w-full" placeholder="选择或输入" />
+                <datalist id="post-subcategory2-options"></datalist>
               </div>
             </div>
           </div>

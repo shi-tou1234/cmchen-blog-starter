@@ -661,6 +661,7 @@ rt {
   filter: brightness(1.2);
 }
 
+/* 下划线语法 ++...++（参考 Momo v26.5.6） */
 .underline-text {
   text-decoration: underline;
   text-decoration-color: var(--link-color);

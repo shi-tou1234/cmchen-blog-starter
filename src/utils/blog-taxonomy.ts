@@ -8,7 +8,9 @@ type BlogEntryWithLocaleStatus = {
 
 const CATEGORY_PARAM_PREFIX = 'b64-';
 export const STUDY_NOTE_CATEGORY = '学习笔记';
-const STUDY_NOTE_SUBCATEGORIES = new Set(['电路', '高数', '数电', '大物', '复变函数', '英语笔记']);
+export const MATH_CATEGORY = '数学';
+export const MATH_SUBJECTS = new Set(['高数', '线代', '复变函数']);
+const STUDY_NOTE_SUBCATEGORIES = new Set(['电路', '数电', '模电', '大物', '英语笔记']);
 
 // 浏览器兼容的 base64url 编解码（不依赖 Node 的 Buffer）
 function toBase64Url(input: string): string {
@@ -31,8 +33,28 @@ export function getUncategorizedLabel(lang: string): string {
   return lang.toLowerCase().startsWith('zh') ? '未分类' : 'Uncategorized';
 }
 
+function getMathCategoryPath(unique: string[]): string[] | null {
+  const subject = unique.find((item) => MATH_SUBJECTS.has(item));
+  if (subject) {
+    return [STUDY_NOTE_CATEGORY, MATH_CATEGORY, subject];
+  }
+
+  if (unique.includes(MATH_CATEGORY)) {
+    return [STUDY_NOTE_CATEGORY, MATH_CATEGORY];
+  }
+
+  return null;
+}
+
 export function normalizeCategoryItems(categories: string[]): string[] {
   const unique = [...new Set(categories.map((item) => String(item).trim()).filter(Boolean))];
+  if (unique.length === 0) return [];
+
+  const mathPath = getMathCategoryPath(unique);
+  if (mathPath) {
+    const extras = unique.filter((item) => !mathPath.includes(item));
+    return [...mathPath, ...extras];
+  }
 
   if (unique.length === 1 && STUDY_NOTE_SUBCATEGORIES.has(unique[0])) {
     return [STUDY_NOTE_CATEGORY, unique[0]];
@@ -113,19 +135,17 @@ export function buildTopLevelCategoriesMap(posts: BlogEntryWithLocaleStatus[], l
 export function buildSubcategoriesByRoot(posts: BlogEntryWithLocaleStatus[], lang: string) {
   return posts.reduce((acc, post) => {
     const categories = getPostCategories(post, lang);
-    const rootCategory = categories[0];
-    const subcategories = categories.slice(1);
-    if (!rootCategory || subcategories.length === 0) return acc;
 
-    if (!acc[rootCategory]) {
-      acc[rootCategory] = new Set<string>();
-    }
+    for (let index = 0; index < categories.length - 1; index += 1) {
+      const parent = categories[index];
+      const child = categories[index + 1];
+      if (!parent || !child || parent === child) continue;
 
-    subcategories.forEach((subcategory) => {
-      if (subcategory && subcategory !== rootCategory) {
-        acc[rootCategory].add(subcategory);
+      if (!acc[parent]) {
+        acc[parent] = new Set<string>();
       }
-    });
+      acc[parent].add(child);
+    }
 
     return acc;
   }, {} as Record<string, Set<string>>);

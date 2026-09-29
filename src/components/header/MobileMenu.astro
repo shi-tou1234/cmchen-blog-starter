@@ -1,58 +1,37 @@
 ---
 import { Icon } from "astro-icon/components"
-import { getRelativeLocaleUrl } from '@utils/url-utils';
 import headerContact from "@/data/header-contact"
-import i18nit from '@i18n/translation'
-
-const currentLang = 'zh-cn';
-const t = i18nit(currentLang);
-const indexPage = getRelativeLocaleUrl(currentLang, "/");
-const archivesPage = getRelativeLocaleUrl(currentLang, "/archives/");
-const aboutPage = getRelativeLocaleUrl(currentLang, "/about/");
-const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
 ---
 
 <div class="relative md:hidden shrink-0">
-  <!-- Mobile Menu -->
+  <!-- 原汉堡按钮：已被 MobileFab 收拢式浮动按钮替代，此处隐藏但保留在 DOM 中，供 FAB 编程式点击复用开合逻辑 -->
   <button id="mobile-menu-button" aria-expanded="false" aria-controls="mobile-menu" class="flex items-center justify-center w-10 h-10 hover:bg-[var(--hover-bg-color)] active:scale-90 rounded-lg hover:text-current border border-[var(--border-color)] transition-all duration-300">
     <Icon name="fa6-solid:align-justify" class="w-5 h-5" />
   </button>
-  <!-- Mobile Menu -->
-  <div id="mobile-menu" aria-hidden="true" class="hidden fixed right-2 top-16 w-36 bg-[var(--bg-color)]/95 backdrop-blur border border-[var(--border-color)] rounded-lg shadow-[0_8px_24px_var(--shadow-color)] z-[var(--z-modal)] text-[var(--text-color)]">
-    <div class="tiny-only px-2 py-2 border-b border-[var(--border-color)] space-y-2">
-      <p class="text-[11px] leading-4 text-[var(--text-color)]/75 px-1">建议使用浏览器或电脑打开，以获得最佳显示效果。</p>
-      <div class="grid grid-cols-3 gap-2">
-        <button id="mobile-search-btn" class="px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]">搜索</button>
-        <button id="mobile-theme-btn" class="px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]">主题</button>
-        <button id="mobile-guide-btn" class="px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]">指南</button>
-        <button class="copy-email-action px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]" data-email={headerContact.email}>邮箱</button>
-        <button id="mobile-fontsize-btn" class="px-2 py-1 text-xs rounded border border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]">字体</button>
-      </div>
-    </div>
-    <div class="flex flex-col py-1">
-      <a href={ indexPage } class={`mx-2 my-1 p-2 text-sm rounded ${
-        Astro.url.pathname === indexPage 
-          ? 'bg-[var(--hover-bg-color)]' 
-          : 'hover:bg-[var(--hover-bg-color)]'
-      }`}>{t("header.home")}</a>
-      
-      <a href={ archivesPage } class={`mx-2 my-1 p-2 text-sm rounded ${
-        Astro.url.pathname === archivesPage 
-          ? 'bg-[var(--hover-bg-color)]' 
-          : 'hover:bg-[var(--hover-bg-color)]'
-      }`}>{t("header.archive")}</a>
-
-      <a href={ aboutPage } class={`mx-2 my-1 p-2 text-sm rounded ${
-        Astro.url.pathname === aboutPage 
-          ? 'bg-[var(--hover-bg-color)]' 
-          : 'hover:bg-[var(--hover-bg-color)]'
-      }`}>{t("header.about")}</a>
-
-      <a href={ toolsPage } class={`mx-2 my-1 p-2 text-sm rounded ${
-        Astro.url.pathname === toolsPage 
-          ? 'bg-[var(--hover-bg-color)]' 
-          : 'hover:bg-[var(--hover-bg-color)]'
-      }`}>{t("header.tools")}</a>
+  <!-- 移动端快捷面板：导航项与底部导航栏重复，已移除；只保留快捷操作 -->
+  <div id="mobile-menu" aria-hidden="true" class="hidden fixed right-2 top-16 w-[min(86vw,320px)] bg-[var(--bg-color)]/95 backdrop-blur border border-[var(--border-color)] rounded-xl shadow-[0_8px_24px_var(--shadow-color)] z-[var(--z-modal)] text-[var(--text-color)]">
+    <p class="mobile-menu-heading">快捷操作</p>
+    <div class="mobile-menu-actions">
+      <button id="mobile-search-btn" type="button" class="mobile-menu-action" title="搜索文章">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span>搜索</span>
+      </button>
+      <button id="mobile-theme-btn" type="button" class="mobile-menu-action" title="切换主题">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <span>主题</span>
+      </button>
+      <button id="mobile-guide-btn" type="button" class="mobile-menu-action" title="博客功能说明">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.4 2.4 0 0 1 4.7.6c0 1.6-2.3 2-2.3 3.4"/><path d="M12 16.8h.01"/></svg>
+        <span>指南</span>
+      </button>
+      <button class="copy-email-action mobile-menu-action" type="button" data-email={headerContact.email} title="复制邮箱">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+        <span>邮箱</span>
+      </button>
+      <button id="mobile-fontsize-btn" type="button" class="mobile-menu-action mobile-menu-action--wide" title="调整字号">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M8 7l4-3 4 3M8 17l4 3 4-3"/></svg>
+        <span>字体</span>
+      </button>
     </div>
   </div>
 </div>
@@ -176,11 +155,15 @@ function initMobileNav() {
     document.removeEventListener('click', oldDocClickHandler);
   }
   const handleDocClick = (event: Event) => {
+    // 点击 FAB 自身时不关抽屉：FAB 的菜单项会代理点击原汉堡按钮来完成开合
+    const mobileFab = document.getElementById('mobile-fab');
+    const target = event.target as Node | null;
     if (
       menuButton &&
       mobileMenu &&
-      !menuButton.contains(event.target as Node) &&
-      !mobileMenu.contains(event.target as Node)
+      !menuButton.contains(target) &&
+      !mobileMenu.contains(target) &&
+      !(mobileFab && mobileFab.contains(target))
     ) {
       setMobileMenuOpen(false);
     }
@@ -229,3 +212,67 @@ if (document.readyState !== 'loading') {
   initMobileNav();
 }
 </script>
+
+<style>
+  /* 汉堡按钮由 MobileFab 替代，隐藏但保留在 DOM 中 */
+  #mobile-menu-button {
+    display: none;
+  }
+
+  .mobile-menu-heading {
+    margin: 0;
+    padding: 0.85rem 1rem 0.15rem;
+    font-family: var(--font-rounded);
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    color: color-mix(in srgb, var(--text-color) 62%, transparent);
+  }
+
+  .mobile-menu-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    padding: 0.75rem 1rem 1rem;
+  }
+
+  .mobile-menu-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.85rem 0.5rem;
+    border-radius: 0.85rem;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--hover-bg-color) 38%, transparent);
+    color: var(--text-color);
+    font-family: var(--font-rounded);
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-menu-action svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    stroke: color-mix(in srgb, var(--link-color) 72%, currentColor);
+  }
+
+  .mobile-menu-action:hover {
+    background: var(--hover-bg-color);
+    border-color: color-mix(in srgb, var(--link-color) 38%, var(--border-color));
+  }
+
+  .mobile-menu-action:active {
+    transform: scale(0.95);
+  }
+
+  .mobile-menu-action--wide {
+    grid-column: span 2;
+    flex-direction: row;
+    gap: 0.55rem;
+    padding: 0.7rem 0.5rem;
+  }
+</style>
