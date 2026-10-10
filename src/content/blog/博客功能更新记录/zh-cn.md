@@ -8,6 +8,12 @@ slugId: "blog-changelog"
 
 本文记录博客从 2026 年 2 月创建至今的所有重要功能更新，按时间倒序排列。
 
+## 2026.10.10 — 移动端快捷操作收进浮动按钮
+
+- 交互收拢：移动端右上角的「+」浮动按钮展开后直接列出快捷操作——搜索、主题、指南、邮箱、字体——点开即用，不再需要先点「菜单」再等待右侧抽屉滑出，少一层跳转
+- 委托复用：五项操作沿用原有按钮的行为，搜索唤起 `#search-button`、主题走 `#themeToggle`、指南走 `#blog-guide-open-btn`、字号走 `#fontSizeToggle`，邮箱仍由 `CopyEmail` 的 `[data-email].copy-email-action` 全局绑定负责复制与提示，行为与旧抽屉完全一致
+- 组件瘦身：删除 `src/components/header/MobileMenu.astro`（隐藏汉堡按钮 + 快捷操作面板）及 `Header.astro` 中的引用，`src/styles/motion.css` 移除只服务于该抽屉的 `anim-drop-out` 关键帧与退场规则
+- 联动清理：`FontSizeControl` 去掉对已不存在按钮的兜底判断，字号菜单的点击外部关闭逻辑回归标准写法；文章页的目录 / 返回 / 评论胶囊按页面内容自动显示隐藏的逻辑保持不变
 
 ## 2026.9.29 — 排版与配色令牌化，补弹层退场与按压手感
 
