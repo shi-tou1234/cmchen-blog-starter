@@ -5,8 +5,10 @@ export type SpoilerScrollHandler = () => void;
 
 declare global {
   interface Window {
-    /** 按需加载 Pagefind（首次打开搜索面板时由入口调用） */
-    __loadPagefindNow?: () => void;
+    /** 按需加载 Pagefind（首次打开搜索面板时由入口调用；resolve true = 索引可用，false = 加载失败） */
+    __loadPagefindNow?: () => Promise<boolean>;
+    /** 搜索面板的 visualViewport resize/scroll 监听（Search.astro 换页时先解绑旧的） */
+    __searchViewportHandler?: () => void;
     /** TravelMap 懒加载后的 echarts core 实例（仅注册 map + tooltip，首次进入视口时赋值） */
     echarts: typeof import("echarts/core");
     /** about 页热力图 tooltip 监听器集合（页面切换前清理用） */

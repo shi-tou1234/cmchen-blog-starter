@@ -209,6 +209,11 @@ if (document.readyState === 'loading') {
       /* 比抽屉低一档，抽屉打开时自然覆盖 FAB */
       z-index: calc(var(--z-modal) - 1);
     }
+
+    /* 搜索面板打开时收起：FAB 层级高于搜索浮层，会压住面板右上角并挡掉结果行点击（类名由 Search.astro 开关） */
+    #mobile-fab.is-search-open {
+      display: none;
+    }
   }
 
   #mobile-fab-trigger {

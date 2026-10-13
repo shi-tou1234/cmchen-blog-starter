@@ -37,6 +37,13 @@ const searchClearLabel = '清空';
 const searchEmptyHistoryLabel = '暂无搜索记录';
 const hotSearches = ['AI 工具', '学习笔记', '归档', '博客指南', '生活记录'];
 
+// 开发环境没有 pagefind 索引（dev 下不构建索引），用占位结果演示界面
+const isDevBuild = import.meta.env.DEV;
+
+// 结果条数上限：pagefind 对每个结果都要单独取一次片段，
+// 命中很多时全量取数会明显拖慢（移动端尤其），只取前面这些
+const maxResults = 12;
+
 const fakeResult: SearchResult[] = [
 	{
 		url: baseUrl("/"),
@@ -58,7 +65,7 @@ const fakeResult: SearchResult[] = [
 <div id="search-modal" class="fixed inset-0 z-[var(--z-search)] opacity-0 pointer-events-none anim-fade-out" role="dialog" aria-modal="true" aria-labelledby="search-dialog-title" aria-hidden="true">
   <div class="absolute inset-0 modal-backdrop opacity-0" aria-hidden="true"></div>
 
-  <div class="fixed inset-0 flex items-start justify-center p-4 pt-[25vh]">
+  <div class="search-modal-shell fixed inset-0 flex items-start justify-center p-4 pt-[25vh]">
     <div class="search-modal-content bg-[var(--bg-color)] rounded-xl shadow-xl w-full max-w-2xl border border-[var(--border-color)] overflow-hidden scale-80 transition-all duration-300 opacity-0 flex flex-col max-h-[40vh]">
       <h2 id="search-dialog-title" class="sr-only">{t("search.placeholder")}</h2>
       <div class="flex items-center p-4 border-b border-[var(--border-color)]">
@@ -71,7 +78,8 @@ const fakeResult: SearchResult[] = [
             id="search-input"
             placeholder={t("search.placeholder")+"..."}
             class="search-modal-input w-full bg-transparent border border-[var(--border-color)] rounded-full py-3 pl-10 pr-4 text-[var(--text-color)] outline-none transition-all duration-300"
-            autofocus
+            autocomplete="off"
+            enterkeyhint="search"
           />
         </div>
         <button id="close-search" class={`ml-2 p-2 text-[var(--cover-subtitle-color)] rounded-lg hover:bg-[var(--hover-bg-color)] ${PRESS}`}>
@@ -80,10 +88,12 @@ const fakeResult: SearchResult[] = [
           </svg>
         </button>
       </div>
-      <div id="search-recommendations" class="hidden border-b border-[var(--border-color)] bg-[var(--hover-bg-color)]/20 px-4 py-3 text-sm text-[var(--cover-subtitle-color)]"></div>
-      <div id="search-results" class="overflow-y-auto flex-grow">
-        <div class="p-8 text-center text-[var(--cover-subtitle-color)]">
-          <p>{t("search.placeholder")}</p>
+      <div class="search-modal-body flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div id="search-recommendations" class="hidden border-b border-[var(--border-color)] bg-[var(--hover-bg-color)]/20 px-4 py-3 text-sm text-[var(--cover-subtitle-color)]"></div>
+        <div id="search-results">
+          <div class="p-8 text-center text-[var(--cover-subtitle-color)]">
+            <p>{t("search.placeholder")}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -109,6 +119,29 @@ function initSearchModal() {
 
   const isModalOpen = () => !searchModal.classList.contains('opacity-0');
 
+  // 移动端键盘弹出时 visualViewport 会缩小（layout viewport 与 vh 不变），
+  // 面板的贴顶位置与限高依赖这两个变量，否则底部内容会被键盘盖住
+  const syncSearchViewport = () => {
+    const viewport = window.visualViewport;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const offsetTop = viewport ? viewport.offsetTop : 0;
+    searchModal.style.setProperty('--search-vvh', `${Math.round(height)}px`);
+    searchModal.style.setProperty('--search-vv-top', `${Math.round(offsetTop)}px`);
+  };
+
+  const visualViewport = window.visualViewport;
+  const oldViewportHandler = (window as any).__searchViewportHandler;
+  if (visualViewport && oldViewportHandler) {
+    visualViewport.removeEventListener('resize', oldViewportHandler);
+    visualViewport.removeEventListener('scroll', oldViewportHandler);
+  }
+  if (visualViewport) {
+    visualViewport.addEventListener('resize', syncSearchViewport);
+    visualViewport.addEventListener('scroll', syncSearchViewport);
+    (window as any).__searchViewportHandler = syncSearchViewport;
+  }
+  syncSearchViewport();
+
   const getFocusableElements = () => {
     if (!modalContent) return [];
     return Array.from(
@@ -122,9 +155,23 @@ function initSearchModal() {
     return (target as HTMLElement).isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   };
 
+  // 移动端浮动按钮层级高于搜索浮层，不收起会压住面板右上角、挡掉结果行的点击
+  const setFabHidden = (hidden: boolean) => {
+    const fab = document.getElementById('mobile-fab');
+    const fabTrigger = document.getElementById('mobile-fab-trigger');
+    if (!fab) return;
+    // 展开状态先走 FAB 自己的收起逻辑，避免关闭搜索后它带着展开面板回来
+    if (hidden && fab.offsetParent !== null && fab.classList.contains('is-active') && fabTrigger) {
+      fabTrigger.click();
+    }
+    fab.classList.toggle('is-search-open', hidden);
+  };
+
   const openModal = () => {
     // 用户首次打开搜索面板时按需加载 pagefind 索引
     (window as any).__loadPagefindNow?.();
+    syncSearchViewport();
+    setFabHidden(true);
     previousFocusedElement = document.activeElement as HTMLElement | null;
     lockBodyScroll(true);
     searchModal.classList.remove('opacity-0', 'pointer-events-none');
@@ -136,12 +183,13 @@ function initSearchModal() {
       modalContent?.classList.remove('scale-80', 'opacity-0');
       modalContent?.classList.add('scale-100');
     });
-    setTimeout(() => searchInput?.focus(), 300);
+    setTimeout(() => searchInput?.focus({ preventScroll: true }), 300);
     (window as any).__renderSearchRecommendations?.();
   };
 
   const closeModal = () => {
     lockBodyScroll(false);
+    setFabHidden(false);
     requestAnimationFrame(() => {
       modalBackdrop?.classList.add('opacity-0');
       modalBackdrop?.classList.remove('show');
@@ -274,9 +322,23 @@ document.addEventListener('astro:after-swap', initSearchModal);
   .search-modal-input-wrap:focus-within .search-modal-icon {
     color: var(--link-color);
   }
+
+  /* 移动端：面板贴住可见区顶部，高度不超出键盘以上的区域。
+     --search-vvh / --search-vv-top 由脚本按 visualViewport 写入：
+     键盘弹出时 layout viewport 不变（vh 也不变），只有 visualViewport 缩小，
+     所以高度必须走 JS 变量，不能只靠 vh/dvh。 */
+  @media (max-width: 640px) {
+    #search-modal .search-modal-shell {
+      padding-top: calc(var(--search-vv-top, 0px) + env(safe-area-inset-top, 0px) + 0.5rem);
+    }
+
+    #search-modal .search-modal-content {
+      max-height: calc(var(--search-vvh, 100dvh) - 1rem);
+    }
+  }
 </style>
 
-<script define:vars={{ fakeResult, translations, archivesUrl, searchHistoryKey, searchRecommendationsTitle, searchRecentLabel, searchHotLabel, searchClearLabel, searchEmptyHistoryLabel, hotSearches }}>
+<script define:vars={{ fakeResult, translations, archivesUrl, searchHistoryKey, searchRecommendationsTitle, searchRecentLabel, searchHotLabel, searchClearLabel, searchEmptyHistoryLabel, hotSearches, isDevBuild, maxResults }}>
 let searchRequestId = 0;
 window.__searchDebounceTimer = null;
 
@@ -389,6 +451,31 @@ function renderSearchRecommendations() {
   window.__renderSearchRecommendations = renderSearchRecommendations;
 }
 
+const searchDebounceMs = 300;
+
+function readSearchQuery() {
+  const searchInput = document.getElementById('search-input');
+  return searchInput instanceof HTMLInputElement ? searchInput.value.trim() : '';
+}
+
+function runScheduledSearch() {
+  const query = readSearchQuery();
+  if (query.length > 0) {
+    performSearch(query);
+  } else {
+    renderSearchRecommendations();
+    renderSearchStatus(translations.placeholder);
+  }
+}
+
+function scheduleSearch(delay = searchDebounceMs) {
+  clearTimeout(window.__searchDebounceTimer);
+  window.__searchDebounceTimer = setTimeout(() => {
+    window.__searchDebounceTimer = null;
+    runScheduledSearch();
+  }, delay);
+}
+
 function initPagefindSearch() {
   const searchInput = document.getElementById('search-input');
   const searchResults = document.getElementById('search-results');
@@ -410,25 +497,22 @@ function initPagefindSearch() {
     </div>
   `;
 
-  searchInput.addEventListener('input', (e) => {
-    const target = e.target;
-    const query = target.value.trim();
+  searchInput.addEventListener('input', (event) => {
+    // 中文输入法组合期间不搜：拼音串不是最终关键词，搜了既慢又没有意义
+    if (event.isComposing) return;
+    scheduleSearch();
+  });
+
+  // 输入法选词结束（组合期的 input 已被跳过）后补一次搜索
+  searchInput.addEventListener('compositionend', () => scheduleSearch());
+
+  // 回车立即搜，不等防抖（移动端软键盘的“搜索”键同样走这里）
+  searchInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || event.isComposing) return;
+    event.preventDefault();
     clearTimeout(window.__searchDebounceTimer);
-    
-    window.__searchDebounceTimer = setTimeout(() => {
-      window.__searchDebounceTimer = null;
-      if (query.length > 0) {
-        performSearch(query);
-      } else {
-        renderSearchRecommendations();
-        // 清空或显示默认状态
-        searchResults.innerHTML = `
-          <div class="p-8 text-center text-[var(--cover-subtitle-color)]">
-            <p>${translations.placeholder}</p>
-          </div>
-        `;
-      }
-    }, 300);
+    window.__searchDebounceTimer = null;
+    runScheduledSearch();
   });
 }
 
@@ -438,40 +522,45 @@ async function performSearch(query) {
   document.getElementById('search-recommendations')?.classList.add('hidden');
   renderSearchStatus(translations.searching);
 
-  const isDev = !window.pagefind;
-
-  if (isDev) {
+  if (isDevBuild) {
+    // dev 环境没有 pagefind 索引，用占位结果演示界面
     if (requestId !== searchRequestId) return;
     displayResults(fakeResult);
-  } else if (window.pagefind) {
-    try {
-      const searchResultsData = await window.pagefind.search(query);
-      if (requestId !== searchRequestId) return;
-      const results = [];
+    return;
+  }
 
-      for (const result of searchResultsData.results) {
-        const data = await result.data();
-        if (requestId !== searchRequestId) return;
-        results.push({
-          url: data.url,
-          meta: { title: data.meta.title },
-          excerpt: data.excerpt
-        });
-      }
+  // 首次搜索时索引可能还在按需加载：等它就绪，别当成搜不到
+  const pagefindReady = window.__loadPagefindNow ? await window.__loadPagefindNow() : false;
+  if (requestId !== searchRequestId) return;
 
-      displayResults(results);
-    } catch (error) {
-      if (requestId !== searchRequestId) return;
-      console.error('Search failed:', error);
-      renderSearchStatus(translations.error, ' text-red-500');
-    }
-  } else {
-    console.log('Pagefind is not available');
-    renderSearchStatus('搜索功能暂时不可用');
+  if (!pagefindReady || !window.pagefind) {
+    renderSearchStatus('搜索索引加载失败，请检查网络后重试');
+    return;
+  }
+
+  try {
+    const searchResultsData = await window.pagefind.search(query);
+    if (requestId !== searchRequestId) return;
+
+    // pagefind 每个结果的片段都要单独取一次网络请求，
+    // 并发取完再渲染，比逐个 await 快得多（结果多时差距尤其明显）
+    const matched = searchResultsData.results.slice(0, maxResults);
+    const datas = await Promise.all(matched.map((result) => result.data()));
+    if (requestId !== searchRequestId) return;
+
+    displayResults(datas.map((data) => ({
+      url: data.url,
+      meta: { title: data.meta.title },
+      excerpt: data.excerpt
+    })), searchResultsData.results.length);
+  } catch (error) {
+    if (requestId !== searchRequestId) return;
+    console.error('Search failed:', error);
+    renderSearchStatus(translations.error, ' text-red-500');
   }
 }
 
-function displayResults(results) {
+function displayResults(results, totalCount = results.length) {
   const searchResults = document.getElementById('search-results');
   if (!searchResults) return;
 
@@ -488,6 +577,7 @@ function displayResults(results) {
     return;
   }
 
+  const hiddenCount = totalCount - results.length;
   searchResults.innerHTML = results.map(result => `
     <div class="p-4 border-b border-[var(--border-color)] hover:bg-[var(--hover-bg-color)]">
       <a href="${result.url}" class="block no-underline">
@@ -495,7 +585,11 @@ function displayResults(results) {
         <p class="text-[var(--cover-subtitle-color)] text-sm">${result.excerpt}</p>
       </a>
     </div>
-  `).join('');
+  `).join('') + (hiddenCount > 0 ? `
+    <div class="p-3 text-center text-xs text-[var(--cover-subtitle-color)]">
+      共 ${totalCount} 条结果，仅显示前 ${results.length} 条
+    </div>
+  ` : '');
 }
 
 // ========== 初始化逻辑 ==========

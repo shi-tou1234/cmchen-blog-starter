@@ -4,34 +4,29 @@ import { baseUrl } from "@utils/url-utils"
 
 {import.meta.env.PROD && 
 <script is:inline define:vars={{ scriptUrl: baseUrl('/pagefind/pagefind.js') }}>
-// 按需加载 pagefind：由搜索入口在用户首次打开搜索面板时调用
+// 按需加载 pagefind：由搜索入口在用户首次打开搜索面板时调用。
+// 返回 Promise<boolean>（true = 可用）：搜索逻辑靠它等索引就绪，
+// 否则首次搜索会落在"还没加载完"的窗口里，看起来像搜不出来。
 window.__loadPagefindNow = function() {
-  if (window.__pagefindLoaded) {
-    document.dispatchEvent(new CustomEvent('pagefindready'));
-    return;
-  }
-  if (window.pagefindLoading) return;
-  window.pagefindLoading = true;
+  if (window.__pagefindReadyPromise) return window.__pagefindReadyPromise;
 
-  fetch(scriptUrl, { method: 'HEAD' })
-    .then((response) => {
-      if (!response.ok) throw new Error(`Pagefind script not found: ${response.status}`);
-      return import(scriptUrl);
-    })
+  window.__pagefindReadyPromise = import(scriptUrl)
     .then(async (pagefind) => {
       await pagefind.options({ 
         excerptLength: 20
       });
       window.pagefind = pagefind;
-      window.__pagefindLoaded = true;
-      window.pagefindLoading = false;
       document.dispatchEvent(new CustomEvent('pagefindready'));
+      return true;
     })
     .catch(() => {
-      window.pagefindLoading = false;
-      window.__pagefindFailed = true;
+      // 清掉缓存的 Promise，下次打开搜索面板时允许重试
+      window.__pagefindReadyPromise = null;
       document.dispatchEvent(new CustomEvent('pagefindloaderror'));
+      return false;
     });
+
+  return window.__pagefindReadyPromise;
 };
 
 // 不再在页面加载时自动加载，等待用户首次触发搜索
