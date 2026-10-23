@@ -130,9 +130,7 @@ import { Icon } from "astro-icon/components";
     }
 
     document.addEventListener('click', function(e) {
-      var mobileFsBtn = document.getElementById('mobile-fontsize-btn');
-      if (!fontSizeToggle.contains(e.target) && !fontSizeMenu.contains(e.target) &&
-          (!mobileFsBtn || !mobileFsBtn.contains(e.target))) {
+      if (!fontSizeToggle.contains(e.target) && !fontSizeMenu.contains(e.target)) {
         closeMenu();
       }
     }, { signal: signal });

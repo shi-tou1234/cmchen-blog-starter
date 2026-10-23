@@ -8,7 +8,6 @@ import headerContact from "@/data/header-contact"
 import siteInfo from "@/data/site-info"
 import HeaderLogoFracture from "./header/HeaderLogoFracture.astro"
 import HeaderLogoScrollHide from "./header/HeaderLogoScrollHide.astro"
-import MobileMenu from "./header/MobileMenu.astro"
 import CopyEmail from "./header/CopyEmail.astro"
 import RunningDays from "./header/RunningDays.astro"
 import HeaderScroll from "./header/HeaderScroll.astro"
@@ -97,7 +96,6 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
         <button id="blog-guide-open-btn" type="button" title="博客功能说明" aria-label="博客功能说明" class="hide-on-tiny inline-flex items-center justify-center w-10 h-10 hover:bg-[var(--hover-bg-color)] active:scale-90 rounded-lg hover:text-current border border-[var(--border-color)] transition-all duration-300">
           <Icon name="fa6-solid:circle-question" class="w-4 h-4" />
         </button>
-        <MobileMenu />
     </div>
 </div>
 </div>
