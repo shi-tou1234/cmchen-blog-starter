@@ -6,7 +6,6 @@ import {
   ensureApiEndpointTrusted,
 } from "./core";
 import {
-  GITHUB_API_DEFAULT,
   ADMIN_GH_API_URL_KEY,
 } from "./constants";
 

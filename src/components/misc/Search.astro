@@ -1,6 +1,5 @@
 ---
 import { baseUrl, getRelativeLocaleUrl } from "@utils/url-utils";
-import { getEntry, render } from 'astro:content'
 import i18nit from "@i18n/translation";
 import "../../styles/motion.css"
 import { PRESS } from "@utils/press";
@@ -32,7 +31,7 @@ const archivesUrl = getRelativeLocaleUrl(currentLang, '/archives/');
 const searchHistoryKey = 'cmchen_search_history_v1';
 const searchRecommendationsTitle = '推荐搜索';
 const searchRecentLabel = '最近搜索';
-const searchHotLabel = '热门搜索';
+const searchHotLabel = '推荐关键词';
 const searchClearLabel = '清空';
 const searchEmptyHistoryLabel = '暂无搜索记录';
 const hotSearches = ['AI 工具', '学习笔记', '归档', '博客指南', '生活记录'];
@@ -406,9 +405,9 @@ function renderSearchRecommendations() {
         ${recentItems.map((item) => `<button type="button" class="search-suggestion-chip" data-search-suggestion="${escapeHtml(item)}">${escapeHtml(item)}</button>`).join('')}
       </div>
     </div>
-    <div class="mt-3 space-y-2">
+    <div class="mt-3 space-y-2" role="group" aria-label="${searchHotLabel}">
       <div class="flex items-center gap-2 text-xs text-[var(--cover-subtitle-color)]/80">
-        <span>${searchHotLabel}</span>
+        <span aria-hidden="true">${searchHotLabel}</span>
       </div>
       <div class="flex flex-wrap gap-2">
         ${fallbackItems.map((item) => `<button type="button" class="search-suggestion-chip" data-search-suggestion="${escapeHtml(item)}">${escapeHtml(item)}</button>`).join('')}

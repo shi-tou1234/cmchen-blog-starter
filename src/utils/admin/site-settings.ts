@@ -2,7 +2,6 @@ import {
   setMsg,
   getToken,
   getBranch,
-  saveGitHubDraft,
   getFileMeta,
   upsertFile,
   uploadAboutMusicFile,

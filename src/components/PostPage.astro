@@ -127,7 +127,7 @@ const resolvedCovers = await Promise.all(
 <style is:global>
     .post-list-shell {
         position: relative;
-        /* 与图文融合卡片同宽，加载态切到成品不跳宽度 */
+        /* 与 H2 图文融合卡片同宽，加载态切到成品不跳宽度 */
         --post-card-width: min(960px, 92vw);
     }
     @media (min-width: 768px) {
@@ -164,25 +164,47 @@ const resolvedCovers = await Promise.all(
     }
 
     .post-list-skeleton__item {
+        position: relative;
+        isolation: isolate;
+        min-height: 286px;
         border: 1px solid var(--border-color);
-        border-radius: 1.35rem;
+        border-radius: var(--radius-card-lg);
         overflow: hidden;
-        background: color-mix(in srgb, var(--bg-color) 90%, var(--hover-bg-color));
+        background: var(--card-bg-color);
         width: var(--post-card-width);
         margin-inline: auto;
     }
 
     .post-list-skeleton__cover {
-        aspect-ratio: 1200 / 630;
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 56%;
+        z-index: -1;
         background: linear-gradient(100deg, color-mix(in srgb, var(--hover-bg-color) 76%, transparent), color-mix(in srgb, var(--bg-color) 86%, transparent), color-mix(in srgb, var(--hover-bg-color) 76%, transparent));
         background-size: 220% 100%;
         animation: post-list-skeleton-wave 1.5s linear infinite;
     }
 
+    .post-list-skeleton__item:nth-child(even) .post-list-skeleton__cover {
+        right: auto;
+        left: 0;
+    }
+
     .post-list-skeleton__content {
-        padding: 0.95rem 1rem 1.05rem;
-        display: grid;
-        gap: 0.45rem;
+        position: relative;
+        width: 62%;
+        min-height: 286px;
+        padding: 34px 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .post-list-skeleton__item:nth-child(even) .post-list-skeleton__content {
+        margin-left: auto;
     }
 
     .post-list-skeleton__line {
@@ -204,6 +226,31 @@ const resolvedCovers = await Promise.all(
     @keyframes post-list-skeleton-wave {
         0% { background-position: 100% 0; }
         100% { background-position: -100% 0; }
+    }
+
+    @media (max-width: 760px) {
+        .post-list-skeleton__item {
+            min-height: 0;
+            padding-top: 160px;
+        }
+
+        .post-list-skeleton__cover,
+        .post-list-skeleton__item:nth-child(even) .post-list-skeleton__cover {
+            width: 100%;
+            height: 220px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: auto;
+        }
+
+        .post-list-skeleton__content,
+        .post-list-skeleton__item:nth-child(even) .post-list-skeleton__content {
+            width: 100%;
+            min-height: 0;
+            margin: 0;
+            padding: 14px 24px 26px;
+        }
     }
 
     @media (prefers-reduced-motion: reduce) {

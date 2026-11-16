@@ -57,10 +57,11 @@
   --lh-tight: 1.4;          /* 卡片描述，最紧一档 */
 
   /* 卡片壳参数：圆角三档（内层圆角不得大于外层）、表面三配方、阴影两档。
-     明暗主题自动接管；新表面/阴影一律引用这里，不要在组件里写裸值。 */
-  --radius-card-lg: 1.35rem;
-  --radius-card: 0.75rem;
-  --radius-card-sm: 0.5rem;
+     明暗主题自动接管；新表面/阴影一律引用这里，不要在组件里写裸值。
+     C1 改版：卡片 15px / 常规 12px / 小控件 7px，不做满站大圆角。 */
+  --radius-card-lg: 15px;
+  --radius-card: 12px;
+  --radius-card-sm: 7px;
   --surface-card: color-mix(in srgb, var(--bg-color) 97%, transparent);
   --surface-raised: color-mix(in srgb, var(--bg-color) 96%, transparent);
   --surface-overlay: color-mix(in srgb, var(--bg-color) 60%, transparent);
@@ -72,11 +73,11 @@
 /* 字体栈：先用本机可能已安装的原字体，否则回退到系统自带字库。
    全站不依赖任何外部字体 CDN，改字体只改这里。 */
 :root {
-  /* 界面黑体（卡片正文/标题）——图文融合卡片使用 */
-  --font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Hiragino Sans GB", system-ui, sans-serif;
-
   /* 楷体（顶栏 logo 标题）——原 Ma Shan Zheng 马善政楷书 */
   --font-kai: "Ma Shan Zheng", "Kaiti SC", "STKaiti", "KaiTi", "楷体", "AR PL UKai CN", serif;
+
+  /* 界面与卡片：无衬线 */
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Hiragino Sans GB", system-ui, sans-serif;
 
   /* 展示黑体（顶栏标语）——原 ZCOOL QingKe HuangYou 站酷庆科黄油体 */
   --font-display: "ZCOOL QingKe HuangYou", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Hiragino Sans GB", sans-serif;
@@ -95,16 +96,17 @@
 /* 颜色变量 */
 :root {
     color-scheme: light;
-    --bg-color: #f8f0dd;
-    --text-color: #2c2416;
-    --shadow-color: rgba(139, 69, 19, 0.1);
-    --cover-subtitle-color: #8b7355;
-    --link-color: #8b4513;
-    --hover-bg-color: #f1e6d0;
-    --card-bg-color: #f7efd8;
-    --border-color: #e5d6b8;
+    /* C1 温暖纸面：奶油白底、细暖灰边框、少量棕色强调，不用大面积高饱和装饰 */
+    --bg-color: #f8f6f0;
+    --text-color: #302c27;
+    --shadow-color: rgba(85, 67, 42, 0.08);
+    --cover-subtitle-color: #756b60;
+    --link-color: #875b3c;
+    --hover-bg-color: #eee7da;
+    --card-bg-color: #fffdf8;
+    --border-color: #e4ddd0;
 
-    --selection-color: #fae2b5;
+    --selection-color: #eee7da;
 
     --warning-text-color: #4d3800;
     --warning-bg-color: #fff7ed;
@@ -125,10 +127,10 @@
     --admonition-caution-title: #4b1113;
 
     /* 次要文字（正文灰色等） */
-    --muted-text-color: #666;
+    --muted-text-color: #756b60;
 
-    /* 引用块左侧竖线 */
-    --quote-left-color: #d4a574;
+    /* 引用块左侧竖线：与强调色同源 */
+    --quote-left-color: #875b3c;
 
     /* markdown 正文/表格底色 */
     --blockquote-bg: rgba(0, 0, 0, 0.03);
@@ -163,17 +165,17 @@
     --chip-badge-active-color: color-mix(in srgb, var(--link-color) 72%, black 28%);
     --chip-badge-active-border: color-mix(in srgb, #ffffff 78%, transparent);
 
-    /* 文章卡片占位图背景 */
+    /* 文章卡片占位图背景：低饱和暖色，避免粉蓝紫高饱和装饰 */
     --postcard-placeholder-bg:
-        radial-gradient(circle at 16% 22%, rgba(255, 190, 219, 0.62), transparent 38%),
-        radial-gradient(circle at 84% 20%, rgba(138, 232, 255, 0.58), transparent 36%),
-        radial-gradient(circle at 72% 86%, rgba(188, 173, 255, 0.48), transparent 40%),
-        linear-gradient(136deg, #ffeaf4 0%, #f7f1ff 46%, #e6f8ff 100%);
+        radial-gradient(circle at 16% 22%, rgba(135, 91, 60, 0.10), transparent 38%),
+        radial-gradient(circle at 84% 20%, rgba(117, 107, 96, 0.09), transparent 36%),
+        radial-gradient(circle at 72% 86%, rgba(135, 91, 60, 0.07), transparent 40%),
+        linear-gradient(136deg, #f6f1e7 0%, #f1ebe0 46%, #ece4d7 100%);
 
     /* 滚动条颜色 */
-    --scrollbar-thumb: #c4a882;
-    --scrollbar-thumb-hover: #a8896a;
-    --scrollbar-track: #e8dcc8;
+    --scrollbar-thumb: #cdc1ae;
+    --scrollbar-thumb-hover: #b3a18a;
+    --scrollbar-track: #f1ede5;
 
     /* 语义文字色 / 线色：只加一层语义名指向上面已有变量，不重命名、不改值、浅深色共用 */
     --text: var(--text-color);
@@ -185,16 +187,17 @@
 
   [data-theme="dark"] {
     color-scheme: dark;
-    --bg-color: #1a1612;
-    --text-color: #e8ddd0;
+    /* 夜读：偏暖深灰，不简单反转照片 */
+    --bg-color: #211f1b;
+    --text-color: #e9e1d4;
     --shadow-color: rgba(0, 0, 0, 0.3);
-    --cover-subtitle-color: #a89880;
-    --link-color: #e0a060;
-    --hover-bg-color: #2a2420;
-    --card-bg-color: #241f18;
-    --border-color: #3d3428;
+    --cover-subtitle-color: #b4a897;
+    --link-color: #d2ac82;
+    --hover-bg-color: #393229;
+    --card-bg-color: #2b2823;
+    --border-color: #484034;
 
-    --selection-color: #44361a;
+    --selection-color: #484034;
 
     --warning-text-color: #f2d680;
     --warning-bg-color: #332a00;
@@ -213,9 +216,9 @@
     --admonition-caution-border: #e13238;
     --admonition-caution-title: #f2a0a3;
 
-    --muted-text-color: #aaa;
+    --muted-text-color: #b4a897;
 
-    --quote-left-color: #5a4a3a;
+    --quote-left-color: #8f775c;
 
     /* markdown 正文/表格底色 */
     --blockquote-bg: rgba(255, 255, 255, 0.05);
@@ -251,15 +254,15 @@
 
     /* 文章卡片占位图背景 */
     --postcard-placeholder-bg:
-        radial-gradient(circle at 18% 20%, rgba(255, 173, 214, 0.28), transparent 34%),
-        radial-gradient(circle at 84% 18%, rgba(125, 216, 255, 0.28), transparent 32%),
-        radial-gradient(circle at 70% 86%, rgba(155, 130, 255, 0.24), transparent 38%),
-        linear-gradient(136deg, #242429 0%, #2d2a38 44%, #23313a 100%);
+        radial-gradient(circle at 18% 20%, rgba(210, 172, 130, 0.10), transparent 34%),
+        radial-gradient(circle at 84% 18%, rgba(180, 168, 151, 0.08), transparent 32%),
+        radial-gradient(circle at 70% 86%, rgba(210, 172, 130, 0.07), transparent 38%),
+        linear-gradient(136deg, #2c2924 0%, #322e28 44%, #2a2621 100%);
 
     /* 滚动条颜色 */
-    --scrollbar-thumb: #5a4a3a;
-    --scrollbar-thumb-hover: #4a3a2a;
-    --scrollbar-track: #2a2218;
+    --scrollbar-thumb: #5c5142;
+    --scrollbar-thumb-hover: #756755;
+    --scrollbar-track: #2a2621;
   }
 
 /* ===== 分类标签色（--cat-hue 由组件定义在标签元素上，必须元素级解析） ===== */

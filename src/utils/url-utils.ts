@@ -20,6 +20,8 @@ export function baseUrl(path: string) {
 export function blogCoverUrl(contentPath: string, blogName: string): string {
 
     if (!contentPath) return '';
+    // Already a URL; do not turn it into an article-relative asset path.
+    if (/^https?:\/\//i.test(contentPath) || contentPath.startsWith('/')) return contentPath;
     
     // 处理相对路径 ./ 开头的情况
     if (contentPath.startsWith('./')) {

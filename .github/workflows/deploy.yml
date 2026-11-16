@@ -45,8 +45,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Restore Astro build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.astro
+            node_modules/.cache/cover-images.json
+            node_modules/.cache/picsum-covers
+          key: ${{ runner.os }}-astro-${{ hashFiles('pnpm-lock.yaml', 'astro.config.mjs', 'src/plugins/**', 'src/data/cover-image-config.ts', 'src/utils/cover-image-api.ts') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-astro-${{ hashFiles('pnpm-lock.yaml', 'astro.config.mjs', 'src/plugins/**', 'src/data/cover-image-config.ts', 'src/utils/cover-image-api.ts') }}-
+
+      - name: Test cover cache
+        run: pnpm test:covers
+
       - name: Build
-        run: pnpm run build
+        run: |
+          pnpm run covers:ensure
+          start=$SECONDS
+          pnpm exec astro build
+          echo "Astro build: $((SECONDS - start))s" >> "$GITHUB_STEP_SUMMARY"
+          start=$SECONDS
+          pnpm run cache:covers
+          echo "Original Picsum cover cache: $((SECONDS - start))s" >> "$GITHUB_STEP_SUMMARY"
+          start=$SECONDS
+          pnpm exec pagefind --site dist
+          echo "Pagefind index: $((SECONDS - start))s" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload
         uses: actions/upload-pages-artifact@v5

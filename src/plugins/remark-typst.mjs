@@ -31,6 +31,8 @@ export function remarkTypst() {
       }
     });
 
+    if (instances.length === 0) return;
+
     // 2. 惰性初始化编译器
     const compiler = await getCompiler();
 

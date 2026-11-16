@@ -1,10 +1,30 @@
+/* F1：界面用无衬线（global.css），文章正文用宋体/衬线；
+   正文起始 18px / 1.95 行高，窄屏 17px，字号滑杆仍通过 --font-size-scale 生效。 */
 .markdown-content {
-  line-height: var(--lh-body);
+  font-family: var(--font-serif-cjk);
+  font-size: calc(1.125rem * var(--font-size-scale));
+  line-height: 1.95;
   transition: font-size 0.3s ease;
 }
 
 .post-content-column .markdown-content {
-  font-size: calc(1rem * var(--font-size-scale));
+  font-size: calc(1.125rem * var(--font-size-scale));
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  font-family: var(--font-sans);
+}
+
+@media (max-width: 767px) {
+  .markdown-content,
+  .post-content-column .markdown-content {
+    font-size: calc(1.0625rem * var(--font-size-scale));
+  }
 }
 
 .markdown-content h1 {

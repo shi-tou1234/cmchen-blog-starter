@@ -2,7 +2,6 @@ import {
   setMsg,
   unlockPanel,
   getToken,
-  saveGitHubDraft,
   verifyPassword,
   loadSecurityConfig,
   adminService,

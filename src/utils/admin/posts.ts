@@ -29,7 +29,6 @@ import {
   CATEGORY_OPTIONS_LIMIT,
   CATEGORY_CACHE_KEY,
   CATEGORY_CACHE_TTL,
-  ABOUT_SPEC_PATH_PREFIX,
   REPO_OWNER,
   REPO_NAME,
 } from "./constants";
@@ -286,6 +285,106 @@ function addUploadThumb(name: string, url: string) {
   item.appendChild(img);
   item.appendChild(close);
   container.appendChild(item);
+}
+
+// ===== 本地 Markdown 文件导入 =====
+
+const MARKDOWN_FILE_EXT_RE = /\.(md|markdown)$/i;
+
+function isMarkdownFile(file: File): boolean {
+  // Windows 下 .md 的 MIME 通常为空，因此以扩展名为主、MIME 为辅
+  return MARKDOWN_FILE_EXT_RE.test(file.name) || /^text\/(markdown|x-markdown)$/i.test(file.type || "");
+}
+
+function getSelectedMarkdownFiles(): File[] {
+  const input = document.getElementById("post-files") as HTMLInputElement | null;
+  return Array.from(input?.files || []).filter(isMarkdownFile);
+}
+
+/** 同步「已选择 N 个文件」提示，以及「导入 MD 到正文」按钮的可用状态 */
+function updatePostFilesSelectionUI() {
+  const input = document.getElementById("post-files") as HTMLInputElement | null;
+  const count = input?.files?.length || 0;
+  const mdCount = getSelectedMarkdownFiles().length;
+  const countEl = document.getElementById("post-files-count") as HTMLElement | null;
+  if (countEl) {
+    countEl.textContent = count > 0
+      ? `已选择 ${count} 个文件${mdCount > 0 ? `（含 ${mdCount} 个 MD）` : ""}`
+      : "未选择文件";
+  }
+  const importBtn = document.getElementById("import-md-btn") as HTMLButtonElement | null;
+  if (importBtn) importBtn.disabled = mdCount === 0;
+}
+
+/** 优先按 UTF-8 读取；出现 replacement char 时回退 GB18030（兼容 Windows 导出的中文 md） */
+async function readMarkdownFileText(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const decoded = new TextDecoder("utf-8").decode(buffer).replace(/^\uFEFF/, "");
+  if (!decoded.includes("\uFFFD")) return decoded;
+  try {
+    const legacy = new TextDecoder("gb18030").decode(buffer).replace(/^\uFEFF/, "");
+    return legacy.includes("\uFFFD") ? decoded : legacy;
+  } catch {
+    return decoded;
+  }
+}
+
+/** 把本地 .md 的 frontmatter 与正文导入编辑器；文件本身不上传，保存文章时才提交 */
+async function importMarkdownFileToEditor() {
+  const msgEl = document.getElementById("post-msg") as HTMLElement | null;
+  const mdFiles = getSelectedMarkdownFiles();
+  if (mdFiles.length === 0) {
+    setMsg(msgEl, "请先通过「选择文件」选中 .md 文件", true);
+    return;
+  }
+
+  const titleEl = document.getElementById("post-title") as HTMLInputElement | null;
+  const contentEl = document.getElementById("post-content") as HTMLTextAreaElement | null;
+  const hasDraft = Boolean(titleEl?.value.trim() || contentEl?.value.trim());
+  if (hasDraft && !window.confirm("导入会用该 MD 文件替换当前编辑器中的标题、正文与发布信息，是否继续？")) return;
+
+  const file = mdFiles[0];
+  try {
+    setMsg(msgEl, `正在导入 ${file.name} ...`);
+    // 统一换行，保证 frontmatter 解析能兼容 CRLF 文件
+    const raw = (await readMarkdownFileText(file)).replace(/\r\n?/g, "\n");
+    const { frontmatter, content } = parsePostFrontmatter(raw);
+    const categories = extractCategoriesFromMarkdown(raw);
+    const setVal = (id: string, value: string) => {
+      const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+      if (el) el.value = value;
+    };
+
+    const fallbackTitle = file.name.replace(MARKDOWN_FILE_EXT_RE, "").trim();
+    const rootCategory = categories[0] || frontmatter.category || "";
+    setVal("post-title", frontmatter.title || fallbackTitle);
+    setVal("post-slug", frontmatter.slugId || "");
+    setVal("post-date", toDateTimeLocalValue(frontmatter.pubDate || "") || getNowDateTimeLocal());
+    setVal("post-desc", frontmatter.description || "");
+    setVal("post-cover", frontmatter.image || "");
+    setVal("post-category", rootCategory);
+    setVal("post-subcategory", categories[1] || "");
+    setVal("post-subcategory2", categories[2] || "");
+    setVal("post-content", (content || "").trim());
+
+    const pinnedEl = document.getElementById("post-pinned") as HTMLInputElement | null;
+    if (pinnedEl) pinnedEl.checked = String(frontmatter.pinned || "").toLowerCase() === "true";
+
+    const categorySelect = document.getElementById("post-category-select") as HTMLSelectElement | null;
+    if (categorySelect instanceof HTMLSelectElement) {
+      categorySelect.value = rootCategory;
+      if (categorySelect.value !== rootCategory) categorySelect.value = "";
+    }
+    syncSubcategoryOptions();
+
+    pushContentToPreview();
+    autoSaveDebounced();
+
+    const extra = mdFiles.length > 1 ? `；共检测到 ${mdFiles.length} 个 MD，仅导入第一个` : "";
+    setMsg(msgEl, `已导入 ${file.name} 到编辑器${extra}。文件仍保留在选择框中，需要作为附件可再点「上传资源」`);
+  } catch (error) {
+    setMsg(msgEl, `导入失败：${String(error)}`, true);
+  }
 }
 
 // ===== Post helper functions =====
@@ -742,6 +841,7 @@ export function initPostHandlers() {
   const postSelectEl = (document.getElementById("post-select") as HTMLElement | null);
 
   initPostDateDefault();
+  updatePostFilesSelectionUI();
 
   // 首次进入后台时尝试恢复本地草稿（仅在未选择文章时）
   const restored = loadPostDraftLocally();
@@ -758,12 +858,12 @@ export function initPostHandlers() {
     countEl.textContent = count > 0 ? `已选择 ${count} 个 MP3` : "未选择文件";
   });
 
-  (document.getElementById("post-files") as HTMLInputElement | null)?.addEventListener("change", () => {
-    const files = ((document.getElementById("post-files") as HTMLInputElement | null) as HTMLInputElement | null)?.files;
-    const countEl = (document.getElementById("post-files-count") as HTMLElement | null);
-    if (!countEl) return;
-    const count = files?.length || 0;
-    countEl.textContent = count > 0 ? `已选择 ${count} 个文件` : "未选择文件";
+  (document.getElementById("post-files") as HTMLInputElement | null)?.addEventListener("change", updatePostFilesSelectionUI);
+
+  (document.getElementById("import-md-btn") as HTMLButtonElement | null)?.addEventListener("click", () => {
+    importMarkdownFileToEditor().catch((error) => {
+      setMsg(document.getElementById("post-msg") as HTMLElement | null, `导入失败：${String(error)}`, true);
+    });
   });
 
   (document.getElementById("post-cover-file") as HTMLInputElement | null)?.addEventListener("change", () => {
@@ -996,6 +1096,7 @@ export function initPostHandlers() {
       const snippets = uploaded.map((f) => {
         if (f.type.startsWith("image/")) return `![](./assets/${f.name})`;
         if (f.type.startsWith("video/")) return `<video controls src="./assets/${f.name}"></video>`;
+        // .md 等文本资源统一作为附件链接插入正文
         return `[${f.name}](./assets/${f.name})`;
       }).join("\n\n");
 
@@ -1004,8 +1105,7 @@ export function initPostHandlers() {
       }
       const fileInput = (document.getElementById("post-files") as HTMLInputElement | null);
       if (fileInput) fileInput.value = "";
-      const countEl = (document.getElementById("post-files-count") as HTMLElement | null);
-      if (countEl) countEl.textContent = "未选择文件";
+      updatePostFilesSelectionUI();
       setMsg(msgEl, `上传成功：${uploaded.length} 个文件（目录：${slug}/assets）`);
       pushContentToPreview();
       autoSaveDebounced();

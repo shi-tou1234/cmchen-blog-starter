@@ -13,7 +13,7 @@ import ReadingTime from '@components/misc/ReadingTime.astro'
 import Comments from '@components/misc/Comments.astro'
 import DerivationPopup from '@components/misc/DerivationPopup.astro'
 
-import { getCollection, render } from 'astro:content'
+import { render } from 'astro:content'
 import i18nit from '@i18n/translation'
 
 import { blogCoverUrl, getRelativeLocaleUrl } from '@/utils/url-utils'
@@ -69,10 +69,11 @@ const allBlogPosts = await getBlogEntrySort();
 const rootCategory = currentCategories[0] || '';
 const activeCategory = currentCategories.length > 1 ? currentCategories[currentCategories.length - 1] : rootCategory;
 const categoryTrail = currentCategories.join(' / ');
+// R1：同类文章放在文末、评论前，只展示实际数量（不足 4 条就按实际条数）
 const sameCategoryPosts = activeCategory
     ? allBlogPosts
         .filter((post) => post.id !== entry.id && getPostCategories(post, currentLang).includes(activeCategory))
-        .slice(0, 20)
+        .slice(0, 4)
     : [];
 const categoryPageUrl = activeCategory ? getRelativeLocaleUrl(currentLang, `/categories/${encodeCategoryParam(activeCategory)}`) : '';
 const categoryLinks = currentCategories.map((category) => ({
@@ -88,19 +89,8 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
 ---
 <MainPageLayout title={pageTitle} lang={currentLang} description={entry.data.description} image={ogImageSrc} type="article">
     <div class="post-layout-wrapper">
-        <aside class="post-left-sidebar" aria-label="同分类文章导航">
-            {sameCategoryPosts.length > 0 && activeCategory && (
-                <div class="post-left-sidebar-inner">
-                    <CategoryPostNavi
-                        language={currentLang}
-                        category={categoryTrail || activeCategory}
-                        posts={sameCategoryPosts}
-                        categoryPageUrl={categoryPageUrl}
-                    />
-                </div>
-            )}
-        </aside>
-
+        <!-- 纯占位留白：与线上一致，给左上角被左移的 logo/slogan 让位，避免正文压上去 -->
+        <div class="post-left-spacer" aria-hidden="true"></div>
         <div id="post-reading-shell" class="post-content-column">
             <nav class="mb-4 text-sm text-[var(--text-color)]/65" aria-label="面包屑导航">
                 <a href={getRelativeLocaleUrl(currentLang, '/')} class="hover:text-[var(--link-color)]">{homeLabel}</a>
@@ -168,6 +158,16 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
             {
                 siteConfig.blogNavi.enable &&
                 <BlogNavi prev={prev} next={next}/>
+            }
+            {
+                sameCategoryPosts.length > 0 && activeCategory && (
+                    <CategoryPostNavi
+                        language={currentLang}
+                        category={categoryTrail || activeCategory}
+                        posts={sameCategoryPosts}
+                        categoryPageUrl={categoryPageUrl}
+                    />
+                )
             }
             <Comments mapping="pathname" title={entry.data.title} />
         </div>
@@ -349,6 +349,8 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
 </script>
 
 <style is:global>
+    /* 与线上一致的三栏几何：占位 200 + 正文 800 + 目录 230，整体居中。
+       正文比上一版更宽、起点更靠右（避开左上角 slogan），目录也随之更靠右。 */
     .post-layout-wrapper {
         --page-width: min(800px, 88vw);
         --toc-width: 230px;
@@ -360,7 +362,7 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
         max-width: 100vw;
     }
 
-    .post-left-sidebar {
+    .post-left-spacer {
         width: 200px;
         flex-shrink: 0;
         order: 1;
@@ -381,7 +383,6 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
         order: 3;
     }
 
-    .post-left-sidebar-inner,
     .post-right-sidebar-inner {
         position: sticky;
         top: 16vh;
@@ -402,7 +403,7 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
     }
 
     html.post-reading-fullscreen #main-header,
-    html.post-reading-fullscreen .post-left-sidebar,
+    html.post-reading-fullscreen .post-left-spacer,
     html.post-reading-fullscreen .post-right-sidebar {
         display: none !important;
     }
@@ -522,7 +523,7 @@ const ogImageSrc = resolvedCover.source === 'user' ? resolveAssetUrl(userImage) 
             overflow-x: hidden;
         }
 
-        .post-left-sidebar {
+        .post-left-spacer {
             display: none;
         }
 

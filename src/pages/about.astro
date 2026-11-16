@@ -501,7 +501,6 @@ function getIntensityLevel(count: number, maxCount: number): number {
     };
 
     const mousemoveHandler = (event: MouseEvent) => {
-      const rect = wrap.getBoundingClientRect();
       let left = event.clientX + 12;
       if (left + 160 > window.innerWidth) {
         left = event.clientX - 160;

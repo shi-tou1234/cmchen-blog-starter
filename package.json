@@ -14,6 +14,8 @@
     "covers:ensure": "node script/ensure-post-covers.mjs",
     "covers:refresh": "node script/ensure-post-covers.mjs --force",
     "covers:curated": "node script/apply-curated-covers.mjs",
+    "cache:covers": "node script/cache-picsum-covers.mjs --base /cmchen-blog-starter/",
+    "test:covers": "node --test script/cache-picsum-covers.test.mjs",
     "check": "astro check",
     "lint": "eslint src --ext .ts,.astro",
     "lint:fix": "eslint src --ext .ts,.astro --fix",

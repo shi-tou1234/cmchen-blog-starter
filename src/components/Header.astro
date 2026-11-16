@@ -1,7 +1,6 @@
 ---
 import "@styles/global.css"
 import { Icon } from "astro-icon/components"
-import { profileConfig } from "@/config"
 import ThemeIcon from "./control/ThemeIcon.astro"
 import FontSizeControl from "./control/FontSizeControl.astro"
 import headerContact from "@/data/header-contact"
@@ -135,8 +134,10 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
 }
 
 /* 电脑端：把标题区与工具栏分别推到文章卡片左右两侧的留白里。
-   图文融合卡片在桌面端收回到 min(960px,84vw)，header 容器 min(1024px,90vw) 比卡片宽，
-   两侧元素贴到视口边缘（留 12px 安全边距），位移量按外侧留白钳制，窄屏也不会被挤出屏幕。 */
+   旧版卡片宽 min(720px,88vw)，header 容器 min(1024px,90vw)，两侧留白充足；
+   今天的图文融合卡片拓宽到 min(1080px,92vw)，留白被吃掉，header 元素就压到了封面上。
+   这里沿用旧版「header 比卡片宽」的比例：卡片在桌面端收回到 min(960px,84vw)，
+   两侧元素则贴到视口边缘（留 12px 安全边距），位移量按外侧留白钳制，窄屏也不会被挤出屏幕。 */
 @media (min-width: 768px) {
   .header-logo {
     transform: translateX(max(-240px, calc((var(--header-width) - 100vw) / 2 + 12px)));

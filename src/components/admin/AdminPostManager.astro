@@ -1,6 +1,5 @@
 ---
 import PostToolbar from '@/components/admin/PostToolbar.astro';
-import { externalUrlsConfig } from '../../config';
 
 const previewEmbedUrl = `${import.meta.env.BASE_URL}admin-preview/?embed=1`;
 ---
@@ -105,10 +104,11 @@ const previewEmbedUrl = `${import.meta.env.BASE_URL}admin-preview/?embed=1`;
 
       <!-- 文件上传区 -->
       <div class="flex flex-wrap gap-2 items-center">
-        <input id="post-files" type="file" multiple accept="image/*,video/*,.pdf,application/pdf" class="hidden" />
+        <input id="post-files" type="file" multiple accept="image/*,video/*,.pdf,application/pdf,.md,.markdown,text/markdown,text/x-markdown" class="hidden" />
         <label for="post-files" class="post-action-btn text-sm font-medium cursor-pointer">选择文件</label>
         <span id="post-files-count" class="text-xs text-[var(--text-color)]/70">未选择文件</span>
         <button id="upload-files-btn" class="post-action-btn text-sm">上传资源</button>
+        <button id="import-md-btn" class="post-action-btn text-sm" disabled title="选中 .md 文件后，把内容与 frontmatter 导入编辑器（不会上传文件本身）">导入 MD 到正文</button>
         <button id="insert-iframe-btn" class="post-action-btn text-sm">插入 iframe</button>
       </div>
 
@@ -335,6 +335,16 @@ const previewEmbedUrl = `${import.meta.env.BASE_URL}admin-preview/?embed=1`;
   .post-action-btn:hover {
     background: var(--hover-bg-color);
     border-color: var(--link-color);
+  }
+
+  .post-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .post-action-btn:disabled:hover {
+    background: var(--bg-color);
+    border-color: var(--border-color);
   }
 
   /* 上传图片缩略图条 */

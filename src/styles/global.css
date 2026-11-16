@@ -13,7 +13,8 @@
 
   body {
     @apply bg-[--bg-color] text-[--text-color];
-    font-family: var(--font-serif-cjk);
+    /* F1：界面与卡片默认无衬线，文章正文在 markdown.css 中单独指定衬线 */
+    font-family: var(--font-sans);
     overflow-y: scroll;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
