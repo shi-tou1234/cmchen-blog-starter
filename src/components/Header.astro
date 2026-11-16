@@ -77,7 +77,7 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
     </div>
     
     <!-- tools -->
-    <div class="shrink-0 col-start-3 flex flex-nowrap gap-2 pl-1 md:pl-2 py-2 justify-end z-30">
+    <div class="header-tools shrink-0 col-start-3 flex flex-nowrap gap-2 pl-1 md:pl-2 py-2 justify-end z-30">
         <!-- Search -->
         <button id="search-button" aria-label="搜索" class="hidden min-[380px]:flex items-center justify-center w-10 h-10 hover:bg-[var(--hover-bg-color)] active:scale-90 rounded-lg hover:text-current border border-[var(--border-color)] transition-all duration-300">
             <Icon name="fa6-solid:magnifying-glass" class="w-4 h-4" />
@@ -134,13 +134,15 @@ const toolsPage = getRelativeLocaleUrl(currentLang, "/tools/");
   letter-spacing: 1px;
 }
 
-/* 电脑端 logo 区块（标题/运行天数/slogan）整体左移，退回文章卡片左侧的留白里。
-   logo 文本实测宽约 182px，而 header 内容列到 776px 正文容器的留白只有 124px，
-   不左移必然压上去；位移量按 header-inner 外侧留白钳制：
-   留白够就移满 96px，留白不够就只移到还剩 12px 视口边距，避免被挤出屏幕。 */
+/* 电脑端：把标题区与工具栏分别推到文章卡片左右两侧的留白里。
+   图文融合卡片在桌面端收回到 min(960px,84vw)，header 容器 min(1024px,90vw) 比卡片宽，
+   两侧元素贴到视口边缘（留 12px 安全边距），位移量按外侧留白钳制，窄屏也不会被挤出屏幕。 */
 @media (min-width: 768px) {
   .header-logo {
-    transform: translateX(max(-96px, calc((var(--header-width) - 100vw) / 2 + 12px)));
+    transform: translateX(max(-240px, calc((var(--header-width) - 100vw) / 2 + 12px)));
+  }
+  .header-tools {
+    transform: translateX(min(240px, calc((100vw - var(--header-width)) / 2 - 12px)));
   }
 }
 

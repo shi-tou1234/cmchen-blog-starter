@@ -127,7 +127,11 @@ const resolvedCovers = await Promise.all(
 <style is:global>
     .post-list-shell {
         position: relative;
-        --post-card-width: min(720px, 88vw);
+        /* 与图文融合卡片同宽，加载态切到成品不跳宽度 */
+        --post-card-width: min(960px, 92vw);
+    }
+    @media (min-width: 768px) {
+        .post-list-shell { --post-card-width: min(960px, 84vw); }
     }
 
     .post-list-content {

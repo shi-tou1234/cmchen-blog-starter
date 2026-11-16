@@ -72,6 +72,9 @@
 /* 字体栈：先用本机可能已安装的原字体，否则回退到系统自带字库。
    全站不依赖任何外部字体 CDN，改字体只改这里。 */
 :root {
+  /* 界面黑体（卡片正文/标题）——图文融合卡片使用 */
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Hiragino Sans GB", system-ui, sans-serif;
+
   /* 楷体（顶栏 logo 标题）——原 Ma Shan Zheng 马善政楷书 */
   --font-kai: "Ma Shan Zheng", "Kaiti SC", "STKaiti", "KaiTi", "楷体", "AR PL UKai CN", serif;
 

@@ -1696,6 +1696,59 @@ const serializedCategoryCounts = JSON.stringify(
     .archive-explorer__post {
       padding-left: 0;
       padding-right: 0;
+      padding-top: 0.9rem;
+      padding-bottom: 0.9rem;
+    }
+
+    .archive-explorer__post > div {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 0.35rem;
+    }
+
+    .archive-explorer__post-title {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .archive-explorer__post-summary-wrap {
+      grid-template-rows: 1fr;
+      transition: none;
+    }
+
+    .archive-explorer__post-summary {
+      opacity: 1;
+      transform: none;
+      transition: none;
+      font-size: 0.75rem;
+      line-height: 1.9;
+    }
+
+    .archive-explorer__post-title::after,
+    .archive-explorer__post::before {
+      display: none;
+    }
+
+    .archive-explorer__post:hover .archive-explorer__post-title,
+    .archive-explorer__post:focus-visible .archive-explorer__post-title {
+      transform: none;
+    }
+  }
+
+  /* 大屏触摸设备同样无需悬停即可读取摘要。 */
+  @media (min-width: 768px) and (hover: none) and (pointer: coarse) {
+    .archive-explorer__post-summary-wrap {
+      grid-template-rows: 1fr;
+      transition: none;
+    }
+
+    .archive-explorer__post-summary {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    .archive-explorer__post-title::after {
+      display: none;
     }
   }
 </style>

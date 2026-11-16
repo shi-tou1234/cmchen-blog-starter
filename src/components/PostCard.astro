@@ -1,441 +1,176 @@
 ---
-import "@styles/global.css"
-import ImageModule from "./misc/ImageModule.astro";
+import '@styles/global.css';
+import '@styles/post-card.css';
+import ImageModule from './misc/ImageModule.astro';
 
 import { getRelativeLocaleUrl } from '@utils/url-utils';
-import { formatFullDate } from '@/utils/time'
+import { formatFullDate } from '@/utils/time';
 import { hashString } from '@utils/hash';
 
-
 interface Props {
-    title: string;
-    description: string;
-    image: string;
-    pubDate: Date;
-    updatedDate?: Date;
-    url: string;
-    fallback: boolean;
-    categories?: string[];
-    preview?: string;
-    readingMinutes?: number;
-    revealDelay?: number;
-    externalImage?: string;
-    photographer?: string;
-    photographerUrl?: string;
-    pinned?: boolean;
+  title: string;
+  description: string;
+  image: string;
+  pubDate: Date;
+  updatedDate?: Date;
+  url: string;
+  fallback: boolean;
+  categories?: string[];
+  preview?: string;
+  readingMinutes?: number;
+  revealDelay?: number;
+  externalImage?: string;
+  photographer?: string;
+  photographerUrl?: string;
+  pinned?: boolean;
 }
 
 const {
-    title,
-    description,
-    image,
-    pubDate,
-    updatedDate,
-    url,
-    fallback,
-    categories = [],
-    preview = description,
-    readingMinutes = 1,
-    revealDelay = 0,
-    externalImage = '',
-    photographer = '',
-    photographerUrl = '',
-    pinned = false,
+  title,
+  description,
+  image,
+  pubDate,
+  updatedDate,
+  url,
+  fallback,
+  categories = [],
+  preview = description,
+  readingMinutes = 1,
+  revealDelay = 0,
+  externalImage = '',
+  photographer = '',
+  photographerUrl = '',
+  pinned = false,
 } = Astro.props;
-
-
 
 const currentLang = 'zh-cn';
 
 const readingLabel = `${readingMinutes} 分钟阅读`;
 const previewText = String(preview || description || '').trim();
+const primaryCategory = categories[0] || '';
+const topicCategories = categories.slice(1, 3);
+const categoryIcon = /电|硬件|数电|模电/.test(categories.join(' '))
+  ? 'M8 8h8v8H8z M9 3v3m6-3v3M9 18v3m6-3v3M3 9h3m-3 6h3m12-6h3m-3 6h3'
+  : /随笔|生活|旅行/.test(primaryCategory)
+    ? 'M20 4C11 3 4 7 5 14c1 7 12 8 15-10Z M5 20l10-10'
+    : /工具|开发|编程/.test(primaryCategory)
+      ? 'm8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14'
+      : 'M4 4h7c1 0 1 1 1 2v14c0-2-2-3-4-3H4z M20 4h-7c-1 0-1 1-1 2v14c0-2 2-3 4-3h4z';
 const cardLabel = `阅读文章：${title}`;
 
-const decorativeSvgPool = [
-    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#e5e7eb"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#f9fafb" stroke="#d1d5db"/><circle cx="50" cy="52" r="18" fill="#d1d5db"/><circle cx="88" cy="88" r="14" fill="#9ca3af"/></svg>')}`,
-    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#e5e7eb"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#f9fafb" stroke="#d1d5db"/><path d="M26 86C50 60 80 56 114 78" stroke="#9ca3af" stroke-width="8" fill="none" stroke-linecap="round"/><circle cx="42" cy="48" r="10" fill="#d1d5db"/></svg>')}`,
-    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#e5e7eb"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#f9fafb" stroke="#d1d5db"/><rect x="34" y="42" width="72" height="14" rx="7" fill="#d1d5db"/><rect x="28" y="70" width="84" height="14" rx="7" fill="#e5e7eb"/></svg>')}`,
-    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#e5e7eb"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#f9fafb" stroke="#d1d5db"/><path d="M40 96L70 40L100 96Z" fill="#d1d5db"/><circle cx="100" cy="44" r="9" fill="#9ca3af"/></svg>')}`,
-    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#e5e7eb"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#f9fafb" stroke="#d1d5db"/><circle cx="54" cy="56" r="16" fill="#d1d5db"/><circle cx="86" cy="82" r="13" fill="#9ca3af"/></svg>')}`,
-    `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><rect width="140" height="140" rx="24" fill="#e5e7eb"/><rect x="16" y="16" width="108" height="108" rx="18" fill="#f9fafb" stroke="#d1d5db"/><path d="M30 88L54 64L76 86L106 56" stroke="#9ca3af" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>')}`,
+// 本地封面优先，其次外部封面；两者都没有时只保留纯文字卡片
+const coverSrc = image || externalImage || '';
+const hasImage = Boolean(coverSrc);
+// Stable tones keep the approved canvas without extra image analysis requests.
+const coverTones = [
+  { light: '#edf0df', dark: '#293c31' },
+  { light: '#ece9df', dark: '#353b30' },
+  { light: '#e6eee2', dark: '#263a31' },
+  { light: '#eeeadf', dark: '#39382b' },
 ];
+const coverTone = coverTones[hashString(url) % coverTones.length];
 
-const placeholderDecorations = Array.from({ length: 14 }, (_, index) => {
-    const seed = hashString(`${title}-${url}-${index}`);
-    const size = 38 + (seed % 44);
-    const left = (seed * 37) % 96;
-    const top = (seed * 53) % 88;
-    const rotate = ((seed * 19) % 26) - 13;
-    const opacity = 0.38 + ((seed % 24) / 100);
-    const image = decorativeSvgPool[seed % decorativeSvgPool.length];
-    return `left:${left}%;top:${top}%;width:${size}px;height:${size}px;transform:translate(-50%,-50%) rotate(${rotate}deg);opacity:${opacity};background-image:url("${image}");animation-delay:${(seed % 7) * 0.35}s;`;
-});
-
-// 分类色与归档页同一套 --cat-slot 体系（8 档 × 45° 色相），明暗主题由 variables.css 接管
-function getTagStyle(tag: string): string {
-    return `--cat-slot:${hashString(tag) % 8};`;
-}
-
-
-const pageUrl = getRelativeLocaleUrl(currentLang, "/blog/" + url);
+const pageUrl = getRelativeLocaleUrl(currentLang, '/blog/' + url);
 ---
 
 <article
-    data-card-reveal
-    style={`--card-reveal-delay:${revealDelay}ms; --card-width:min(720px, 88vw);`}
-    class="post-card group relative mx-auto my-5 block min-w-0 w-full max-w-[var(--card-width)] overflow-hidden rounded-[var(--radius-card-lg)] border border-[var(--border-color)]/80 bg-[var(--surface-raised)] shadow-[var(--shadow-card)]"
+  data-card-reveal
+  style={`--card-reveal-delay:${revealDelay}ms;--post-card-light:${coverTone.light};--post-card-dark:${coverTone.dark};`}
+  class:list={['post-card', hasImage ? 'post-card--with-image' : 'post-card--no-image']}
 >
-    <a
-        href={pageUrl}
-        aria-label={cardLabel}
-        class="post-card__stretched-link absolute inset-0 z-10 rounded-[inherit]"
-    >
-    </a>
+  <a href={pageUrl} aria-label={cardLabel} class="post-card__stretched-link"></a>
 
-    {image && (
-        <div class="cover post-card__cover overflow-hidden">
-            {pinned && (
-                <span class="post-card__pinned-badge">
-                    <span class="post-card__pinned-dot"></span>
-                    置顶
-                </span>
-            )}
-            <ImageModule src={image} alt={title} class="post-card__image"/>
+  <div class:list={['post-card__cover', { 'post-card__cover--placeholder': !hasImage }]}>
+    {hasImage && <ImageModule src={coverSrc} alt={title} class="post-card__image" />}
+  </div>
+
+  {
+    !image &&
+      externalImage &&
+      photographer &&
+      (photographerUrl ? (
+        <a
+          href={photographerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="post-card__photo-credit"
+          title={`Photo by ${photographer}`}
+        >
+          {photographer}
+        </a>
+      ) : (
+        <span class="post-card__photo-credit" title={`Photo by ${photographer}`}>
+          {photographer}
+        </span>
+      ))
+  }
+
+  <div class="post-card__body">
+    {
+      (pinned || categories.length > 0) && (
+        <div class="post-card__tags">
+          {pinned && (
+            <span class="post-card__pinned-badge">
+              <svg class="post-card__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 2-3 5-5-5 5-3 2-4ZM3 21l7-7" /></svg>
+              置顶
+            </span>
+          )}
+          {primaryCategory && (
+            <span class="post-card__tag">
+              <svg class="post-card__icon" viewBox="0 0 24 24" aria-hidden="true"><path d={categoryIcon} /></svg>
+              {primaryCategory}
+            </span>
+          )}
         </div>
+      )
+    }
+
+    <h2 class="post-card__title">
+      {title}
+      {fallback && <span class="post-card__lang">zh-cn</span>}
+    </h2>
+    <p class="post-card__summary">{previewText}</p>
+    {topicCategories.length > 0 && (
+      <div class="post-card__topics">
+        {topicCategories.map((category) => <span class="post-card__topic">{category}</span>)}
+      </div>
     )}
-
-    {!image && externalImage && (
-        <div class="cover post-card__cover overflow-hidden">
-            {pinned && (
-                <span class="post-card__pinned-badge">
-                    <span class="post-card__pinned-dot"></span>
-                    置顶
-                </span>
-            )}
-            <ImageModule src={externalImage} alt={title} class="post-card__image"/>
-            {photographer && (
-                photographerUrl ? (
-                    <a href={photographerUrl} target="_blank" rel="noopener noreferrer" class="post-card__photo-credit" title={`Photo by ${photographer}`}>
-                        {photographer}
-                    </a>
-                ) : (
-                    <span class="post-card__photo-credit" title={`Photo by ${photographer}`}>
-                        {photographer}
-                    </span>
-                )
-            )}
-        </div>
-    )}
-
-    {!image && !externalImage && (
-        <div class="post-card__placeholder aspect-[1200/630]">
-            <div class="post-card__decor-grid" aria-hidden="true">
-                {placeholderDecorations.map((decoration) => (
-                    <span class="post-card__decor-item" style={decoration}></span>
-                ))}
-            </div>
-        </div>
-    )}
-
-    <div class="content post-card__body pointer-events-none p-4 md:p-5">
-        {categories.length > 0 && (
-            <div class="post-card__tags mb-2.5 flex flex-wrap gap-2">
-                {categories.map((category) => (
-                    <span class="post-card__tag" style={getTagStyle(category)}>
-                        #{category}
-                    </span>
-                ))}
-            </div>
-        )}
-
-        <h2 class="title post-card__title text-lg font-semibold text-[var(--text-color)] mb-2.5 md:text-xl">
-            {title}
-            {
-                fallback && (
-                <span class="self-center px-1 ml-2 text-xs text-[var(--text-color)]/70 font-mono uppercase bg-[var(--hover-bg-color)] rounded border border-[var(--border-color)]">zh-cn</span>
-                )
-            }
-        </h2>
-        <p class="description post-card__summary text-sm leading-relaxed text-[var(--text-color)]/66 md:text-[0.96rem]">{previewText}</p>
-        <div class="post-card__meta mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-color)]/66 md:text-sm">
-            <span>{formatFullDate(pubDate, currentLang)}</span>
-            {updatedDate && updatedDate.valueOf() > pubDate.valueOf() && (
-                <>
-                    <span class="text-[var(--text-color)]/35">•</span>
-                    <span>{`最后更新于 ${formatFullDate(updatedDate, currentLang)}`}</span>
-                </>
-            )}
-            <span class="text-[var(--text-color)]/35">•</span>
-            <span>{readingLabel}</span>
-        </div>
+    <div class="post-card__bottom">
+    <div class="post-card__meta">
+      <span><svg class="post-card__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v15H5z M8 3v4m8-4v4M5 10h14" /></svg>{formatFullDate(pubDate, currentLang)}</span>
+      {
+        updatedDate && updatedDate.valueOf() > pubDate.valueOf() && (
+          <>
+            <span class="post-card__meta-sep">•</span>
+            <span class="post-card__updated">{`最后更新于 ${formatFullDate(updatedDate, currentLang)}`}</span>
+          </>
+        )
+      }
+      <span class="post-card__meta-sep">•</span>
+      <span><svg class="post-card__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 7v5l3 2" /></svg>{readingLabel}</span>
     </div>
+    <span class="post-card__direction" aria-hidden="true"><svg class="post-card__icon" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" /></svg></span>
+    </div>
+  </div>
 </article>
 
-<style is:global>
-    .post-card {
-        position: relative;
-        transform: translate3d(0, 0, 0) scale(1);
-        background: var(--surface-raised);
-        box-shadow: 0 0 0 1px var(--border-color), var(--shadow-card);
-        transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.52s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, background-color 0.3s ease, opacity 0.45s ease;
-        will-change: transform, opacity, box-shadow;
-    }
+<script>
+  import { onPageScoped } from '@utils/page-lifecycle';
 
-    .post-card__stretched-link {
-        outline: none;
-    }
-
-    .post-card__stretched-link:focus-visible {
-        outline: 2px solid var(--link-color);
-        outline-offset: 4px;
-    }
-
-    .post-card:hover {
-        transform: translate3d(0, -6px, 0) scale(1.008);
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--link-color) 28%, var(--border-color)), 0 26px 54px color-mix(in srgb, var(--shadow-color) 100%, transparent);
-        border-color: color-mix(in srgb, var(--link-color) 26%, var(--border-color));
-        background: color-mix(in srgb, var(--bg-color) 94%, var(--hover-bg-color));
-    }
-
-    .post-card:active {
-        transform: translate3d(0, -3px, 0) scale(1.004);
-    }
-
-    .post-card__cover {
-        position: relative;
-        isolation: isolate;
-        aspect-ratio: 1200 / 630;
-        line-height: 0;
-        background: linear-gradient(135deg, color-mix(in srgb, var(--bg-color) 84%, var(--hover-bg-color)), color-mix(in srgb, var(--bg-color) 72%, var(--link-color)));
-    }
-
-    .post-card__cover::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(180deg, transparent 12%, color-mix(in srgb, var(--bg-color) 30%, transparent) 100%);
-        opacity: 0;
-        transition: opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1);
-        pointer-events: none;
-    }
-
-    .post-card__image {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        object-position: center;
-        transition: transform 0.72s cubic-bezier(0.16, 1, 0.3, 1), filter 0.5s ease, opacity 0.3s ease;
-        will-change: transform;
-    }
-
-    .post-card:hover .post-card__image {
-        transform: scale(1.035);
-        filter: brightness(1.04) saturate(1.06) contrast(1.01);
-    }
-
-    .post-card:hover .post-card__cover::after {
-        opacity: 1;
-    }
-
-    .post-card__body {
-        display: grid;
-        gap: 0.2rem;
-        transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
-    }
-
-    .post-card:hover .post-card__body {
-        transform: translateY(-2px);
-    }
-
-    .post-card__title {
-        font-family: var(--font-rounded);
-    }
-
-    .post-card__summary,
-    .post-card__meta {
-        font-family: var(--font-rounded);
-    }
-
-    .post-card:hover .post-card__title {
-        color: var(--link-color);
-    }
-
-    .post-card:hover .post-card__summary,
-    .post-card:hover .post-card__meta {
-        color: color-mix(in srgb, var(--text-color) 78%, var(--link-color));
-    }
-
-    .post-card__placeholder {
-        position: relative;
-        overflow: hidden;
-        background: var(--postcard-placeholder-bg);
-    }
-
-    [data-theme="dark"] .post-card__decor-item {
-        filter: brightness(0.7) saturate(0.75);
-        border-color: rgba(255, 255, 255, 0.45);
-    }
-
-    .post-card__decor-grid {
-        position: absolute;
-        inset: 0;
-    }
-
-    .post-card__decor-item {
-        position: absolute;
-        background-position: center;
-        background-size: cover;
-        background-repeat: no-repeat;
-        border-radius: 0.9rem;
-        border: 2px solid rgba(255, 255, 255, 0.82);
-        box-shadow: 0 8px 18px color-mix(in srgb, var(--shadow-color) 42%, transparent);
-        animation: post-card-float 10.5s cubic-bezier(0.45, 0, 0.15, 1) infinite;
-    }
-
-    .post-card__decor-item:nth-child(3n) {
-        animation-duration: 11.5s;
-    }
-
-    .post-card__decor-item:nth-child(4n) {
-        animation-duration: 12.5s;
-    }
-
-    @keyframes post-card-float {
-        0%, 100% { transform: translate(-50%, -50%) rotate(0deg) translateY(0); }
-        50% { transform: translate(-50%, -50%) rotate(3deg) translateY(-4px); }
-    }
-
-    .post-card__summary {
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-
-    .post-card__tags {
-        align-content: flex-start;
-    }
-
-    .post-card__tag {
-        --cat-hue: calc(var(--cat-slot, 0) * 45);
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        border: 1px solid var(--cat-tag-border);
-        background: var(--cat-tag-bg);
-        color: var(--cat-tag-color);
-        font-size: 0.68rem;
-        line-height: 1;
-        padding: 0.28rem 0.5rem;
-        font-weight: 700;
-        box-shadow: 0 4px 10px color-mix(in srgb, var(--cat-tag-border) 35%, transparent);
-        transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), filter 0.24s ease, box-shadow 0.24s ease;
-    }
-
-    .post-card:hover .post-card__tag {
-        transform: translateY(-2px);
-        filter: saturate(1.1);
-        box-shadow: 0 8px 16px color-mix(in srgb, var(--cat-tag-border) 58%, transparent);
-    }
-
-    .post-card__pinned-badge {
-        position: absolute;
-        top: 0.75rem;
-        left: 0.75rem;
-        z-index: 30;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        padding: 0.3rem 0.65rem;
-        border-radius: 999px;
-        background: rgba(0, 0, 0, 0.42);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        color: rgba(255, 255, 255, 0.92);
-        font-size: 0.7rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        pointer-events: none;
-    }
-
-    .post-card__pinned-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #d4a054;
-        box-shadow: 0 0 6px rgba(212, 160, 84, 0.6);
-        animation: post-card-pin-pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes post-card-pin-pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.55; transform: scale(0.82); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .post-card__pinned-dot {
-            animation: none !important;
-        }
-    }
-
-    .post-card__photo-credit {
-        position: absolute;
-        bottom: 0.7rem;
-        right: 0.75rem;
-        z-index: 30;
-        font-size: 0.65rem;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: rgba(0, 0, 0, 0.48);
-        color: rgba(255, 255, 255, 0.82);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        pointer-events: auto;
-        opacity: 0;
-        transform: translateY(6px);
-        transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .post-card__photo-credit a {
-        color: inherit;
-        text-decoration: none;
-    }
-
-    .post-card__photo-credit a:hover {
-        text-decoration: underline;
-    }
-
-    .post-card:hover .post-card__photo-credit {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    .post-card__body,
-    .post-card__title,
-    .post-card__summary,
-    .post-card__meta {
-        transform: translate3d(0, 0, 0);
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .post-card,
-        .post-card__image,
-        .post-card__cover::after,
-        .post-card__body,
-        .post-card__tag,
-        .post-card__photo-credit {
-            transition: none !important;
-            animation: none !important;
-        }
-
-        .post-card:hover,
-        .post-card:active,
-        .post-card:hover .post-card__body,
-        .post-card:hover .post-card__image,
-        .post-card:hover .post-card__tag {
-            transform: none !important;
-            filter: none !important;
-        }
-    }
-</style>
+  onPageScoped((cleanup) => {
+    document.querySelectorAll<HTMLImageElement>('.post-card__image').forEach((image) => {
+      const card = image.closest<HTMLElement>('.post-card');
+      if (!card) return;
+      const syncImage = () => {
+        card.classList.toggle('post-card--image-error', image.complete && image.naturalWidth === 0);
+      };
+      image.addEventListener('load', syncImage);
+      image.addEventListener('error', syncImage);
+      cleanup(() => {
+        image.removeEventListener('load', syncImage);
+        image.removeEventListener('error', syncImage);
+      });
+      syncImage();
+    });
+  });
+</script>

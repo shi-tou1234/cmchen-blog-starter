@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { createHash } from 'node:crypto'
 import {
   coverImageConfig,
   buildSearchQuery,
@@ -27,6 +28,11 @@ interface CacheData {
   [postId: string]: CacheEntry
 }
 
+// Share results between list and detail pages during one build.
+const cacheFiles = new Map<string, CacheData>()
+const pendingCovers = new Map<string, Promise<ResolvedCover>>()
+let warnedMissingKey = false
+
 function readCache(config: CoverImageConfig): CacheData {
   if (!config.cacheEnabled) return {}
   try {
@@ -37,10 +43,19 @@ function readCache(config: CoverImageConfig): CacheData {
       console.warn('[cover-image] 缓存路径越界，拒绝读取')
       return {}
     }
+    const existing = cacheFiles.get(cachePath)
+    if (existing) return existing
     if (fs.existsSync(cachePath)) {
       const raw = fs.readFileSync(cachePath, 'utf-8')
-      return JSON.parse(raw)
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        cacheFiles.set(cachePath, parsed)
+        return parsed
+      }
     }
+    const empty: CacheData = {}
+    cacheFiles.set(cachePath, empty)
+    return empty
   } catch {
     console.warn('[cover-image] 读取缓存失败，将重新获取')
   }
@@ -213,25 +228,10 @@ async function searchPicsum(
   const width = 1200
   const height = 630
 
-  let photographer = 'Lorem Picsum'
-  let photographerUrl = 'https://picsum.photos'
-
-  try {
-    const listResponse = await fetch('https://picsum.photos/v2/list?page=1&limit=100', {
-      signal: AbortSignal.timeout(5000),
-    })
-    if (listResponse.ok) {
-      const list = (await listResponse.json()) as Array<{ author: string; url: string }>
-      if (list.length > 0) {
-        const seed = hashString(postId)
-        const item = list[seed % list.length]
-        photographer = item.author
-        photographerUrl = item.url
-      }
-    }
-  } catch {
-    // 列表获取失败，使用默认署名
-  }
+  // The seed URL needs no catalogue lookup. Catalogue authors do not identify
+  // the seeded image and previously caused a five-second wait on every page.
+  const photographer = 'Lorem Picsum'
+  const photographerUrl = 'https://picsum.photos'
 
   return {
     url: `https://picsum.photos/seed/${encodeURIComponent(postId)}/${width}/${height}`,
@@ -241,6 +241,18 @@ async function searchPicsum(
     width,
     height,
   }
+}
+
+/**
+ * 每篇文章一张专属封面：文件名由文章 ID 的 sha256 派生，天然互不重复。
+ * 新增文章会得到全新的文件名，构建前的 ensure-post-covers 脚本负责把图补齐。
+ * BASE_URL 由 Astro 注入：站点部署是 /cmchen-blog/，桌面离线包是 /。
+ */
+function localCoverUrl(postId: string): string {
+  const normalized = postId.replace(/\\/g, '/').split('/')[0];
+  const filename = createHash('sha256').update(normalized).digest('hex').slice(0, 20) + '.webp';
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+  return `${base}/covers/${filename}`;
 }
 
 async function searchCoverImage(
@@ -276,6 +288,9 @@ export async function resolveCoverImage(
   categories: string[],
 ): Promise<ResolvedCover> {
   if (userImage) {
+    if (/^https?:\/\//i.test(userImage) || userImage.startsWith('/')) {
+      return { imageUrl: userImage, photographer: '', photographerUrl: '', source: 'user' }
+    }
     // 用户指定的封面文件不存在时，当作「没填封面」继续走 API 兜底，避免页面显示破图
     // 去掉 userImage 前导 / 或 \，防止 Windows 下 path.resolve 跳转到盘符根目录
     const safeUserImage = userImage.replace(/^[\\/]+/, '');
@@ -295,7 +310,18 @@ export async function resolveCoverImage(
     return { imageUrl: '', photographer: '', photographerUrl: '', source: 'none' }
   }
 
-  if (!coverImageConfig.apiKey) {
+  if (!coverImageConfig.apiKey || coverImageConfig.provider === 'picsum') {
+    // 外链图源在国内经常超时，优先用随站点一起发布的本地封面。
+    if (coverImageConfig.localCoverFallback) {
+      const url = localCoverUrl(postId)
+      if (url) {
+        return { imageUrl: url, photographer: '', photographerUrl: '', source: 'fallback' }
+      }
+    }
+    if (!coverImageConfig.apiKey && coverImageConfig.provider !== 'picsum' && !warnedMissingKey) {
+      warnedMissingKey = true
+      console.warn('[cover-image] 未收到图片服务 API Key，本次构建使用 Picsum 随机封面。')
+    }
     try {
       const result = await searchPicsum(postId, title, coverImageConfig)
       if (result) {
@@ -312,8 +338,19 @@ export async function resolveCoverImage(
     return { imageUrl: '', photographer: '', photographerUrl: '', source: 'none' }
   }
 
+  const query = buildSearchQuery(title, categories, coverImageConfig.searchStrategy)
+  const requestKey = JSON.stringify([coverImageConfig.provider, postId, query])
+  const pending = pendingCovers.get(requestKey)
+  if (pending) return pending
+  const request = resolveApiCover(postId, query)
+  pendingCovers.set(requestKey, request)
+  return request
+}
+
+async function resolveApiCover(postId: string, query: string): Promise<ResolvedCover> {
   const cache = readCache(coverImageConfig)
-  const cached = cache[postId]
+  const cacheKey = JSON.stringify([coverImageConfig.provider, postId, query])
+  const cached = cache[cacheKey]
   if (cached) {
     return {
       imageUrl: cached.url,
@@ -323,13 +360,11 @@ export async function resolveCoverImage(
     }
   }
 
-  const query = buildSearchQuery(title, categories, coverImageConfig.searchStrategy)
-
   try {
     const result = await searchCoverImage(postId, query, coverImageConfig)
 
     if (result) {
-      cache[postId] = {
+      cache[cacheKey] = {
         url: result.url,
         photographer: result.photographer,
         photographerUrl: result.photographerUrl,
