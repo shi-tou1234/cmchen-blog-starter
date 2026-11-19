@@ -322,11 +322,13 @@ function getIntensityLevel(count: number, maxCount: number): number {
     <section class="mb-8 rounded-[var(--radius-card)] border border-[var(--border-color)] bg-[var(--card-bg-color)]/40 p-4 md:p-5">
       <h2 class="mb-4 text-lg font-semibold text-[var(--text-color)]">{labels.siteRecordTitle}</h2>
       <div class="about-timeline">
-        {timelineRecent.map((item, index) => (
-          <div class="about-timeline__card">
-            <div class="about-timeline__accent"></div>
-            <div class="about-timeline__body">
-              <span class="about-timeline__date">{item.date}</span>
+        {timelineRecent.map((item) => (
+          <div class="about-timeline__item">
+            <div class="about-timeline__date-mark" aria-hidden="true">
+              <span class="about-timeline__month">{item.date.split('.')[1].padStart(2, '0')}</span>
+              <span class="about-timeline__day">{item.date.split('.')[2]}</span>
+            </div>
+            <div class="about-timeline__row-body">
               {item.content.map((line) => (
                 <p class="about-timeline__text">{line}</p>
               ))}
@@ -350,11 +352,13 @@ function getIntensityLevel(count: number, maxCount: number): number {
             </button>
           </div>
           <div id="about-timeline-history" class="about-timeline" hidden>
-            {timelineHistory.map((item, index) => (
-              <div class="about-timeline__card">
-                <div class="about-timeline__accent"></div>
-                <div class="about-timeline__body">
-                  <span class="about-timeline__date">{item.date}</span>
+            {timelineHistory.map((item) => (
+              <div class="about-timeline__item">
+                <div class="about-timeline__date-mark" aria-hidden="true">
+                  <span class="about-timeline__month">{item.date.split('.')[1].padStart(2, '0')}</span>
+                  <span class="about-timeline__day">{item.date.split('.')[2]}</span>
+                </div>
+                <div class="about-timeline__row-body">
                   {item.content.map((line) => (
                     <p class="about-timeline__text">{line}</p>
                   ))}
@@ -623,75 +627,71 @@ function getIntensityLevel(count: number, maxCount: number): number {
   }
 
   .about-timeline {
-    display: grid;
-    gap: 0.75rem;
+    border-top: 1px solid var(--border-color);
   }
 
-  .about-timeline__card {
+  .about-timeline__item {
     display: flex;
-    gap: 0;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-    background: var(--bg-color);
-    transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
-    cursor: default;
+    align-items: center;
+    gap: 1.4rem;
+    padding: 0.85rem 0.5rem;
+    border-bottom: 1px dashed var(--border-color);
+    transition: padding-left 0.22s ease, background 0.22s ease;
   }
 
-  .about-timeline__card:hover {
-    border-color: color-mix(in srgb, var(--link-color) 30%, var(--border-color));
-    box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow-color) 50%, transparent);
-    transform: translateY(-2px);
+  .about-timeline__item:hover {
+    padding-left: 1rem;
+    background: color-mix(in srgb, var(--hover-bg-color) 45%, transparent);
   }
 
-  .about-timeline__accent {
-    width: 4px;
-    flex-shrink: 0;
-    background: linear-gradient(to bottom, var(--link-color), color-mix(in srgb, var(--link-color) 40%, var(--border-color)));
-    opacity: 0.6;
-    transition: opacity 0.3s ease;
+  .about-timeline__date-mark {
+    flex: 0 0 76px;
+    display: flex;
+    align-items: baseline;
+    gap: 0.18rem;
+    color: color-mix(in srgb, var(--link-color) 26%, var(--border-color));
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    transition: color 0.22s ease;
   }
 
-  .about-timeline__card:hover .about-timeline__accent {
-    opacity: 1;
+  .about-timeline__item:hover .about-timeline__date-mark {
+    color: var(--link-color);
   }
 
-  .about-timeline__body {
+  .about-timeline__month {
+    font-size: 1.85rem;
+    font-weight: 800;
+    letter-spacing: -0.06em;
+  }
+
+  .about-timeline__day {
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .about-timeline__row-body {
     flex: 1;
     min-width: 0;
-    padding: 0.85rem 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .about-timeline__date {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--link-color);
-    text-transform: uppercase;
-    line-height: 1;
-  }
-
-  .about-timeline__date::before {
-    content: '';
-    display: inline-block;
-    width: 0.45rem;
-    height: 0.45rem;
-    border-radius: 999px;
-    background: var(--link-color);
-    flex-shrink: 0;
   }
 
   .about-timeline__text {
     margin: 0;
-    font-size: 0.88rem;
-    line-height: 1.55;
+    font-size: 0.9rem;
+    line-height: 1.6;
     color: var(--text-color);
+  }
+
+  @media (max-width: 640px) {
+    .about-timeline__item {
+      gap: 1rem;
+    }
+    .about-timeline__date-mark {
+      flex-basis: 62px;
+    }
+    .about-timeline__month {
+      font-size: 1.5rem;
+    }
   }
 
   .about-timeline__more {

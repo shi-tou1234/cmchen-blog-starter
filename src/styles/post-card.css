@@ -258,11 +258,37 @@
   font-size: 10px;
 }
 @media (hover: hover) and (pointer: fine) {
+  /* 描边光晕：卡片上浮 + 主题色描边与柔光 + 标签染色 + 箭头填实心 */
+  .post-card {
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease;
+  }
+  .post-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 0 0 1px var(--link-color),
+      0 0 0 5px color-mix(in srgb, var(--link-color) 14%, transparent),
+      0 14px 36px var(--shadow-color);
+  }
+  .post-card__tags {
+    transition: color 0.3s ease;
+  }
+  .post-card:hover .post-card__tags {
+    color: var(--link-color);
+  }
+  .post-card__direction {
+    transition: transform 0.3s ease, background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  }
+  .post-card:hover .post-card__direction {
+    transform: translateX(5px) scale(1.08);
+    background: var(--link-color);
+    color: var(--bg-color);
+    border-color: var(--link-color);
+  }
   .post-card__direction .post-card__icon {
     transition: transform 0.18s ease;
   }
   .post-card:hover .post-card__direction .post-card__icon {
-    transform: translateX(2px);
+    transform: translateX(1px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

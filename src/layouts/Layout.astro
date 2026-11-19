@@ -51,7 +51,7 @@ const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, max-image-preview:none">
     <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, max-image-preview:none">
     <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <link rel="icon" href={siteConfig.favicon} type="image/x-icon">
+    <link rel="icon" href={baseUrl(siteConfig.favicon)} type="image/x-icon">
     <title>{pageTitle}</title>
     {description && <meta name="description" content={description} />}
     <meta property="og:site_name" content={siteConfig.title} />
@@ -80,6 +80,8 @@ const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
     <script is:inline>
         let loaderTimeout;
         let loaderWatchdog;
+        let pendingNavTarget = null;   // 本次 ClientRouter 导航的目标地址
+        const NAV_STALL_MS = 6000;     // 导航挂起判定阈值
 
         function showLoadingOverlay() {
             const overlay = document.getElementById('loading-overlay');
@@ -135,28 +137,55 @@ const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
         updateGlobalProgress();
 
         // 1. 开始准备跳转
-        document.addEventListener('astro:before-preparation', () => {
+        document.addEventListener('astro:before-preparation', (event) => {
             clearLoaderTimers();
+
+            // 记录目标地址，供挂起兜底使用（event.to 是 URL 对象）
+            try {
+                const to = event.to;
+                pendingNavTarget = to ? (to.pathname + (to.search || '') + (to.hash || '')) : null;
+            } catch (_) {
+                pendingNavTarget = null;
+            }
+
+            // 导航被正常取消（如连续点击其它链接）时，撤销本次看门狗
+            try {
+                const signal = event.signal;
+                if (signal && typeof signal.addEventListener === 'function') {
+                    signal.addEventListener('abort', () => {
+                        clearLoaderTimers();
+                        hideLoadingOverlay();
+                    }, { once: true });
+                }
+            } catch (_) {}
+
             loaderTimeout = setTimeout(() => {
               showLoadingOverlay();
             }, 200);
 
-            // 兜底：任何异常场景都不要让遮罩永久阻塞交互
+            // 看门狗：超过阈值仍未完成 swap（导航挂起），降级为硬跳转，保证"点哪到哪"
             loaderWatchdog = setTimeout(() => {
               hideLoadingOverlay();
-            }, 8000);
+              const dest = pendingNavTarget;
+              pendingNavTarget = null;
+              if (dest && dest !== window.location.pathname + window.location.search + window.location.hash) {
+                window.location.assign(dest);
+              }
+            }, NAV_STALL_MS);
         });
 
-        // 2. 页面内容交换完成（DOM 已更新）
+        // 2. 页面内容交换完成（DOM 已更新）——导航成功
         document.addEventListener('astro:after-swap', () => {
             clearLoaderTimers();
+            pendingNavTarget = null;
             hideLoadingOverlay();
             updateGlobalProgress();
         });
 
-        // 3. 兜底方案：页面完全加载完成（包括资源）
+        // 3. 兜底方案：页面完全加载完成（包括资源）——导航成功
         document.addEventListener('astro:page-load', () => {
             clearLoaderTimers();
+            pendingNavTarget = null;
             hideLoadingOverlay();
             updateGlobalProgress();
         });
@@ -222,7 +251,8 @@ const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
     z-index: var(--z-loading);
     backdrop-filter: blur(2px);
     animation: fadeInOverlay 0.3s ease-out;
-    pointer-events: auto;
+    /* 遮罩只作视觉提示，不得拦截点击：导航失败或变慢时保证用户仍可操作、可重试 */
+    pointer-events: none;
   }
 
   @keyframes fadeInOverlay {
